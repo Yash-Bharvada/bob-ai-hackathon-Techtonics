@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grid Risk Advisor — Power Outage Prediction Dashboard</title>
+  <style>
+    /* ── Reset & base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:       #0d1117;
+      --surface:  #161b22;
+      --border:   #30363d;
+      --text:     #e6edf3;
+      --muted:    #8b949e;
+      --accent:   #58a6ff;
+      --critical: #f85149;
+      --high:     #e3b341;
+      --medium:   #3fb950;
+      --low:      #8b949e;
+      --recovery: #79c0ff;
+    }
+    body {
+      font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    a { color: var(--accent); text-decoration: none; }
+
+    /* ── Header ── */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-title { font-size: 16px; font-weight: 600; }
+    .header-sub   { font-size: 12px; color: var(--muted); }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;
+    }
+    .badge-critical { background: rgba(248,81,73,0.15); color: var(--critical); border: 1px solid rgba(248,81,73,0.3); }
+    .badge-high     { background: rgba(227,179,65,0.15); color: var(--high);     border: 1px solid rgba(227,179,65,0.3); }
+    .badge-medium   { background: rgba(63,185,80,0.15);  color: var(--medium);   border: 1px solid rgba(63,185,80,0.3); }
+    .badge-low      { background: rgba(139,148,158,0.15);color: var(--low);      border: 1px solid rgba(139,148,158,0.3); }
+    .badge-recovery { background: rgba(121,192,255,0.15);color: var(--recovery); border: 1px solid rgba(121,192,255,0.3); }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .dot-pulse { animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    /* ── Layout ── */
+    .layout { display: grid; grid-template-columns: 320px 1fr; min-height: calc(100vh - 53px); }
+    .sidebar { background: var(--surface); border-right: 1px solid var(--border); overflow-y: auto; }
+    .main    { overflow-y: auto; padding: 20px; }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 12px; margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px;
+    }
+    .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-value { font-size: 28px; font-weight: 700; line-height: 1.1; margin-top: 4px; }
+
+    /* ── Asset list ── */
+    .sidebar-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted);
+    }
+    .asset-item {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.12s;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .asset-item:hover { background: rgba(88,166,255,0.06); }
+    .asset-item.active { background: rgba(88,166,255,0.12); border-left: 3px solid var(--accent); padding-left: 13px; }
+    .asset-rank { font-size: 11px; color: var(--muted); width: 22px; text-align: right; flex-shrink: 0; }
+    .asset-info { flex: 1; min-width: 0; }
+    .asset-id   { font-weight: 600; font-size: 13px; }
+    .asset-meta { font-size: 11px; color: var(--muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tier-pill  { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; flex-shrink: 0; }
+
+    /* ── Section heading ── */
+    .section-heading {
+      font-size: 13px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.5px;
+      margin-bottom: 12px; margin-top: 24px;
+    }
+    .section-heading:first-child { margin-top: 0; }
+
+    /* ── Detail cards ── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px; margin-bottom: 16px;
+    }
+    .card-title { font-weight: 600; margin-bottom: 12px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .kv-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid var(--border); }
+    .kv-row:last-child { border-bottom: none; }
+    .kv-key { color: var(--muted); font-size: 12px; }
+    .kv-val { font-weight: 500; font-size: 12px; }
+
+    /* ── SHAP bar ── */
+    .shap-bar-wrap { margin-bottom: 8px; }
+    .shap-bar-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 3px; }
+    .shap-bar-track { background: var(--bg); border-radius: 3px; height: 8px; overflow: hidden; }
+    .shap-bar-fill  { height: 100%; border-radius: 3px; transition: width 0.4s; }
+
+    /* ── Intervention banner ── */
+    .intervention-banner {
+      background: linear-gradient(135deg, rgba(121,192,255,0.08), rgba(63,185,80,0.05));
+      border: 1px solid var(--recovery);
+      border-radius: 8px; padding: 16px; margin-bottom: 16px;
+    }
+    .intervention-banner .title { color: var(--recovery); font-weight: 700; font-size: 15px; margin-bottom: 8px; }
+    .intervention-banner p { font-size: 13px; color: var(--text); line-height: 1.6; margin-bottom: 6px; }
+    .intervention-timeline { display: flex; gap: 0; margin: 12px 0; }
+    .int-step {
+      flex: 1; text-align: center; padding: 8px 4px;
+      border-right: 1px solid var(--border); font-size: 11px;
+    }
+    .int-step:last-child { border-right: none; }
+    .int-step .day { font-weight: 700; font-size: 14px; color: var(--accent); }
+    .int-step .label { color: var(--muted); margin-top: 2px; }
+    .int-step .value { font-weight: 600; margin-top: 2px; }
+    .int-step.peak .value { color: var(--critical); }
+    .int-step.recovery .value { color: var(--recovery); }
+    .int-step.current .value { color: var(--medium); }
+
+    /* ── Mini chart (SVG sparkline) ── */
+    .sparkline-wrap { margin-top: 6px; }
+    svg.sparkline { width: 100%; height: 60px; overflow: visible; }
+
+    /* ── Maintenance actions table ── */
+    .plan-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .plan-table th {
+      text-align: left; padding: 8px 10px;
+      border-bottom: 2px solid var(--border);
+      color: var(--muted); font-weight: 600;
+      text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;
+    }
+    .plan-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    .plan-table tr:last-child td { border-bottom: none; }
+    .plan-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+    /* ── Loading / error ── */
+    .loading { display: flex; align-items: center; justify-content: center; height: 200px; color: var(--muted); gap: 10px; }
+    .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-banner { background: rgba(248,81,73,0.1); border: 1px solid rgba(248,81,73,0.3); border-radius: 6px; padding: 12px; color: var(--critical); margin-bottom: 16px; }
+
+    /* ── Advisory text ── */
+    .advisory-box {
+      background: rgba(88,166,255,0.04); border: 1px solid rgba(88,166,255,0.2);
+      border-radius: 6px; padding: 12px 14px;
+      font-size: 12px; line-height: 1.7; color: var(--text);
+    }
+    .advisory-label { font-size: 10px; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .stats-bar { grid-template-columns: repeat(2,1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     HEADER
+════════════════════════════════════════════════════════ -->
+<header class="header">
+  <div>
+    <div class="header-title">⚡ Grid Risk Advisor</div>
+    <div class="header-sub">Power Outage Prediction &amp; Equipment Failure Advisory</div>
+  </div>
+  <div class="header-right">
+    <div id="status-badge" class="badge badge-medium">
+      <span class="dot dot-pulse"></span>
+      <span>Connecting…</span>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════
+     LAYOUT
+════════════════════════════════════════════════════════ -->
+<div class="layout">
+
+  <!-- Sidebar: asset list -->
+  <aside class="sidebar">
+    <div class="sidebar-header">Assets — Ranked by Risk</div>
+    <div id="asset-list">
+      <div class="loading"><div class="spinner"></div> Loading…</div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main">
+    <div id="error-area"></div>
+
+    <!-- Stats bar -->
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-label">Total Assets</div>
+        <div class="stat-value" id="stat-total">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Critical / High</div>
+        <div class="stat-value" id="stat-critical" style="color:var(--critical)">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg RUL (days)</div>
+        <div class="stat-value" id="stat-rul" style="color:var(--accent)">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Intervention Success</div>
+        <div class="stat-value" id="stat-tx115" style="color:var(--recovery)">TX-115</div>
+      </div>
+    </div>
+
+    <!-- TX-115 intervention banner (always visible) -->
+    <div class="intervention-banner">
+      <div class="title">🔧 TX-115 — Intervention &amp; Stalled Recovery (Key Demo)</div>
+      <p>TX-115 was heading toward imminent failure (RUL ~7.7 days on Day 78). A cooling fan repair and load curtailment reversed the trajectory — recovering <strong>89 days of remaining life</strong>.</p>
+      <div class="intervention-timeline">
+        <div class="int-step">
+          <div class="day">Day 65</div>
+          <div class="label">Degradation begins</div>
+          <div class="value">HI 13.7</div>
+        </div>
+        <div class="int-step peak">
+          <div class="day">Day 78</div>
+          <div class="label">Peak — CRITICAL</div>
+          <div class="value">HI 71.3 / RUL 7.7d</div>
+        </div>
+        <div class="int-step recovery">
+          <div class="day">Day 78</div>
+          <div class="label">⚙️ Maintenance</div>
+          <div class="value">Fan repair + load cut</div>
+        </div>
+        <div class="int-step current">
+          <div class="day">Day 89</div>
+          <div class="label">Recovered — MEDIUM</div>
+          <div class="value">HI 36.1 / RUL 97d</div>
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--muted)">
+        DGA fault classification: T2 (thermal markers receding). Note: T2 has ~74% recall — this classification is provisional; confirm with on-site thermal imaging.
+      </p>
+    </div>
+
+    <!-- Asset detail panel -->
+    <div id="detail-panel">
+      <div class="loading" style="color:var(--muted);gap:8px;font-size:13px">
+        ← Select an asset from the list to see details
+      </div>
+    </div>
+
+    <!-- Maintenance plan table -->
+    <div class="section-heading" style="margin-top:28px">Maintenance Action Plan</div>
+    <div class="card" style="padding:0">
+      <div id="plan-table-wrap">
+        <div class="loading"><div class="spinner"></div> Loading plan…</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// Config
+// ═══════════════════════════════════════════════════════
+const API = 'http://localhost:8000';
+
+// ═══════════════════════════════════════════════════════
+// Utilities
+// ═══════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+
+function tierColor(tier) {
+  const t = (tier||'').toUpperCase();
+  if (t === 'CRITICAL') return 'var(--critical)';
+  if (t === 'HIGH')     return 'var(--high)';
+  if (t === 'MEDIUM')   return 'var(--medium)';
+  return 'var(--low)';
+}
+function tierClass(tier) {
+  const t = (tier||'').toUpperCase();
+  if (t === 'CRITICAL') return 'badge-critical';
+  if (t === 'HIGH')     return 'badge-high';
+  if (t === 'MEDIUM')   return 'badge-medium';
+  return 'badge-low';
+}
+
+async function fetchJSON(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText} — ${url}`);
+  return r.json();
+}
+
+function showError(msg) {
+  $('error-area').innerHTML = `<div class="error-banner">⚠️ ${msg}</div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// Sparkline SVG
+// ═══════════════════════════════════════════════════════
+function sparkline(values, color, width = 220, height = 50) {
+  if (!values || values.length < 2) return '';
+  const min = Math.min(...values), max = Math.max(...values);
+  const range = max - min || 1;
+  const pts = values.map((v, i) => {
+    const x = (i / (values.length - 1)) * width;
+    const y = height - ((v - min) / range) * (height - 4) - 2;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  return `<svg class="sparkline" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// SHAP bar chart
+// ═══════════════════════════════════════════════════════
+function shapBars(top3) {
+  if (!top3 || !top3.length) return '<em style="color:var(--muted);font-size:12px">No SHAP data</em>';
+  const maxAbs = Math.max(...top3.map(([,v]) => Math.abs(v)));
+  return top3.map(([feat, val]) => {
+    const pct = (Math.abs(val) / maxAbs * 100).toFixed(1);
+    const color = val > 0 ? 'var(--critical)' : 'var(--medium)';
+    const sign = val > 0 ? '+' : '';
+    return `<div class="shap-bar-wrap">
+      <div class="shap-bar-label">
+        <span>${feat}</span>
+        <span style="color:${color}">${sign}${val.toFixed(3)}</span>
+      </div>
+      <div class="shap-bar-track">
+        <div class="shap-bar-fill" style="width:${pct}%;background:${color}"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+// Asset list
+// ═══════════════════════════════════════════════════════
+let _ranked = [];
+let _selectedId = null;
+
+function renderAssetList(ranked) {
+  _ranked = ranked;
+  const html = ranked.map(a => {
+    const tc = tierClass(a.risk_tier);
+    const isSpecial = a.asset_id === 'TX-115';
+    return `<div class="asset-item ${isSpecial ? 'recovery' : ''}" data-id="${a.asset_id}" onclick="selectAsset('${a.asset_id}')">
+      <span class="asset-rank">${a.rank}</span>
+      <div class="asset-info">
+        <div class="asset-id">${a.asset_id}${isSpecial ? ' <span style="color:var(--recovery);font-size:10px">↩ Recovered</span>':''}
+        </div>
+        <div class="asset-meta">
+          HI ${(a.health_index_score||0).toFixed(1)} · RUL ${(a.RUL_days||0).toFixed(0)}d · ${a.fault_type||'?'} · ${a.grid_zone||''}
+        </div>
+      </div>
+      <span class="tier-pill ${tc}" style="color:${tierColor(a.risk_tier)};background:rgba(${tc==='badge-critical'?'248,81,73':tc==='badge-high'?'227,179,65':'63,185,80'},0.15)">${a.risk_tier}</span>
+    </div>`;
+  }).join('');
+  $('asset-list').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════
+// Stats bar
+// ═══════════════════════════════════════════════════════
+function updateStats(ranked, plan) {
+  $('stat-total').textContent = ranked.length;
+  const critHigh = ranked.filter(a => ['CRITICAL','HIGH'].includes(a.risk_tier)).length;
+  $('stat-critical').textContent = critHigh;
+  const avgRul = ranked.reduce((s,a) => s + (a.RUL_days||0), 0) / ranked.length;
+  $('stat-rul').textContent = avgRul.toFixed(0);
+}
+
+// ═══════════════════════════════════════════════════════
+// Asset detail panel
+// ═══════════════════════════════════════════════════════
+async function selectAsset(id) {
+  _selectedId = id;
+  document.querySelectorAll('.asset-item').forEach(el =>
+    el.classList.toggle('active', el.dataset.id === id)
+  );
+
+  $('detail-panel').innerHTML = '<div class="loading"><div class="spinner"></div> Loading asset…</div>';
+
+  try {
+    const [detail, ts] = await Promise.all([
+      fetchJSON(`${API}/api/asset/${id}?generate_advisory=true`),
+      fetchJSON(`${API}/api/timeseries/${id}`)
+    ]);
+
+    const hi = detail.health_index_score || 0;
+    const rul = detail.RUL_days || 0;
+    const tier = detail.risk_tier || 'LOW';
+    const fault = detail.fault_label || detail.fault_type || 'NF';
+    const fconf = ((detail.fault_confidence||0)*100).toFixed(0);
+    const top3 = detail.top3_shap_features || [];
+    const reg = detail.registry || {};
+
+    // 90-day HI sparkline from timeseries
+    const hiSeries = (ts.timeseries||[]).map(r => r.health_index || 0);
+    const sparkColor = hi >= 70 ? 'var(--critical)' : hi >= 50 ? 'var(--high)' : hi >= 30 ? 'var(--medium)' : 'var(--accent)';
+
+    const isRecovered = id === 'TX-115';
+
+    // Detect whether the advisory was AI-generated (Bob) or fell back to a template.
+    // Both fallback paths prefix their marker with '[Advisory' — checking for that
+    // substring catches either case. The absence of that marker means Bob was called.
+    const advisory = detail.advisory_text || '';
+    const isFallback = advisory.includes('[Advisory') || advisory === '';
+    const advisoryBadgeHtml = isFallback
+      ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(139,148,158,0.15);color:var(--muted);border:1px solid rgba(139,148,158,0.3)">⚙ Template fallback</span>`
+      : `<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(88,166,255,0.12);color:var(--accent);border:1px solid rgba(88,166,255,0.3)">✦ AI-generated</span>`;
+    // Strip the trailing bracketed note from fallback text before display
+    const advisoryDisplay = advisory.replace(/\s*\[Advisory[^\]]*\]$/, '').trim()
+      || '<em style="color:var(--muted)">No advisory available.</em>';
+
+    $('detail-panel').innerHTML = `
+      <div class="section-heading">${id} — Detail View ${isRecovered ? '<span style="color:var(--recovery)">↩ Recovered after intervention</span>' : ''}</div>
+
+      <div class="grid-3">
+        <div class="stat-card">
+          <div class="stat-label">Health Index</div>
+          <div class="stat-value" style="color:${tierColor(tier)}">${hi.toFixed(1)}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">DAMAGE score · 13.4=pristine · ≥50=severe</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Est. RUL</div>
+          <div class="stat-value" style="color:var(--accent)">${rul.toFixed(0)}d</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Remaining useful life (heuristic)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Risk Tier</div>
+          <div class="stat-value" style="color:${tierColor(tier)}">${tier}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">Composite score: ${(detail.composite_score||0).toFixed(3)} · Rank #${detail.rank||'—'}</div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top:16px">
+        <div class="card">
+          <div class="card-title">DGA Fault Classification</div>
+          <div class="kv-row"><span class="kv-key">Fault type</span><span class="kv-val"><span class="badge ${tierClass(fault.includes('D2')||fault.includes('T3')?'HIGH':'MEDIUM')}">${fault}</span></span></div>
+          <div class="kv-row"><span class="kv-key">Confidence</span><span class="kv-val">${fconf}%${parseFloat(fconf)<60?' <em style="color:var(--muted);font-size:11px">(low — see note)</em>':''}</span></div>
+          ${Object.entries(detail.fault_proba_all||{}).map(([c,p]) =>
+            `<div class="kv-row"><span class="kv-key">${c}</span><span class="kv-val">${(p*100).toFixed(1)}%</span></div>`
+          ).join('')}
+        </div>
+        <div class="card">
+          <div class="card-title">Asset Metadata</div>
+          <div class="kv-row"><span class="kv-key">Grid zone</span><span class="kv-val">${reg.grid_zone||'—'}</span></div>
+          <div class="kv-row"><span class="kv-key">Voltage</span><span class="kv-val">${reg.voltage_kv||'—'}</span></div>
+          <div class="kv-row"><span class="kv-key">MVA rating</span><span class="kv-val">${reg.mva_rating||'—'} MVA</span></div>
+          <div class="kv-row"><span class="kv-key">Install year</span><span class="kv-val">${reg.install_year||'—'}</span></div>
+          <div class="kv-row"><span class="kv-key">Criticality</span><span class="kv-val">${reg.criticality||'—'}</span></div>
+          <div class="kv-row"><span class="kv-key">Archetype</span><span class="kv-val">${reg.archetype||'Stable'}</span></div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top:0">
+        <div class="card">
+          <div class="card-title">SHAP Top-3 Feature Contributions</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+            Positive = increases predicted damage (health index). 
+            Model 1 R² = 0.72 on held-out test set.
+          </div>
+          ${shapBars(top3)}
+        </div>
+        <div class="card">
+          <div class="card-title">90-Day Health Index Trajectory</div>
+          <div class="sparkline-wrap">
+            ${sparkline(hiSeries, sparkColor)}
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:6px">
+            Day 0 → Day 89 · Lower = healthier
+            ${isRecovered ? ' · Peak on Day 78, recovery after maintenance' : ''}
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:0">
+        <div class="card-title" style="display:flex;align-items:center;gap:8px">
+          Maintenance Advisory ${advisoryBadgeHtml}
+        </div>
+        <div class="advisory-box">${advisoryDisplay}</div>
+      </div>
+    `;
+  } catch (err) {
+    $('detail-panel').innerHTML = `<div class="error-banner">Failed to load asset ${id}: ${err.message}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// Maintenance plan table
+// ═══════════════════════════════════════════════════════
+function renderPlanTable(actions) {
+  if (!actions || !actions.length) {
+    $('plan-table-wrap').innerHTML = '<div style="padding:16px;color:var(--muted)">No plan data.</div>';
+    return;
+  }
+  const rows = actions.slice(0, 10).map(a => {
+    const tc = tierColor(a.risk_tier);
+    return `<tr>
+      <td style="color:var(--muted)">${a.rank}</td>
+      <td><strong>${a.asset_id}</strong></td>
+      <td><span class="badge ${tierClass(a.risk_tier)}" style="color:${tc}">${a.risk_tier}</span></td>
+      <td>${(a.health_index||0).toFixed(1)}</td>
+      <td>${(a.RUL_days||0).toFixed(0)}d</td>
+      <td>${a.fault_label||'—'}</td>
+      <td><code style="font-size:11px;background:rgba(255,255,255,0.05);padding:2px 6px;border-radius:4px">${a.action_code||'—'}</code></td>
+      <td style="font-size:12px;max-width:220px">${a.short_action||'—'}</td>
+      <td style="color:var(--muted)">${a.deadline||'—'}</td>
+    </tr>`;
+  }).join('');
+
+  $('plan-table-wrap').innerHTML = `
+    <div style="overflow-x:auto">
+      <table class="plan-table">
+        <thead><tr>
+          <th>#</th><th>Asset</th><th>Tier</th><th>HI</th><th>RUL</th>
+          <th>Fault</th><th>Action</th><th>Recommendation</th><th>Deadline</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+// Boot
+// ═══════════════════════════════════════════════════════
+async function boot() {
+  try {
+    const [rankedData, planData] = await Promise.all([
+      fetchJSON(`${API}/api/ranked`),
+      fetchJSON(`${API}/api/plan`),
+    ]);
+
+    const ranked = rankedData.ranked_assets || [];
+    const plan   = planData;
+
+    // Update status badge
+    $('status-badge').innerHTML = `<span class="dot" style="background:var(--medium)"></span> Live — ${ranked.length} assets`;
+    $('status-badge').className = 'badge badge-medium';
+
+    renderAssetList(ranked);
+    updateStats(ranked, plan);
+    renderPlanTable(plan.asset_actions || []);
+
+    // Auto-select TX-107 (highest risk)
+    if (ranked.length > 0) selectAsset(ranked[0].asset_id);
+
+  } catch (err) {
+    showError(`Cannot connect to API at ${API}. Start the backend with: python src/backend/main.py — ${err.message}`);
+    $('status-badge').innerHTML = `<span class="dot" style="background:var(--critical)"></span> API offline`;
+    $('status-badge').className = 'badge badge-critical';
+    $('asset-list').innerHTML = `<div style="padding:16px;color:var(--muted);font-size:12px">API not reachable. Run: uvicorn src.backend.main:app --port 8000</div>`;
+    $('plan-table-wrap').innerHTML = '';
+  }
+}
+
+boot();
+</script>
+
+</body>
+</html>

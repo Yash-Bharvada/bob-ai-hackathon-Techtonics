@@ -1,0 +1,31 @@
+{
+  "random_seed": 42,
+  "n_assets": 18,
+  "n_days": 90,
+  "weather_lat": 52.48,
+  "weather_lon": -1.9,
+  "weather_start": "2026-06-15",
+  "weather_end": "2026-09-12",
+  "archetypes": {
+    "TX-107": "Electrical_Arcing",
+    "TX-104": "Progressive_Thermal",
+    "TX-115": "Intervention_Recovery",
+    "TX-112": "Shock_PD"
+  },
+  "stable_assets": [
+    "TX-101",
+    "TX-102",
+    "TX-103",
+    "TX-105",
+    "TX-106",
+    "TX-108",
+    "TX-109",
+    "TX-110",
+    "TX-111",
+    "TX-113",
+    "TX-114",
+    "TX-116",
+    "TX-117",
+    "TX-118"
+  ]
+}
