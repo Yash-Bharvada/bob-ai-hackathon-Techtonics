@@ -49,12 +49,14 @@ python src/models/train_dga_classifier.py
 # Expected: accuracy ~0.91, macro F1 ~0.90
 # Expected: src/models/dga_fault_model.pkl created
 
-# 8. Start the backend
+# 8. Start the backend (:8000)
 uvicorn src.backend.main:app --port 8000
 
-# 9. Open the dashboard
-# Open src/frontend/index.html in any modern browser
-# (Chrome, Firefox, Edge — no build step needed)
+# 9. Start the VOLTRA frontend (:3000)
+cd src/frontend
+npm install
+npm run dev
+# Dashboard opens at http://localhost:3000
 ```
 
 ## Expected Output After Step 5

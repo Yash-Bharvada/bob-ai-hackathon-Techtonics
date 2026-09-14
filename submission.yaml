@@ -39,11 +39,11 @@ submission:
     - "Composite grid impact ranking: 5-component weighted formula (HI 35%, RUL 25%, fault severity 20%, MVA 10%, history 10%) with criticality multiplier"
     - "TX-115 intervention detection: system tracks degradation, detects maintenance-driven recovery, and communicates it explicitly (not 'still at risk')"
     - "IBM Bob (Claude) integration: per-asset plain-English advisories grounded in actual sensor values and SHAP contributions, with graceful fallback"
-    - "FastAPI backend (9 endpoints) + single-file HTML dashboard using real pipeline output — no mock data"
+    - "FastAPI backend (9 endpoints) + VOLTRA interactive intelligence console (React 19, TanStack Start, TailwindCSS) with real pipeline output — no mock data"
 
   tech_stack:
-    languages: ["Python", "JavaScript", "HTML", "CSS"]
-    frameworks: ["FastAPI", "scikit-learn", "SHAP", "pandas", "numpy", "uvicorn"]
+    languages: ["Python", "TypeScript", "JavaScript", "HTML", "CSS"]
+    frameworks: ["FastAPI", "scikit-learn", "SHAP", "pandas", "numpy", "uvicorn", "React 19", "TanStack Start", "TailwindCSS"]
     ibm_technologies: ["IBM Bob (Claude claude-3-5-haiku-20241022)"]
     databases: []
     other: ["kagglehub", "Open-Meteo API (real weather data)", "Kaggle transformer datasets"]

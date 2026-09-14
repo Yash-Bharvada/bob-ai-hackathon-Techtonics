@@ -39,7 +39,7 @@ The TX-115 case is the key demo: a transformer heading for imminent failure (RUL
 - **Composite ranking with transparent weights**: 5-component formula (HI 35%, RUL 25%, fault severity 20%, MVA 10%, history 10%) — every sub-score returned in the API
 - **TX-115 intervention detection**: degradation tracked day-by-day; post-maintenance recovery communicated explicitly (never flattened to "still at risk")
 - **IBM Bob integration (load-bearing)**: advisories grounded in real SHAP values, with graceful deterministic fallback — the pipeline never fails due to a Bob call failure
-- **FastAPI backend (9 endpoints) + HTML dashboard**: real pipeline output, no mock data, no build step
+- **FastAPI backend (9 endpoints) + VOLTRA interactive intelligence console**: real pipeline output, zero mock data, real-time telemetry waveforms, dynamic stress studio, and community incident reporting
 
 ---
 
@@ -47,8 +47,9 @@ The TX-115 case is the key demo: a transformer heading for imminent failure (RUL
 
 | Category | Technologies |
 |---|---|
-| **Languages** | Python, JavaScript, HTML, CSS |
-| **Frameworks** | FastAPI, scikit-learn, SHAP, pandas, numpy, uvicorn |
+| **Languages** | Python, TypeScript, JavaScript, HTML, CSS |
+| **Backend & ML** | FastAPI, scikit-learn, SHAP, pandas, numpy, uvicorn |
+| **Frontend** | React 19, TanStack Start & Router, Vite 8, TailwindCSS, Recharts, Lucide |
 | **IBM Technologies** | IBM Bob (Claude claude-3-5-haiku-20241022) |
 | **External APIs** | Open-Meteo (real weather), kagglehub (real training data) |
 
@@ -62,7 +63,7 @@ src/
   models/               train_health_index.py, train_dga_classifier.py, *.pkl
   pipeline/             score_asset_risk.py, grid_impact_ranker.py, maintenance_plan.py
   backend/              main.py (FastAPI, 9 endpoints)
-  frontend/             index.html (single-file dashboard)
+  frontend/             VOLTRA Predictive Grid Intelligence Console (React 19 + TanStack Start)
   requirements.txt
 docs/
   problem-statement.md
@@ -91,11 +92,13 @@ python src/data/generate_synthetic.py
 python src/models/train_health_index.py
 python src/models/train_dga_classifier.py
 
-# Start backend
+# Start backend (:8000)
 uvicorn src.backend.main:app --port 8000
 
-# Open dashboard
-# Open src/frontend/index.html in your browser
+# Start VOLTRA frontend (:3000)
+cd src/frontend
+npm install
+npm run dev
 ```
 
 IBM Bob advisory generation requires `ANTHROPIC_API_KEY` in a `.env` file — fully optional, the system uses deterministic fallback without it.
