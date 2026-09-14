@@ -7,12 +7,13 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { type ReactNode } from "react";
+import { type ReactNode, useState, useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Toaster } from "@/components/ui/sonner";
+import { CinematicLanding } from "@/cinematic/CinematicLanding.tsx";
 
 function NotFoundComponent() {
   return (
@@ -27,12 +28,6 @@ function NotFoundComponent() {
           >
             Dashboard Home
           </Link>
-          <a
-            href="/"
-            className="pill inline-flex items-center border border-border px-5 py-2.5 text-sm text-foreground hover:bg-surface"
-          >
-            ← Landing
-          </a>
         </div>
       </div>
     </div>
@@ -104,7 +99,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap",
+      },
+      // Preload the first cinematic frame for instant display
+      {
+        rel: "preload",
+        as: "image",
+        href: "/assets/cinematic/first-frame.webp",
+        type: "image/webp",
       },
     ],
   }),
@@ -130,15 +132,41 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  // Start as false — the cinematic layer mounts itself via useEffect (client only).
+  // Server renders the dashboard fully visible, client immediately overlays cinematic.
+  const [showCinematic, setShowCinematic] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    setShowCinematic(true);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen flex flex-col bg-background text-foreground">
+      {/* Cinematic landing — only mounted on client after hydration */}
+      {mounted && showCinematic && <CinematicLanding onEnter={() => setShowCinematic(false)} />}
+
+      {/* React dashboard — always rendered for SSR; hidden by cinematic overlay on client */}
+      <div
+        className="min-h-screen flex flex-col bg-background text-foreground"
+        style={
+          mounted && showCinematic
+            ? {
+                opacity: 0,
+                pointerEvents: "none",
+                transition: "opacity 0.65s cubic-bezier(0.4,0,0.2,1)",
+              }
+            : { opacity: 1, transition: "opacity 0.65s cubic-bezier(0.4,0,0.2,1)" }
+        }
+      >
         <SiteNav />
         <main className="flex-1">
           <Outlet />
         </main>
         <SiteFooter />
       </div>
+
       <Toaster />
     </QueryClientProvider>
   );

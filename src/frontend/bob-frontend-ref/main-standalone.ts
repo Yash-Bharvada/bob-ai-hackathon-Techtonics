@@ -21,7 +21,9 @@ let voltraSliceSlide: VoltraSliceSlide | null = null;
 
 if (container) {
   // Read saved theme or default to light
-  const savedTheme = (localStorage.getItem("cinematic-theme") || localStorage.getItem("blackout-theme") || "light") as Theme;
+  const savedTheme = (localStorage.getItem("cinematic-theme") ||
+    localStorage.getItem("blackout-theme") ||
+    "light") as Theme;
 
   // Initialize the Frame Player
   cinematic = new CinematicThemeTransition(container, {
@@ -38,7 +40,7 @@ if (container) {
       if (themeToggle) {
         themeToggle.setAttribute(
           "aria-label",
-          state.targetTheme === "dark" ? "Switch to Day Mode" : "Switch to Night Mode"
+          state.targetTheme === "dark" ? "Switch to Day Mode" : "Switch to Night Mode",
         );
       }
     },
@@ -90,15 +92,14 @@ function updateToggleButton(theme: Theme): void {
     themeLabel.textContent = isDark ? "Day Mode" : "Night Mode";
   }
   if (themeToggle) {
-    themeToggle.setAttribute(
-      "aria-label",
-      isDark ? "Switch to Day Mode" : "Switch to Night Mode"
-    );
+    themeToggle.setAttribute("aria-label", isDark ? "Switch to Day Mode" : "Switch to Night Mode");
   }
 }
 
 // Set initial toggle button text
-const currentTheme = (localStorage.getItem("cinematic-theme") || localStorage.getItem("blackout-theme") || "light") as Theme;
+const currentTheme = (localStorage.getItem("cinematic-theme") ||
+  localStorage.getItem("blackout-theme") ||
+  "light") as Theme;
 updateToggleButton(currentTheme);
 
 if (themeToggle && cinematic) {

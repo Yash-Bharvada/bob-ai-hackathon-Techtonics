@@ -150,6 +150,32 @@ src/
 
 ---
 
+## Cinematic Landing Layer
+
+The full-screen cinematic intro (frame-sequence + depth text + slice-and-dice overlay) lives entirely inside this project:
+
+| Path                                 | Contents                                                                                                                                     |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/cinematic/`                     | TypeScript classes: `CinematicThemeTransition`, `CinematicFrameSequence`, `VoltraDepthText`, `VoltraSliceSlide`, `ThemeTransitionController` |
+| `src/cinematic/CinematicLanding.tsx` | React component — mounts cinematic layer client-side via dynamic import                                                                      |
+| `public/assets/cinematic/`           | 169 WebP frames + first/last frame + house mask + metadata                                                                                   |
+| `scripts/`                           | Utility scripts for frame extraction and upscaling                                                                                           |
+
+### Cinematic scripts
+
+```bash
+# Extract frames from source video (requires ffmpeg)
+node scripts/extract-frames.mjs
+
+# Upscale frames (requires Python + Real-ESRGAN)
+python scripts/upscale-frames.py
+
+# Trace house silhouette mask
+python scripts/trace_house_mask.py
+```
+
+---
+
 ## Team
 
 **Techtonics** — Bobathon AI Hackathon

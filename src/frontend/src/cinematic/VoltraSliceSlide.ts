@@ -173,30 +173,49 @@ export class VoltraSliceSlide {
     // Wheel open/close
     let wheelAcc = 0;
     let wheelTimer: ReturnType<typeof setTimeout> | null = null;
-    window.addEventListener("wheel", (e) => {
-      if (!this.isOpen && e.deltaY > 30) {
-        wheelAcc += e.deltaY;
-        if (wheelAcc > 70) { this.open(); wheelAcc = 0; }
-        if (wheelTimer) clearTimeout(wheelTimer);
-        wheelTimer = setTimeout(() => { wheelAcc = 0; }, 400);
-      } else if (this.isOpen && e.deltaY < -40) {
-        const c = this.slideElement?.querySelector(".voltra-slice-content") as HTMLElement | null;
-        if (c && c.scrollTop <= 5) this.close();
-      }
-    }, { passive: true });
+    window.addEventListener(
+      "wheel",
+      (e) => {
+        if (!this.isOpen && e.deltaY > 30) {
+          wheelAcc += e.deltaY;
+          if (wheelAcc > 70) {
+            this.open();
+            wheelAcc = 0;
+          }
+          if (wheelTimer) clearTimeout(wheelTimer);
+          wheelTimer = setTimeout(() => {
+            wheelAcc = 0;
+          }, 400);
+        } else if (this.isOpen && e.deltaY < -40) {
+          const c = this.slideElement?.querySelector(".voltra-slice-content") as HTMLElement | null;
+          if (c && c.scrollTop <= 5) this.close();
+        }
+      },
+      { passive: true },
+    );
 
     // Touch swipe
     let touchY = 0;
-    window.addEventListener("touchstart", (e) => { touchY = e.touches[0].clientY; }, { passive: true });
-    window.addEventListener("touchend", (e) => {
-      const delta = touchY - e.changedTouches[0].clientY;
-      if (!this.isOpen && delta > 60) {
-        this.open();
-      } else if (this.isOpen && delta < -60) {
-        const c = this.slideElement?.querySelector(".voltra-slice-content") as HTMLElement | null;
-        if (c && c.scrollTop <= 5) this.close();
-      }
-    }, { passive: true });
+    window.addEventListener(
+      "touchstart",
+      (e) => {
+        touchY = e.touches[0].clientY;
+      },
+      { passive: true },
+    );
+    window.addEventListener(
+      "touchend",
+      (e) => {
+        const delta = touchY - e.changedTouches[0].clientY;
+        if (!this.isOpen && delta > 60) {
+          this.open();
+        } else if (this.isOpen && delta < -60) {
+          const c = this.slideElement?.querySelector(".voltra-slice-content") as HTMLElement | null;
+          if (c && c.scrollTop <= 5) this.close();
+        }
+      },
+      { passive: true },
+    );
   }
 
   public open(): void {
@@ -223,7 +242,11 @@ export class VoltraSliceSlide {
   }
 
   public toggle(): void {
-    this.isOpen ? this.close() : this.open();
+    if (this.isOpen) {
+      this.close();
+    } else {
+      this.open();
+    }
   }
 
   public setTheme(theme: Theme): void {
@@ -238,8 +261,12 @@ export class VoltraSliceSlide {
     }
   }
 
-  public getTheme(): Theme { return this.currentTheme; }
-  public getIsOpen(): boolean { return this.isOpen; }
+  public getTheme(): Theme {
+    return this.currentTheme;
+  }
+  public getIsOpen(): boolean {
+    return this.isOpen;
+  }
 
   /**
    * Smooth full-page fade-out then navigate to the React dashboard.

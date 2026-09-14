@@ -1,0 +1,18 @@
+{
+  "sourceVideo": "Untitled.mp4",
+  "totalFrames": 169,
+  "fps": 24,
+  "aspectRatio": "16:9",
+  "width": 2560,
+  "height": 1440,
+  "scale": 2,
+  "firstFrame": "first-frame.webp",
+  "lastFrame": "last-frame.webp",
+  "framesPattern": "web/frame_%04d.webp",
+  "masterPattern": "upscaled-master/frame_%04d.png",
+  "originalPattern": "original/frame_%04d.webp",
+  "firstIndex": 0,
+  "lastIndex": 168,
+  "model": "realesr-animevideov3-x2",
+  "upscaledAt": "2026-09-14T06:32:35Z"
+}
