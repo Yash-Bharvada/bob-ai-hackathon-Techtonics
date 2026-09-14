@@ -1,0 +1,5 @@
+event_id,date,type,affected_asset,description,severity
+EVT-001,2026-08-26,excavation_strike,TX-112,"Nearby utility excavation caused mechanical shock, triggering partial discharge signature.",High
+EVT-002,2026-09-01,maintenance_intervention,TX-115,Cooling fan repair + load curtailment applied. Gas levels and oil temperature began recovering.,N/A (preventive)
+EVT-003,2026-08-14,grid_overload,TX-104,Zone-A demand surge initiated progressive thermal overheating cycle.,Medium
+EVT-004,2026-08-14,insulation_fault,TX-107,Latent insulation degradation reached threshold; electrical arcing sequence commenced.,Critical

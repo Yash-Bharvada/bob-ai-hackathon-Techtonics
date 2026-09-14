@@ -1,0 +1,268 @@
+/**
+ * techtonicsApi.ts
+ * Typed client connecting the VOLTRA frontend to the Techtonics FastAPI backend.
+ * Endpoints default to http://localhost:8000 with graceful fallback handling.
+ */
+
+// ─── Incident Reporting Types (POST /events/report) ──────────────────────────
+
+export interface EventReportRequest {
+  zone_name: string;
+  event_description: string;
+  reporter_note?: string;
+  reporter_type: "citizen" | "field_technician" | "municipal_dispatcher";
+}
+
+export interface EventReportResponse {
+  status: "accepted" | "rejected";
+  incident_id?: string;
+  category?: string;
+  risk_multiplier?: number;
+  disclaimer?: string;
+  /** Only present on rejection */
+  matched_pattern?: string;
+  message: string;
+}
+
+export const API_BASE = "http://localhost:8000";
+
+export interface RankedAsset {
+  rank: number;
+  asset_id: string;
+  substation_name?: string;
+  grid_zone?: string;
+  criticality_tier?: string;
+  health_index: number;
+  RUL_days: number;
+  fault_type: string;
+  fault_prob?: number;
+  risk_tier: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+  composite_score: number;
+  mva_rating?: number;
+  voltage_kv?: string;
+  customer_count_served?: number;
+  top_3_shap?: [string, number][];
+}
+
+export interface RankedResponse {
+  count: number;
+  weights: {
+    health_index: number;
+    rul: number;
+    fault_severity: number;
+    mva_rating: number;
+    incident_history: number;
+  };
+  ranked_assets: RankedAsset[];
+}
+
+export interface AssetDetailResponse {
+  asset_id: string;
+  /** Renamed from health_index_score in pipeline — normalised by backend */
+  health_index: number;
+  RUL_days: number;
+  risk_tier: string;
+  fault_type: string;
+  /** Renamed from fault_confidence in pipeline */
+  fault_prob: number;
+  fault_probabilities?: Record<string, number>;
+  /** Renamed from top3_shap_features in pipeline */
+  top_3_shap: [string, number][];
+  sensor_readings?: Record<string, any>;
+  advisory_text: string;
+  /** "ibm_bob_llm" when Anthropic key present, "deterministic_fallback" otherwise */
+  advisory_source: "ibm_bob_llm" | "deterministic_fallback";
+  registry?: {
+    asset_id?: string;
+    substation_name?: string;
+    grid_zone?: string;
+    rated_mva?: number;
+    voltage_kv?: string;
+    age_years?: number;
+    manufacturer?: string;
+    customer_count_served?: number;
+    criticality?: string;
+    criticality_tier?: string;
+    critical_infrastructure_nearby?: string;
+    degradation_profile?: string;
+    [key: string]: any;
+  };
+  composite_score?: number;
+  rank?: number;
+}
+
+export interface TimeseriesPoint {
+  day: number;
+  date: string;
+  asset_id: string;
+  Hydrogen: number;
+  Methane: number;
+  Acethylene: number;
+  Ethylene: number;
+  Ethane: number;
+  top_oil_temp_c?: number;
+  temperature?: number;
+  vibration?: number;
+  load_percentage?: number;
+  "Health index"?: number;
+  health_index?: number;
+  RUL_days?: number;
+  rul_days?: number;
+  fault_mode?: string;
+  degradation_status?: string;
+}
+
+export interface TimeseriesResponse {
+  asset_id: string;
+  days: number;
+  timeseries: TimeseriesPoint[];
+}
+
+export interface MaintenanceAction {
+  rank: number;
+  asset_id: string;
+  substation_name: string;
+  grid_zone: string;
+  risk_tier: string;
+  fault_type: string;
+  action_code: string;
+  short_action: string;
+  detail: string;
+  urgency_window: string;
+  crew_assignment: string;
+  crew_conflict: boolean;
+  sequencing_note?: string;
+  advisory_summary?: string;
+}
+
+export interface MaintenancePlanResponse {
+  generated_date?: string;
+  total_actions?: number;
+  top_10_actions: MaintenanceAction[];
+  crew_schedule: Record<string, any>;
+  tx115_narrative: {
+    asset_id: string;
+    story: string;
+    degradation_peak: string;
+    intervention: string;
+    recovery_outcome: string;
+    rul_recovered_days: number;
+  };
+}
+
+export interface AdhocScoreRequest {
+  asset_id?: string;
+  Hydrogen?: number;
+  Oxigen?: number;
+  Nitrogen?: number;
+  Methane?: number;
+  CO?: number;
+  CO2?: number;
+  Ethylene?: number;
+  Ethane?: number;
+  Acethylene?: number;
+  DBDS?: number;
+  Power_factor?: number;
+  Interfacial_V?: number;
+  Dielectric_rigidity?: number;
+  Water_content?: number;
+  top_oil_temp_c?: number;
+  generate_advisory?: boolean;
+}
+
+export interface AdhocScoreResponse {
+  asset_id: string;
+  /** Normalised from health_index_score by backend /api/score */
+  health_index: number;
+  RUL_days: number;
+  risk_tier: string;
+  fault_type: string;
+  /** Normalised from fault_confidence by backend */
+  fault_prob: number;
+  /** Normalised from top3_shap_features by backend */
+  top_3_shap: [string, number][];
+  advisory_text?: string;
+  advisory_source?: "ibm_bob_llm" | "deterministic_fallback";
+}
+
+async function requestWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 4000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return res;
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
+  }
+}
+
+export const techtonicsApi = {
+  async checkHealth(): Promise<{ live: boolean; message: string }> {
+    try {
+      const res = await requestWithTimeout(`${API_BASE}/health`, {}, 2000);
+      if (res.ok) {
+        const data = await res.json();
+        return { live: true, message: `FastAPI online · Models loaded: ${data.models_loaded ?? true}` };
+      }
+      return { live: false, message: `FastAPI returned HTTP ${res.status}` };
+    } catch {
+      return { live: false, message: "FastAPI offline (run: uvicorn src.backend.main:app --port 8000)" };
+    }
+  },
+
+  async getRanked(): Promise<RankedResponse> {
+    const res = await requestWithTimeout(`${API_BASE}/api/ranked`);
+    if (!res.ok) throw new Error(`HTTP ${res.status} from /api/ranked`);
+    return res.json();
+  },
+
+  async getAssetDetail(assetId: string, generateAdvisory = true): Promise<AssetDetailResponse> {
+    const res = await requestWithTimeout(
+      `${API_BASE}/api/asset/${encodeURIComponent(assetId)}?generate_advisory=${generateAdvisory}`,
+      {},
+      8000
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status} from /api/asset/${assetId}`);
+    return res.json();
+  },
+
+  async getTimeseries(assetId: string): Promise<TimeseriesResponse> {
+    const res = await requestWithTimeout(`${API_BASE}/api/timeseries/${encodeURIComponent(assetId)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status} from /api/timeseries/${assetId}`);
+    return res.json();
+  },
+
+  async getPlan(): Promise<MaintenancePlanResponse> {
+    const res = await requestWithTimeout(`${API_BASE}/api/plan`);
+    if (!res.ok) throw new Error(`HTTP ${res.status} from /api/plan`);
+    return res.json();
+  },
+
+  async scoreAdhoc(reading: AdhocScoreRequest): Promise<AdhocScoreResponse> {
+    const res = await requestWithTimeout(`${API_BASE}/api/score`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(reading),
+    }, 10000);
+    if (!res.ok) throw new Error(`HTTP ${res.status} from /api/score`);
+    return res.json();
+  },
+
+  /**
+   * POST /events/report
+   * Submit a community or field-technician ground-hazard report.
+   * The backend applies a second-pass injection filter, saves accepted events
+   * to user_reported_events.csv and rejected attempts to rejected_submissions_log.csv.
+   */
+  async reportEvent(report: EventReportRequest): Promise<EventReportResponse> {
+    const res = await requestWithTimeout(`${API_BASE}/events/report`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(report),
+    }, 6000);
+    if (!res.ok) throw new Error(`HTTP ${res.status} from /events/report`);
+    return res.json();
+  },
+};

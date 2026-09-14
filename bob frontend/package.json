@@ -1,0 +1,19 @@
+{
+  "name": "bob-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5173",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "extract-cinematic-frames": "node scripts/extract-frames.mjs",
+    "upscale-cinematic": "C:\\ProgramData\\anaconda3\\python.exe scripts/upscale-frames.py"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "react": "^19.3.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7"
+  }
+}

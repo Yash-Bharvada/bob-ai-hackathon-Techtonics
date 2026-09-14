@@ -1,69 +1,88 @@
 # =============================================================================
 # HACKATHON SUBMISSION METADATA
 # =============================================================================
-# Instructions:
-#   - Fill in ALL required fields (marked with # REQUIRED)
-#   - Optional fields can be left as empty strings ""
-#   - Do NOT rename this file — the evaluation pipeline reads it by name
-#   - Use double quotes around all string values
-# =============================================================================
-
 team:
-  name: ""                             # REQUIRED — e.g., "Orion Squad"
-  track: ""                            # REQUIRED — one of: AI | DevOps | Sustainability | Open
+  name: "Techtonics"
+  track: "AI"
   lead:
-    name: ""                           # REQUIRED — e.g., "Alice Chen"
-    email: ""                          # REQUIRED — e.g., "alice.chen@ibm.com"
+    name: "Yash Bhaskar"
+    email: "yash.bhaskar@ibm.com"
   members:
-    - name: ""                         # REQUIRED — Team member 1
-      email: ""
-    - name: ""                         # Add more members by copying the two lines above
+    - name: "Yash Bhaskar"
+      email: "yash.bhaskar@ibm.com"
+    - name: ""
       email: ""
     - name: ""
       email: ""
 
 submission:
-  title: ""                            # REQUIRED — Project display name, e.g., "SmartOps Dashboard"
+  title: "Grid Risk Advisor — Power Outage Prediction & Equipment Failure Advisory"
 
-  problem_statement: >                 # REQUIRED — 1-3 sentences. What problem? Who has it?
-    Replace this text with a concise description of the real-world problem
-    your project addresses and who experiences it.
+  problem_statement: >
+    Power utilities operate thousands of high-value transformers whose sensor data
+    (dissolved gas analysis, oil temperature, dielectric measurements) is rarely
+    combined into a unified risk signal, leaving grid operators to discover faults
+    after failure rather than preventing them. Grid maintenance crews are dispatched
+    reactively, at 3-7x the cost of planned intervention.
 
-  solution_summary: >                  # REQUIRED — 1-3 sentences. What did you build?
-    Replace this text with a clear description of your solution
-    and how it addresses the problem above.
+  solution_summary: >
+    Grid Risk Advisor combines two ML models trained on real Kaggle transformer
+    datasets — a Health Index regression (R²=0.72) and a DGA Fault Classifier
+    (accuracy 90.8%) — into a single pipeline that scores all 18 grid assets,
+    ranks them by composite grid impact severity, generates fault-type-specific
+    maintenance actions, and produces IBM Bob-grounded plain-English advisories.
+    The TX-115 case demonstrates the key value: an imminent failure (RUL 7.7 days)
+    was detected and a targeted intervention recovered 89 additional days of asset life.
 
-  key_features:                        # REQUIRED — List 3 to 5 specific features you implemented
-    - ""                               # e.g., "Real-time pipeline anomaly detection using watsonx.ai"
-    - ""
-    - ""
-    - ""                               # optional 4th
-    - ""                               # optional 5th
+  key_features:
+    - "Two trained ML models on real Kaggle data: Health Index regression (R²=0.72) + DGA Fault Classifier (90.8% accuracy, 7 fault classes)"
+    - "Composite grid impact ranking: 5-component weighted formula (HI 35%, RUL 25%, fault severity 20%, MVA 10%, history 10%) with criticality multiplier"
+    - "TX-115 intervention detection: system tracks degradation, detects maintenance-driven recovery, and communicates it explicitly (not 'still at risk')"
+    - "IBM Bob (Claude) integration: per-asset plain-English advisories grounded in actual sensor values and SHAP contributions, with graceful fallback"
+    - "FastAPI backend (9 endpoints) + VOLTRA interactive intelligence console (React 19, TanStack Start, TailwindCSS) with real pipeline output — no mock data"
 
   tech_stack:
-    languages: []                      # REQUIRED — e.g., ["Python", "TypeScript"]
-    frameworks: []                     # e.g., ["FastAPI", "React"]
-    ibm_technologies: []               # e.g., ["watsonx.ai", "IBM Bob", "IBM Cloud Functions"]
-    databases: []                      # e.g., ["PostgreSQL", "Redis"]
-    other: []                          # e.g., ["Docker", "GitHub Actions", "Slack API"]
+    languages: ["Python", "TypeScript", "JavaScript", "HTML", "CSS"]
+    frameworks: ["FastAPI", "scikit-learn", "SHAP", "pandas", "numpy", "uvicorn", "React 19", "TanStack Start", "TailwindCSS"]
+    ibm_technologies: ["IBM Bob (Claude claude-3-5-haiku-20241022)"]
+    databases: []
+    other: ["kagglehub", "Open-Meteo API (real weather data)", "Kaggle transformer datasets"]
 
-  what_we_are_most_proud_of: >         # Optional but recommended — guides judges to your best work
-    Replace with what aspect of the submission you consider strongest
-    and want judges to pay special attention to.
+  what_we_are_most_proud_of: >
+    The TX-115 intervention and stalled recovery story is the strongest part of this
+    submission. It is not a toy example — the degradation trajectory, the peak at
+    Day 78 (RUL 7.7 days), the maintenance event, and the measurable recovery to
+    RUL 97 days are all traceable through the actual pipeline code, data, and API
+    responses. This demonstrates the system's core value proposition: not just
+    detecting imminent failure, but detecting when a previous intervention worked.
+    The IBM Bob integration is also genuinely load-bearing — advisories are grounded
+    in real SHAP values and actual sensor readings, not generic templates.
 
-  known_limitations: >                 # Optional but recommended — be honest about gaps
-    Replace with any known limitations, incomplete features,
-    or shortcuts taken due to time constraints.
+  known_limitations: >
+    1. Health Index model R² = 0.717 (not the 0.76 target). This reflects a known
+       citable limitation of real DGA datasets: absence of furan and DP (degree of
+       polymerisation) measurements needed to capture paper insulation aging
+       (IEEE C57.104, CIGRE TB 296). This is a dataset gap, not a modelling flaw.
+    2. DGA Fault Classifier T2 recall = 0.743. The T2 class (moderate thermal fault)
+       is confused with T1 and T3. This is documented in every T2 advisory output and
+       in the dashboard UI. No output claims zero missed failures.
+    3. RUL estimates are heuristic — no ground-truth RUL labels exist in either dataset.
+       The calibration is documented and reproducible.
+    4. The 18-asset synthetic time-series uses real model-1 feature distributions but
+       the extreme archetype values (TX-107 C2H2 at 2,790 ppm) are extrapolation
+       territory for the real RF model — the model's predictions in this range are
+       extrapolated, not interpolated.
+    5. No user authentication — the API is open on localhost. Not production-ready.
+    6. IBM Bob advisory generation requires ANTHROPIC_API_KEY; fallback is always available.
 
 # =============================================================================
 # ARTIFACT LOCATIONS
-# These paths are relative to the repo root. Only change if you moved files.
 # =============================================================================
 artifacts:
   source_code: "src/"
   setup_guide: "docs/setup-guide.md"
   architecture_doc: "docs/architecture.md"
-  demo_video: "demo/demo-video-link.txt"   # URL to hosted video (YouTube, Loom, Box)
-  live_demo: "demo/live-demo-url.txt"      # URL to deployed demo (optional)
+  demo_video: "demo/demo-video-link.txt"
+  live_demo: "demo/live-demo-url.txt"
   screenshots: "demo/screenshots/"
   presentation: "presentation/"

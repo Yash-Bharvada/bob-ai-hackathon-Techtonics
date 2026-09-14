@@ -94,3 +94,12 @@ logs/
 .terraform/
 *.tfstate
 *.tfstate.backup
+bob frontend/bin/
+bob frontend/*.mp4
+bob frontend/public/assets/cinematic/upscaled-master/
+bob frontend/public/assets/cinematic/frames/
+bob frontend/public/assets/cinematic/original/
+bob frontend/examples/
+bob frontend/tests/
+bob frontend/package-lock.json
+bob frontend/script.js
