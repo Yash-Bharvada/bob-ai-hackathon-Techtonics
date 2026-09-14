@@ -24,11 +24,11 @@
 | Frontend Location | Method | Endpoint | Status |
 |---|---|---|---|
 | `SiteNav.tsx` | `GET` | `/health` | ✅ Connected |
-| `market.tsx` (live poll every 8s) | `GET` | `/api/ranked` | ✅ Connected |
-| `market.tsx` (maintenance plan tab) | `GET` | `/api/plan` | ✅ Connected |
-| `market.tsx` AssetInspectorModal | `GET` | `/api/asset/{id}` | ✅ Connected |
-| `market.tsx` AssetInspectorModal | `GET` | `/api/timeseries/{id}` | ✅ Connected |
-| `scan.tsx` Run Prediction button | `POST` | `/api/score` | ✅ Connected |
+| `grid.tsx` (live poll every 8s) | `GET` | `/api/ranked` | ✅ Connected |
+| `grid.tsx` (maintenance plan tab) | `GET` | `/api/plan` | ✅ Connected |
+| `grid.tsx` AssetInspectorModal | `GET` | `/api/asset/{id}` | ✅ Connected |
+| `grid.tsx` AssetInspectorModal | `GET` | `/api/timeseries/{id}` | ✅ Connected |
+| `predict.tsx` Run Prediction button | `POST` | `/api/score` | ✅ Connected |
 | `IncidentReportModal.tsx` | `POST` | `/events/report` | ✅ Connected |
 
 ---
