@@ -11,9 +11,6 @@ const links = [
   { to: "/technology", label: "Technology" },
 ] as const;
 
-/** The cinematic landing is always at the root of the host — one level above /app */
-const LANDING_URL = "/";
-
 export function SiteNav() {
   const { location } = useRouterState();
   const path = location.pathname;
@@ -37,10 +34,9 @@ export function SiteNav() {
   return (
     <header className="sticky top-3 z-50 mx-auto flex w-full max-w-6xl items-center justify-between px-4 sm:px-6">
       <div className="flex items-center gap-3">
-        {/* Logo clicks navigate back to the cinematic landing page */}
-        <a href={LANDING_URL} className="flex items-center gap-2.5" onClick={() => setOpen(false)}>
+        <Link to="/" className="flex items-center gap-2.5" onClick={() => setOpen(false)}>
           <VoltraLogo size={36} showText={true} subtitle="Grid Risk Advisor" />
-        </a>
+        </Link>
 
         {/* Backend live status indicator */}
         <div className="hidden lg:flex items-center gap-1.5 rounded-full border border-border/60 bg-surface/80 px-2.5 py-1 text-[11px] backdrop-blur">

@@ -130,22 +130,34 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+/** sessionStorage key — once set the cinematic never shows again in the same tab */
+const ENTERED_KEY = "voltra:platform-entered";
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  // Start as false — the cinematic layer mounts itself via useEffect (client only).
-  // Server renders the dashboard fully visible, client immediately overlays cinematic.
+  // Start as false — avoids SSR mismatch.
+  // On client mount: show cinematic ONLY if user hasn't entered yet this session.
   const [showCinematic, setShowCinematic] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    setShowCinematic(true);
+    // Only show cinematic on first visit (not on internal navigations or refreshes after entry)
+    const alreadyEntered = sessionStorage.getItem(ENTERED_KEY) === "1";
+    if (!alreadyEntered) {
+      setShowCinematic(true);
+    }
   }, []);
+
+  const handleEnter = () => {
+    sessionStorage.setItem(ENTERED_KEY, "1");
+    setShowCinematic(false);
+  };
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Cinematic landing — only mounted on client after hydration */}
-      {mounted && showCinematic && <CinematicLanding onEnter={() => setShowCinematic(false)} />}
+      {/* Cinematic landing — only on first visit, never on internal navigations */}
+      {mounted && showCinematic && <CinematicLanding onEnter={handleEnter} />}
 
       {/* React dashboard — always rendered for SSR; hidden by cinematic overlay on client */}
       <div
