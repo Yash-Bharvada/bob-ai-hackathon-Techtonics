@@ -12,14 +12,7 @@
  */
 
 import { useState } from "react";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Loader2,
-  ShieldAlert,
-  ShieldCheck,
-  X,
-} from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, ShieldAlert, ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -42,22 +35,18 @@ interface IncidentReportModalProps {
 // ─── Hazard category display labels ──────────────────────────────────────────
 
 const CATEGORY_LABELS: Record<HazardCategory, string> = {
-  excavation:    "Excavation / Digging",
-  wildfire:      "Wildfire / Grass Fire",
-  storm_damage:  "Storm Damage / Fallen Tree",
-  collision:     "Vehicle Collision",
-  explosion:     "Explosion / Blast",
+  excavation: "Excavation / Digging",
+  wildfire: "Wildfire / Grass Fire",
+  storm_damage: "Storm Damage / Fallen Tree",
+  collision: "Vehicle Collision",
+  explosion: "Explosion / Blast",
   grid_incident: "Sparking / Arcing / Humming",
-  other:         "Other Ground Hazard",
+  other: "Other Ground Hazard",
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function IncidentReportModal({
-  open,
-  onClose,
-  defaultZone = "",
-}: IncidentReportModalProps) {
+export function IncidentReportModal({ open, onClose, defaultZone = "" }: IncidentReportModalProps) {
   const [zoneName, setZoneName] = useState(defaultZone);
   const [description, setDescription] = useState("");
   const [reporterNote, setReporterNote] = useState("");
@@ -109,7 +98,9 @@ export function IncidentReportModal({
       setSubmitting(false);
       toast.error("⚠️ Submission blocked — potential injection attack detected.");
       // Still fire the backend so it can log to rejected_submissions_log.csv
-      techtonicsApi.reportEvent(payload).catch(() => {/* best-effort */});
+      techtonicsApi.reportEvent(payload).catch(() => {
+        /* best-effort */
+      });
       return;
     }
 
@@ -145,7 +136,6 @@ export function IncidentReportModal({
     >
       {/* Panel */}
       <div className="relative w-full max-w-lg rounded-[2rem] border border-border/70 bg-card shadow-lg">
-
         {/* Close button */}
         <button
           type="button"
@@ -160,13 +150,11 @@ export function IncidentReportModal({
         <div className="border-b border-border/50 px-6 py-5">
           <div className="flex items-center gap-2">
             <ShieldCheck className="size-5 text-signal" />
-            <h2 className="font-sans text-lg font-bold text-foreground">
-              Report Ground Hazard
-            </h2>
+            <h2 className="font-sans text-lg font-bold text-foreground">Report Ground Hazard</h2>
           </div>
           <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-            Submit a physical hazard near a substation or cable corridor.
-            Reports are injection-filtered, classified, and logged for field crew dispatch.
+            Submit a physical hazard near a substation or cable corridor. Reports are
+            injection-filtered, classified, and logged for field crew dispatch.
             <span className="ml-1 font-semibold text-warning">
               Cannot override sensor data or lower risk tiers.
             </span>
@@ -220,15 +208,16 @@ export function IncidentReportModal({
             </div>
             <p className="mt-2 text-xs leading-relaxed text-foreground">
               Your submission contained a pattern consistent with a{" "}
-              <strong>prompt injection attack</strong>. The text was not processed
-              and has been quarantined.
+              <strong>prompt injection attack</strong>. The text was not processed and has been
+              quarantined.
             </p>
             <div className="mt-3 rounded-xl bg-danger/10 px-4 py-2 text-xs font-mono">
               <span className="text-muted-foreground">Pattern matched: </span>
               <span className="font-bold text-danger">{result.matchedPattern}</span>
             </div>
             <div className="mt-2 text-[11px] text-muted-foreground">
-              Attempt logged to <span className="font-mono">rejected_submissions_log.csv</span> for forensic review.
+              Attempt logged to <span className="font-mono">rejected_submissions_log.csv</span> for
+              forensic review.
             </div>
             <Button
               onClick={resetAndClose}
@@ -302,9 +291,7 @@ export function IncidentReportModal({
               <select
                 value={reporterType}
                 onChange={(e) =>
-                  setReporterType(
-                    e.target.value as IncidentReportPayload["reporter_type"]
-                  )
+                  setReporterType(e.target.value as IncidentReportPayload["reporter_type"])
                 }
                 className="w-full rounded-xl border border-border/70 bg-surface px-3 py-2 text-xs text-foreground outline-none focus:ring-1 focus:ring-signal"
               >
@@ -318,12 +305,9 @@ export function IncidentReportModal({
             <div className="flex items-start gap-2 rounded-xl border border-warning/30 bg-warning/10 px-3 py-2.5 text-[11px] text-foreground">
               <AlertTriangle className="mt-0.5 size-3.5 flex-shrink-0 text-warning" />
               <span>
-                All submissions pass a{" "}
-                <strong>prompt-injection filter</strong> before processing.
-                Reports can raise awareness but{" "}
-                <strong>cannot override sensor data</strong> or lower existing risk tiers.
-                Risk influence is bounded at{" "}
-                <strong>1.25×</strong>.
+                All submissions pass a <strong>prompt-injection filter</strong> before processing.
+                Reports can raise awareness but <strong>cannot override sensor data</strong> or
+                lower existing risk tiers. Risk influence is bounded at <strong>1.25×</strong>.
               </span>
             </div>
 

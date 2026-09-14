@@ -17,7 +17,10 @@ export function VoltraLogo({
     <div className="flex items-center gap-2.5 select-none">
       <div
         className={`relative grid place-items-center rounded-xl overflow-hidden shadow-glow transition-transform hover:scale-105 ${className}`}
-        style={{ width: typeof size === "number" ? `${size}px` : size, height: typeof size === "number" ? `${size}px` : size }}
+        style={{
+          width: typeof size === "number" ? `${size}px` : size,
+          height: typeof size === "number" ? `${size}px` : size,
+        }}
       >
         <svg
           viewBox="0 0 512 512"
@@ -111,9 +114,7 @@ export function VoltraLogo({
             VOLTRA
           </span>
           {subtitle && (
-            <span className="text-[10px] font-mono text-muted-foreground mt-0.5">
-              {subtitle}
-            </span>
+            <span className="text-[10px] font-mono text-muted-foreground mt-0.5">{subtitle}</span>
           )}
         </div>
       )}

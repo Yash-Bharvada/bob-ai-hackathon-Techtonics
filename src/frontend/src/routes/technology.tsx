@@ -35,9 +35,17 @@ export const Route = createFileRoute("/technology")({
   head: () => ({
     meta: [
       { title: "Technology & Methodology · VOLTRA" },
-      { name: "description", content: "The science of outage prevention. High-frequency electrical telemetry, physical asset diagnostics, graph neural networks, and temporal transformers." },
+      {
+        name: "description",
+        content:
+          "The science of outage prevention. High-frequency electrical telemetry, physical asset diagnostics, graph neural networks, and temporal transformers.",
+      },
       { property: "og:title", content: "Technology & Methodology · VOLTRA" },
-      { property: "og:description", content: "How VOLTRA translates raw electromagnetic waveforms and SCADA telemetry into actionable outage forecasts before physical damage occurs." },
+      {
+        property: "og:description",
+        content:
+          "How VOLTRA translates raw electromagnetic waveforms and SCADA telemetry into actionable outage forecasts before physical damage occurs.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -54,7 +62,8 @@ export function TechnologyPage() {
       num: "01",
       icon: Waves,
       title: "Synchronized Electrical Telemetry",
-      summary: "High-frequency phasor measurement units (PMUs) capturing electrical dynamics at sub-cycle granularity.",
+      summary:
+        "High-frequency phasor measurement units (PMUs) capturing electrical dynamics at sub-cycle granularity.",
       details: [
         "Phasor Measurement Units (PMU) synchronized at 50/60 Hz with GPS timestamps",
         "Sub-cycle transient voltage sag and spike detection (< 20 ms response)",
@@ -67,7 +76,8 @@ export function TechnologyPage() {
       num: "02",
       icon: Gauge,
       title: "Physical Asset Diagnostics",
-      summary: "Non-invasive thermal, acoustic, and chemical sensors monitoring mechanical and chemical degradation.",
+      summary:
+        "Non-invasive thermal, acoustic, and chemical sensors monitoring mechanical and chemical degradation.",
       details: [
         "Continuous Dissolved Gas Analysis (DGA) tracking Hydrogen (H2) and Acetylene (C2H2)",
         "Fiber-optic core and winding temperature sensors monitoring thermal hot-spots",
@@ -80,7 +90,8 @@ export function TechnologyPage() {
       num: "03",
       icon: CloudLightning,
       title: "Hyperlocal Meteorological Feeds",
-      summary: "Micro-climate atmospheric models predicting environmental mechanical strain on overhead lines.",
+      summary:
+        "Micro-climate atmospheric models predicting environmental mechanical strain on overhead lines.",
       details: [
         "Overhead conductor line thermal dissipation and ambient ambient wind shear models",
         "High-velocity wind gust monitoring detecting transmission line galloping",
@@ -93,7 +104,8 @@ export function TechnologyPage() {
       num: "04",
       icon: Database,
       title: "Historical Grid Failure Archive",
-      summary: "15+ years of cascading blackout post-mortems, maintenance logs, and component wear curves.",
+      summary:
+        "15+ years of cascading blackout post-mortems, maintenance logs, and component wear curves.",
       details: [
         "Indexed library of over 14,000 utility fault signatures and cascaded outages",
         "Component-specific Weibull reliability degradation curves parameterized by age",
@@ -141,31 +153,53 @@ export function TechnologyPage() {
     <div className="mx-auto mt-8 w-full max-w-6xl px-4 sm:px-6">
       {/* Top Navigation Pill Breadcrumb */}
       <div className="flex flex-wrap items-center gap-2 border-b border-border/50 pb-4 text-xs">
-        <span className="pill bg-signal px-3 py-1 font-medium text-signal-foreground">Technology</span>
-        <span className="pill border border-border/70 px-3 py-1 text-muted-foreground">Sensing Pillars</span>
-        <span className="pill border border-border/70 px-3 py-1 text-muted-foreground">ML Pipeline</span>
-        <span className="pill border border-border/70 px-3 py-1 text-muted-foreground">Benchmarks</span>
-        <span className="pill border border-border/70 px-3 py-1 text-muted-foreground">NERC CIP Compliance</span>
+        <span className="pill bg-signal px-3 py-1 font-medium text-signal-foreground">
+          Technology
+        </span>
+        <span className="pill border border-border/70 px-3 py-1 text-muted-foreground">
+          Sensing Pillars
+        </span>
+        <span className="pill border border-border/70 px-3 py-1 text-muted-foreground">
+          ML Pipeline
+        </span>
+        <span className="pill border border-border/70 px-3 py-1 text-muted-foreground">
+          Benchmarks
+        </span>
+        <span className="pill border border-border/70 px-3 py-1 text-muted-foreground">
+          NERC CIP Compliance
+        </span>
       </div>
 
       {/* Hero Section */}
       <div className="mt-8 grid gap-8 md:grid-cols-12 md:items-end">
         <div className="md:col-span-8">
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">The science of prevention</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            The science of prevention
+          </p>
           <h1 className="mt-3 font-sans text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl md:text-6xl">
-            Power systems shouldn't fail <span className="font-display font-normal italic text-signal">in the dark.</span>
+            Power systems shouldn't fail{" "}
+            <span className="font-display font-normal italic text-signal">in the dark.</span>
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            VOLTRA synthesizes high-frequency electromagnetic telemetry, physical transformer acoustics, and hyperlocal atmospheric models into a unified predictive neural representation of the power grid.
+            VOLTRA synthesizes high-frequency electromagnetic telemetry, physical transformer
+            acoustics, and hyperlocal atmospheric models into a unified predictive neural
+            representation of the power grid.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 md:col-span-4 md:justify-end">
-          <Button asChild className="pill bg-signal text-xs font-medium text-signal-foreground hover:bg-signal/90">
-            <Link to="/grid">Explore Live Grid <ArrowRight className="size-3.5" /></Link>
+          <Button
+            asChild
+            className="pill bg-signal text-xs font-medium text-signal-foreground hover:bg-signal/90"
+          >
+            <Link to="/grid">
+              Explore Live Grid <ArrowRight className="size-3.5" />
+            </Link>
           </Button>
           <Button asChild variant="outline" className="pill text-xs border-border/70">
-            <Link to="/predict">Launch Studio <ArrowUpRight className="size-3.5" /></Link>
+            <Link to="/predict">
+              Launch Studio <ArrowUpRight className="size-3.5" />
+            </Link>
           </Button>
         </div>
       </div>
@@ -183,7 +217,9 @@ export function TechnologyPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-transparent to-ink/20" />
           <div className="absolute bottom-5 left-5 right-5 flex flex-wrap items-center justify-between text-cream">
             <div>
-              <p className="text-[10px] uppercase font-mono tracking-wider text-cream/60">Monitored Transmission Asset</p>
+              <p className="text-[10px] uppercase font-mono tracking-wider text-cream/60">
+                Monitored Transmission Asset
+              </p>
               <p className="font-sans text-base font-semibold">132 kV High-Voltage Corridor S04</p>
             </div>
             <span className="pill glass-dark px-3 py-1 font-mono text-[11px] text-signal">
@@ -199,12 +235,15 @@ export function TechnologyPage() {
             </span>
             <h3 className="mt-4 font-sans text-xl font-semibold">Air-Gapped SCADA Architecture</h3>
             <p className="mt-2 text-xs leading-relaxed text-cream/70">
-              Deployable directly within utility substation perimeters on ruggedized IEC 61850 compliant edge hardware with zero external internet dependencies.
+              Deployable directly within utility substation perimeters on ruggedized IEC 61850
+              compliant edge hardware with zero external internet dependencies.
             </p>
           </div>
 
           <div className="mt-6 border-t border-cream/10 pt-4 flex items-center justify-between text-xs text-cream/60">
-            <span className="inline-flex items-center gap-1.5"><Lock className="size-3.5 text-signal" /> NERC CIP Native</span>
+            <span className="inline-flex items-center gap-1.5">
+              <Lock className="size-3.5 text-signal" /> NERC CIP Native
+            </span>
             <span className="font-mono text-[10px]">ISO 27001</span>
           </div>
         </div>
@@ -213,12 +252,16 @@ export function TechnologyPage() {
       {/* The 4 Pillars of Grid Sensing */}
       <section className="mt-20">
         <div className="flex flex-col gap-2">
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Multi-Modal Inputs</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            Multi-Modal Inputs
+          </p>
           <h2 className="font-sans text-3xl font-semibold sm:text-4xl">
-            The 4 Pillars of <span className="font-display font-normal italic text-signal">Grid Sensing</span>
+            The 4 Pillars of{" "}
+            <span className="font-display font-normal italic text-signal">Grid Sensing</span>
           </h2>
           <p className="max-w-xl text-xs text-muted-foreground sm:text-sm">
-            Failure prediction is impossible with SCADA polling alone. VOLTRA fuses four discrete data planes to detect abnormal physics before protective relays trip.
+            Failure prediction is impossible with SCADA polling alone. VOLTRA fuses four discrete
+            data planes to detect abnormal physics before protective relays trip.
           </p>
         </div>
 
@@ -237,7 +280,9 @@ export function TechnologyPage() {
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-bold text-muted-foreground">{pillar.num}</span>
+                  <span className="font-mono text-xs font-bold text-muted-foreground">
+                    {pillar.num}
+                  </span>
                   <span className="pill bg-surface border border-border/60 px-2 py-0.5 font-mono text-[10px] text-muted-foreground">
                     {pillar.tag}
                   </span>
@@ -247,14 +292,21 @@ export function TechnologyPage() {
                   <span className="grid size-9 place-items-center rounded-xl bg-ink text-signal">
                     <Icon className="size-4" />
                   </span>
-                  <h3 className="font-sans text-base font-semibold leading-tight">{pillar.title}</h3>
+                  <h3 className="font-sans text-base font-semibold leading-tight">
+                    {pillar.title}
+                  </h3>
                 </div>
 
-                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{pillar.summary}</p>
+                <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                  {pillar.summary}
+                </p>
 
                 <div className="mt-4 border-t border-border/40 pt-3 space-y-1.5">
                   {pillar.details.map((item, i) => (
-                    <div key={i} className="flex items-start gap-1.5 text-[11px] text-foreground/80">
+                    <div
+                      key={i}
+                      className="flex items-start gap-1.5 text-[11px] text-foreground/80"
+                    >
                       <span className="mt-1 size-1 shrink-0 rounded-full bg-signal" />
                       <span className="leading-snug">{item}</span>
                     </div>
@@ -273,10 +325,14 @@ export function TechnologyPage() {
             NEURAL ARCHITECTURE
           </span>
           <h2 className="mt-4 font-sans text-3xl font-semibold sm:text-4xl text-cream">
-            The 5-Stage <span className="font-display font-normal italic text-signal">Intelligence Pipeline</span>
+            The 5-Stage{" "}
+            <span className="font-display font-normal italic text-signal">
+              Intelligence Pipeline
+            </span>
           </h2>
           <p className="mt-2 text-xs leading-relaxed text-cream/70 sm:text-sm">
-            From raw sub-millisecond electromagnetic waveforms to explainable dispatch decisions for utility control room operators.
+            From raw sub-millisecond electromagnetic waveforms to explainable dispatch decisions for
+            utility control room operators.
           </p>
         </div>
 
@@ -305,17 +361,21 @@ export function TechnologyPage() {
         <div className="flex flex-col gap-2">
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Proven Impact</p>
           <h2 className="font-sans text-3xl font-semibold sm:text-4xl">
-            Empirical Reliability <span className="font-display font-normal italic text-signal">Benchmarks</span>
+            Empirical Reliability{" "}
+            <span className="font-display font-normal italic text-signal">Benchmarks</span>
           </h2>
           <p className="max-w-xl text-xs text-muted-foreground sm:text-sm">
-            Field-tested across regional transmission organizations, distribution system operators, and industrial generation facilities.
+            Field-tested across regional transmission organizations, distribution system operators,
+            and industrial generation facilities.
           </p>
         </div>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-3xl border border-border/60 bg-card p-6">
             <ShieldCheck className="size-5 text-signal" />
-            <p className="mt-8 font-sans text-5xl font-bold tracking-tight text-foreground">99.98%</p>
+            <p className="mt-8 font-sans text-5xl font-bold tracking-tight text-foreground">
+              99.98%
+            </p>
             <p className="mt-2 font-sans text-sm font-semibold">Forecast Accuracy</p>
             <p className="mt-1 text-xs text-muted-foreground">
               Across high-voltage transmission corridors and substation step-down transformers.
@@ -342,10 +402,13 @@ export function TechnologyPage() {
 
           <div className="rounded-3xl border border-border/60 bg-card p-6">
             <Zap className="size-5 text-signal" />
-            <p className="mt-8 font-sans text-5xl font-bold tracking-tight text-foreground">14.2 GW</p>
+            <p className="mt-8 font-sans text-5xl font-bold tracking-tight text-foreground">
+              14.2 GW
+            </p>
             <p className="mt-2 font-sans text-sm font-semibold">Capacity Monitored</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Continuous real-time telemetry ingestion across North American and European pilot grids.
+              Continuous real-time telemetry ingestion across North American and European pilot
+              grids.
             </p>
           </div>
         </div>
@@ -362,20 +425,31 @@ export function TechnologyPage() {
               Architected for Mission-Critical Utility Infrastructure
             </h3>
             <p className="mt-3 text-xs leading-relaxed text-muted-foreground sm:text-sm">
-              VOLTRA adheres to the strictest global regulatory frameworks for electrical transmission security. Fully compatible with legacy SCADA, DNP3, and modern IEC 61850 substation bus architectures.
+              VOLTRA adheres to the strictest global regulatory frameworks for electrical
+              transmission security. Fully compatible with legacy SCADA, DNP3, and modern IEC 61850
+              substation bus architectures.
             </p>
             <div className="mt-6 flex flex-wrap gap-2 text-xs">
-              <span className="pill bg-surface border border-border/70 px-3 py-1 font-mono">NERC CIP-002 through CIP-014</span>
-              <span className="pill bg-surface border border-border/70 px-3 py-1 font-mono">IEC 61850-9-2 Sampled Values</span>
-              <span className="pill bg-surface border border-border/70 px-3 py-1 font-mono">IEEE C37.118 Synchrophasor</span>
-              <span className="pill bg-surface border border-border/70 px-3 py-1 font-mono">Air-gapped on-prem appliances</span>
+              <span className="pill bg-surface border border-border/70 px-3 py-1 font-mono">
+                NERC CIP-002 through CIP-014
+              </span>
+              <span className="pill bg-surface border border-border/70 px-3 py-1 font-mono">
+                IEC 61850-9-2 Sampled Values
+              </span>
+              <span className="pill bg-surface border border-border/70 px-3 py-1 font-mono">
+                IEEE C37.118 Synchrophasor
+              </span>
+              <span className="pill bg-surface border border-border/70 px-3 py-1 font-mono">
+                Air-gapped on-prem appliances
+              </span>
             </div>
           </div>
 
           <div className="flex flex-col gap-3 rounded-2xl bg-surface/60 p-5 border border-border/50 text-xs">
             <p className="font-semibold text-foreground">Have compliance requirements?</p>
             <p className="text-muted-foreground text-[11px] leading-relaxed">
-              Our power systems engineering team provides custom security whitepapers, threat-model documentation, and substation deployment blueprints.
+              Our power systems engineering team provides custom security whitepapers, threat-model
+              documentation, and substation deployment blueprints.
             </p>
             <Button
               onClick={() => {
@@ -384,7 +458,13 @@ export function TechnologyPage() {
               }}
               className="pill mt-2 bg-ink text-xs text-cream hover:bg-ink/90"
             >
-              {demoRequested ? <><Check className="size-3.5" /> Blueprint Requested</> : <>Request Architecture Blueprint</>}
+              {demoRequested ? (
+                <>
+                  <Check className="size-3.5" /> Blueprint Requested
+                </>
+              ) : (
+                <>Request Architecture Blueprint</>
+              )}
             </Button>
           </div>
         </div>
@@ -394,21 +474,38 @@ export function TechnologyPage() {
       <section className="mt-20 mb-10 overflow-hidden rounded-[2.5rem] bg-signal p-8 text-signal-foreground sm:p-14">
         <div className="grid gap-6 md:grid-cols-[1.4fr_1fr] md:items-end">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] opacity-70">Grid operator transition</p>
+            <p className="text-xs uppercase tracking-[0.2em] opacity-70">
+              Grid operator transition
+            </p>
             <h2 className="mt-2 font-sans text-3xl font-semibold sm:text-5xl">
-              Protect your grid <span className="font-display font-normal italic">before the dark.</span>
+              Protect your grid{" "}
+              <span className="font-display font-normal italic">before the dark.</span>
             </h2>
             <p className="mt-3 max-w-xl text-xs leading-relaxed opacity-80 sm:text-sm">
-              Schedule an executive briefing or run live simulations on your regional transmission corridors.
+              Schedule an executive briefing or run live simulations on your regional transmission
+              corridors.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button asChild size="lg" className="pill bg-ink text-xs font-medium text-cream hover:bg-ink/90">
-              <Link to="/grid">Open Live Grid <ArrowRight className="size-3.5" /></Link>
+            <Button
+              asChild
+              size="lg"
+              className="pill bg-ink text-xs font-medium text-cream hover:bg-ink/90"
+            >
+              <Link to="/grid">
+                Open Live Grid <ArrowRight className="size-3.5" />
+              </Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="pill border-signal-foreground/30 bg-transparent text-xs text-signal-foreground hover:bg-signal-foreground/10">
-              <Link to="/predict">Launch Prediction Studio <ArrowUpRight className="size-3.5" /></Link>
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="pill border-signal-foreground/30 bg-transparent text-xs text-signal-foreground hover:bg-signal-foreground/10"
+            >
+              <Link to="/predict">
+                Launch Prediction Studio <ArrowUpRight className="size-3.5" />
+              </Link>
             </Button>
           </div>
         </div>

@@ -162,7 +162,8 @@ export class VoltraSliceSlide {
 
     const ctaBtn = this.slideElement?.querySelector("#sliceCtaBtn");
     ctaBtn?.addEventListener("click", () => {
-      console.log("[VOLTRA] Platform CTA clicked.");
+      console.log("[VOLTRA] Platform CTA clicked — launching Grid Intelligence dashboard.");
+      this._navigateToPlatform();
     });
 
     window.addEventListener("keydown", (e) => {
@@ -239,6 +240,38 @@ export class VoltraSliceSlide {
 
   public getTheme(): Theme { return this.currentTheme; }
   public getIsOpen(): boolean { return this.isOpen; }
+
+  /**
+   * Smooth full-page fade-out then navigate to the React dashboard.
+   * In dev: proxy at /app rewrites to localhost:3000
+   * In prod: /app is the React build sub-path
+   */
+  private _navigateToPlatform(): void {
+    // Create a full-screen black overlay for the transition
+    const overlay = document.createElement("div");
+    overlay.style.cssText = [
+      "position:fixed",
+      "inset:0",
+      "z-index:99999",
+      "background:#000",
+      "opacity:0",
+      "transition:opacity 0.55s cubic-bezier(0.4,0,0.2,1)",
+      "pointer-events:all",
+    ].join(";");
+    document.body.appendChild(overlay);
+
+    // Trigger fade-in on next frame
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        overlay.style.opacity = "1";
+      });
+    });
+
+    // Navigate after fade-in completes
+    setTimeout(() => {
+      window.location.href = "/app";
+    }, 580);
+  }
 
   public destroy(): void {
     if (this.slideElement?.parentElement) {

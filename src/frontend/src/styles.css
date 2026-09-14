@@ -46,8 +46,8 @@
   --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
   --font-body: "DM Sans", ui-sans-serif, system-ui, sans-serif;
 
-  --shadow-glass: 0 1px 0 0 rgba(255, 255, 255, 0.6) inset,
-    0 12px 40px -12px rgba(20, 30, 20, 0.12);
+  --shadow-glass:
+    0 1px 0 0 rgba(255, 255, 255, 0.6) inset, 0 12px 40px -12px rgba(20, 30, 20, 0.12);
   --shadow-soft: 0 30px 80px -40px rgba(20, 30, 20, 0.25);
 }
 
@@ -130,7 +130,10 @@
     text-rendering: optimizeLegibility;
   }
 
-  h1, h2, h3, h4 {
+  h1,
+  h2,
+  h3,
+  h4 {
     font-family: var(--font-sans);
     letter-spacing: 0;
   }
@@ -164,13 +167,24 @@
   border-radius: 1.5rem;
   border: 1px solid var(--color-border);
   background-color: color-mix(in oklab, var(--color-surface) 84%, transparent);
-  background-image: linear-gradient(color-mix(in oklab, var(--color-border) 40%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in oklab, var(--color-border) 40%, transparent) 1px, transparent 1px);
+  background-image:
+    linear-gradient(color-mix(in oklab, var(--color-border) 40%, transparent) 1px, transparent 1px),
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--color-border) 40%, transparent) 1px,
+      transparent 1px
+    );
   background-size: 32px 32px;
 }
 
 @utility power-line {
   transform-origin: left center;
-  background: linear-gradient(90deg, var(--color-signal), var(--color-muted-foreground), var(--color-signal));
+  background: linear-gradient(
+    90deg,
+    var(--color-signal),
+    var(--color-muted-foreground),
+    var(--color-signal)
+  );
   background-size: 200% 100%;
   animation: current-flow 2.2s linear infinite;
 }
@@ -179,19 +193,67 @@
   box-shadow: 0 0 30px color-mix(in oklab, var(--color-signal) 26%, transparent);
 }
 
-.grid-node { z-index: 2; border-radius: .75rem; padding: .4rem; transition: transform .2s ease, background .2s ease; }
-.grid-node:hover, .grid-node.is-selected { transform: translate(-50%, -50%) scale(1.08); background: color-mix(in oklab, var(--color-surface) 80%, transparent); }
-.node-core { display:grid; place-items:center; width:2.5rem; height:2.5rem; border-radius:999px; border:1px solid var(--color-border); background:var(--color-surface); box-shadow:var(--shadow-glass); }
-.node-core svg { width:1rem; height:1rem; }
-.node-stable { color:var(--color-signal); box-shadow:0 0 24px color-mix(in oklab, var(--color-signal) 35%, transparent); }
-.node-watch { color:var(--color-warning); }
-.node-risk { color:var(--color-danger); animation:risk-pulse 1.8s ease-in-out infinite; }
+.grid-node {
+  z-index: 2;
+  border-radius: 0.75rem;
+  padding: 0.4rem;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+.grid-node:hover,
+.grid-node.is-selected {
+  transform: translate(-50%, -50%) scale(1.08);
+  background: color-mix(in oklab, var(--color-surface) 80%, transparent);
+}
+.node-core {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-glass);
+}
+.node-core svg {
+  width: 1rem;
+  height: 1rem;
+}
+.node-stable {
+  color: var(--color-signal);
+  box-shadow: 0 0 24px color-mix(in oklab, var(--color-signal) 35%, transparent);
+}
+.node-watch {
+  color: var(--color-warning);
+}
+.node-risk {
+  color: var(--color-danger);
+  animation: risk-pulse 1.8s ease-in-out infinite;
+}
 
-@keyframes current-flow { to { background-position: -200% 0; } }
-@keyframes risk-pulse { 50% { box-shadow: 0 0 0 10px color-mix(in oklab, var(--color-danger) 8%, transparent), 0 0 28px color-mix(in oklab, var(--color-danger) 35%, transparent); } }
+@keyframes current-flow {
+  to {
+    background-position: -200% 0;
+  }
+}
+@keyframes risk-pulse {
+  50% {
+    box-shadow:
+      0 0 0 10px color-mix(in oklab, var(--color-danger) 8%, transparent),
+      0 0 28px color-mix(in oklab, var(--color-danger) 35%, transparent);
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @utility input {
@@ -202,7 +264,9 @@
   padding: 0.55rem 0.75rem;
   font-size: 0.875rem;
   outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
 
   &:focus {
     border-color: var(--color-ring);

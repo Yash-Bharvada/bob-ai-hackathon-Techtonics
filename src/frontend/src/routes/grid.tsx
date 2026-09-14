@@ -1,6 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import {
   initialGridAssets,
   initialGridTicker,
@@ -50,9 +58,17 @@ export const Route = createFileRoute("/grid")({
   head: () => ({
     meta: [
       { title: "Live Grid · VOLTRA Operator Console" },
-      { name: "description", content: "Real-time electrical grid operator console. Live asset telemetry, health scoring, load tracking, and anomaly alerts across regional transmission corridors." },
+      {
+        name: "description",
+        content:
+          "Real-time electrical grid operator console. Live asset telemetry, health scoring, load tracking, and anomaly alerts across regional transmission corridors.",
+      },
       { property: "og:title", content: "Live Grid · VOLTRA Operator Console" },
-      { property: "og:description", content: "Real-time electrical grid operator console with synchronized telemetry, topology visualization, and predictive fault monitoring." },
+      {
+        property: "og:description",
+        content:
+          "Real-time electrical grid operator console with synchronized telemetry, topology visualization, and predictive fault monitoring.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -95,7 +111,7 @@ function LiveGridPage() {
     const timer = setInterval(() => {
       const now = new Date();
       setCurrentTime(
-        `${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")}:${String(now.getUTCSeconds()).padStart(2, "0")} UTC`
+        `${String(now.getUTCHours()).padStart(2, "0")}:${String(now.getUTCMinutes()).padStart(2, "0")}:${String(now.getUTCSeconds()).padStart(2, "0")} UTC`,
       );
     }, 1000);
     return () => clearInterval(timer);
@@ -187,7 +203,7 @@ function LiveGridPage() {
           };
         }
         return item;
-      })
+      }),
     );
 
     setTickerEvents((prev) => [
@@ -195,7 +211,8 @@ function LiveGridPage() {
         id: `ev-${Date.now()}`,
         timestamp: currentTime,
         assetId: "TX-107",
-        message: "SIMULATED SURGE: Load spiked to 25.8 MW, top-oil temp +5.2°C. Critical arcing escalated.",
+        message:
+          "SIMULATED SURGE: Load spiked to 25.8 MW, top-oil temp +5.2°C. Critical arcing escalated.",
         severity: "critical",
       },
       ...prev,
@@ -230,7 +247,7 @@ function LiveGridPage() {
           };
         }
         return item;
-      })
+      }),
     );
 
     setTickerEvents((prev) => [
@@ -263,7 +280,8 @@ function LiveGridPage() {
             Operator Dispatch & Telemetry
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
-            Scored via Health Index regression (Model 1) and DGA Fault Classifier (Model 2). Grounded in real Kaggle datasets.
+            Scored via Health Index regression (Model 1) and DGA Fault Classifier (Model 2).
+            Grounded in real Kaggle datasets.
           </p>
         </div>
 
@@ -289,7 +307,10 @@ function LiveGridPage() {
           </Button>
 
           <Button
-            onClick={() => { setIncidentDefaultZone(""); setIncidentModalOpen(true); }}
+            onClick={() => {
+              setIncidentDefaultZone("");
+              setIncidentModalOpen(true);
+            }}
             variant="outline"
             className="pill border-warning/50 bg-warning/10 text-xs font-semibold text-warning hover:bg-warning/20"
           >
@@ -310,14 +331,22 @@ function LiveGridPage() {
       {/* Hero KPI Metrics */}
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
         <div className="glass rounded-2xl p-4">
-          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-mono">Monitored Assets</p>
-          <p className="mt-2 font-mono text-2xl font-bold sm:text-3xl text-foreground">{totalAssets}</p>
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-mono">
+            Monitored Assets
+          </p>
+          <p className="mt-2 font-mono text-2xl font-bold sm:text-3xl text-foreground">
+            {totalAssets}
+          </p>
           <p className="mt-1 text-[11px] text-muted-foreground">18 Transformers</p>
         </div>
 
         <div className="glass rounded-2xl p-4 border-danger/30 bg-danger/5">
-          <p className="text-[11px] uppercase tracking-wider text-danger font-mono">Critical / High Risk</p>
-          <p className="mt-2 font-mono text-2xl font-bold sm:text-3xl text-danger">{criticalCount}</p>
+          <p className="text-[11px] uppercase tracking-wider text-danger font-mono">
+            Critical / High Risk
+          </p>
+          <p className="mt-2 font-mono text-2xl font-bold sm:text-3xl text-danger">
+            {criticalCount}
+          </p>
           <p className="mt-1 text-[11px] text-danger/80">TX-107 (Arcing), TX-112 (PD)</p>
         </div>
 
@@ -328,13 +357,17 @@ function LiveGridPage() {
         </div>
 
         <div className="glass rounded-2xl p-4">
-          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-mono">Mean Health Score</p>
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-mono">
+            Mean Health Score
+          </p>
           <p className="mt-2 font-mono text-2xl font-bold sm:text-3xl text-signal">{avgHealth}%</p>
           <p className="mt-1 text-[11px] text-muted-foreground">Network wellness</p>
         </div>
 
         <div className="glass col-span-2 rounded-2xl p-4 sm:col-span-4 lg:col-span-1">
-          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-mono">Intervention Story</p>
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-mono">
+            Intervention Story
+          </p>
           <p className="mt-2 font-mono text-xl font-bold text-signal">TX-115 Rescued</p>
           <p className="mt-1 text-[11px] text-signal font-medium">+89 Days Life Saved</p>
         </div>
@@ -364,8 +397,8 @@ function LiveGridPage() {
                     evt.severity === "critical"
                       ? "bg-danger"
                       : evt.severity === "warning"
-                      ? "bg-warning"
-                      : "bg-signal"
+                        ? "bg-warning"
+                        : "bg-signal"
                   }`}
                 />
                 <span className="font-mono text-[11px] text-muted-foreground">{evt.timestamp}</span>
@@ -413,7 +446,8 @@ function LiveGridPage() {
         </div>
 
         <span className="text-xs text-muted-foreground font-mono">
-          Sorting: Composite Grid Impact (Health Index 35% · RUL 25% · Fault 20% · MVA 10% · History 10%)
+          Sorting: Composite Grid Impact (Health Index 35% · RUL 25% · Fault 20% · MVA 10% · History
+          10%)
         </span>
       </div>
 
@@ -432,14 +466,19 @@ function LiveGridPage() {
                   className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 />
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery("")} className="text-muted-foreground hover:text-foreground">
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
                     <X className="size-3.5" />
                   </button>
                 )}
               </label>
 
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-                <span className="text-[11px] uppercase tracking-wider text-muted-foreground px-1 font-mono">Voltage:</span>
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground px-1 font-mono">
+                  Voltage:
+                </span>
                 {VOLTAGE_FILTERS.map((v) => (
                   <button
                     key={v}
@@ -458,23 +497,34 @@ function LiveGridPage() {
 
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/40 pt-3">
               <div className="flex items-center gap-1.5">
-                <span className="text-[11px] uppercase tracking-wider text-muted-foreground px-1 font-mono">Status:</span>
+                <span className="text-[11px] uppercase tracking-wider text-muted-foreground px-1 font-mono">
+                  Status:
+                </span>
                 {STATUS_FILTERS.map((s) => {
-                  const label = s === "All" ? "All (18)" : s === "risk" ? "Critical Risk" : s === "watch" ? "Watch Tier" : "Stable";
+                  const label =
+                    s === "All"
+                      ? "All (18)"
+                      : s === "risk"
+                        ? "Critical Risk"
+                        : s === "watch"
+                          ? "Watch Tier"
+                          : "Stable";
                   const activeClass =
                     s === "risk"
                       ? "bg-danger text-white"
                       : s === "watch"
-                      ? "bg-warning text-foreground"
-                      : s === "stable"
-                      ? "bg-signal text-signal-foreground"
-                      : "bg-ink text-cream";
+                        ? "bg-warning text-foreground"
+                        : s === "stable"
+                          ? "bg-signal text-signal-foreground"
+                          : "bg-ink text-cream";
                   return (
                     <button
                       key={s}
                       onClick={() => setSelectedStatus(s)}
                       className={`pill px-3 py-1 text-xs transition-colors ${
-                        selectedStatus === s ? activeClass : "border border-border/60 hover:bg-muted"
+                        selectedStatus === s
+                          ? activeClass
+                          : "border border-border/60 hover:bg-muted"
                       }`}
                     >
                       {label}
@@ -498,10 +548,10 @@ function LiveGridPage() {
                     asset.id === "TX-115"
                       ? "border-signal/70 bg-signal/5"
                       : asset.status === "risk"
-                      ? "border-danger/60 bg-danger/5"
-                      : asset.status === "watch"
-                      ? "border-warning/50 bg-warning/5"
-                      : "border-border/70"
+                        ? "border-danger/60 bg-danger/5"
+                        : asset.status === "watch"
+                          ? "border-warning/50 bg-warning/5"
+                          : "border-border/70"
                   }`}
                 >
                   <div>
@@ -531,32 +581,51 @@ function LiveGridPage() {
                             asset.status === "risk"
                               ? "bg-danger text-white"
                               : asset.status === "watch"
-                              ? "bg-warning text-foreground"
-                              : "bg-signal text-signal-foreground"
+                                ? "bg-warning text-foreground"
+                                : "bg-signal text-signal-foreground"
                           }`}
                         >
                           <span
                             className={`size-1.5 rounded-full ${
-                              asset.status === "risk" ? "bg-white" : asset.status === "watch" ? "bg-foreground" : "bg-signal-foreground"
+                              asset.status === "risk"
+                                ? "bg-white"
+                                : asset.status === "watch"
+                                  ? "bg-foreground"
+                                  : "bg-signal-foreground"
                             }`}
                           />
-                          {asset.status === "risk" ? "Critical Risk" : asset.status === "watch" ? "Watch Tier" : "Nominal"}
+                          {asset.status === "risk"
+                            ? "Critical Risk"
+                            : asset.status === "watch"
+                              ? "Watch Tier"
+                              : "Nominal"}
                         </span>
-                        <p className="mt-1 text-[10px] font-mono text-muted-foreground">{asset.region}</p>
+                        <p className="mt-1 text-[10px] font-mono text-muted-foreground">
+                          {asset.region}
+                        </p>
                       </div>
                     </div>
 
                     {/* Primary Telemetry Metrics */}
                     <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-surface/80 p-3 border border-border/50 text-xs">
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">Load / MVA</p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">
+                          Load / MVA
+                        </p>
                         <p className="mt-1 font-mono text-sm font-semibold text-foreground">
-                          {asset.currentLoadMw} <span className="text-[10px] text-muted-foreground">/ {asset.ratedCapacityMw} MVA</span>
+                          {asset.currentLoadMw}{" "}
+                          <span className="text-[10px] text-muted-foreground">
+                            / {asset.ratedCapacityMw} MVA
+                          </span>
                         </p>
                         <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-border/60">
                           <div
                             className={`h-full rounded-full ${
-                              loadPercent > 85 ? "bg-danger" : loadPercent > 70 ? "bg-warning" : "bg-signal"
+                              loadPercent > 85
+                                ? "bg-danger"
+                                : loadPercent > 70
+                                  ? "bg-warning"
+                                  : "bg-signal"
                             }`}
                             style={{ width: `${Math.min(100, loadPercent)}%` }}
                           />
@@ -564,9 +633,12 @@ function LiveGridPage() {
                       </div>
 
                       <div>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">Remaining Life</p>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">
+                          Remaining Life
+                        </p>
                         <p className="mt-1 font-mono text-sm font-semibold text-foreground">
-                          {asset.rulDays} <span className="text-[10px] text-muted-foreground">days</span>
+                          {asset.rulDays}{" "}
+                          <span className="text-[10px] text-muted-foreground">days</span>
                         </p>
                         <p className="mt-1 text-[10px] font-mono text-muted-foreground">
                           {asset.rulDays < 40 ? "⚠️ Urgency window" : "Routine cycle"}
@@ -574,15 +646,23 @@ function LiveGridPage() {
                       </div>
 
                       <div className="mt-1 border-t border-border/40 pt-2">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">Health Index (Model 1)</p>
-                        <p className={`mt-0.5 font-mono text-xs font-bold ${asset.healthIndexRaw > 50 ? "text-danger" : asset.healthIndexRaw > 30 ? "text-warning" : "text-signal"}`}>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">
+                          Health Index (Model 1)
+                        </p>
+                        <p
+                          className={`mt-0.5 font-mono text-xs font-bold ${asset.healthIndexRaw > 50 ? "text-danger" : asset.healthIndexRaw > 30 ? "text-warning" : "text-signal"}`}
+                        >
                           HI {asset.healthIndexRaw.toFixed(1)}
                         </p>
                       </div>
 
                       <div className="mt-1 border-t border-border/40 pt-2">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">Core Top-Oil</p>
-                        <p className={`mt-0.5 font-mono text-xs font-semibold ${asset.coreTempC > 75 ? "text-danger" : "text-foreground"}`}>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">
+                          Core Top-Oil
+                        </p>
+                        <p
+                          className={`mt-0.5 font-mono text-xs font-semibold ${asset.coreTempC > 75 ? "text-danger" : "text-foreground"}`}
+                        >
                           {asset.coreTempC}°C
                         </p>
                       </div>
@@ -633,7 +713,8 @@ function LiveGridPage() {
                   7-Day Prioritised Maintenance & Crew Pre-Positioning Plan
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Generated automatically from Model 2 fault classifications and composite grid impact rankings.
+                  Generated automatically from Model 2 fault classifications and composite grid
+                  impact rankings.
                 </p>
               </div>
               <div className="pill bg-signal/15 text-signal-foreground px-3 py-1 text-xs font-mono font-semibold border border-signal/30">
@@ -668,7 +749,8 @@ function LiveGridPage() {
                           fault_type: "D1",
                           action_code: "ELEC-INSPECT",
                           short_action: "Electrical inspection + targeted oil sampling",
-                          detail: "Perform sealed syringe DGA, inspect bushing connections, reduce load by 15-20%.",
+                          detail:
+                            "Perform sealed syringe DGA, inspect bushing connections, reduce load by 15-20%.",
                           urgency_window: "within 24 hours",
                           crew_assignment: "Crew-B1 (High-Voltage Arcing Specialist)",
                           crew_conflict: true,
@@ -681,7 +763,8 @@ function LiveGridPage() {
                           fault_type: "D1",
                           action_code: "PD-MAPPING",
                           short_action: "Acoustic PD survey + vibration isolation check",
-                          detail: "Verify shock transient dissipation, confirm mechanical tie stability post excavation strike.",
+                          detail:
+                            "Verify shock transient dissipation, confirm mechanical tie stability post excavation strike.",
                           urgency_window: "within 48 hours",
                           crew_assignment: "Crew-C1 (Acoustic Diagnostics)",
                           crew_conflict: false,
@@ -694,7 +777,8 @@ function LiveGridPage() {
                           fault_type: "T1",
                           action_code: "THERMAL-CHECK",
                           short_action: "Thermal imaging + auxiliary cooling fan overhaul",
-                          detail: "Inspect radiator banks, measure temperature gradient, clean fan filters.",
+                          detail:
+                            "Inspect radiator banks, measure temperature gradient, clean fan filters.",
                           urgency_window: "within 1 week",
                           crew_assignment: "Crew-A1 (Substation Auxiliaries)",
                           crew_conflict: false,
@@ -707,7 +791,8 @@ function LiveGridPage() {
                           fault_type: "T2",
                           action_code: "MONITOR-RECOVERY",
                           short_action: "Post-intervention monitoring & verification",
-                          detail: "Track thermal dissipation. Do NOT dispatch emergency crew; asset successfully recovered.",
+                          detail:
+                            "Track thermal dissipation. Do NOT dispatch emergency crew; asset successfully recovered.",
                           urgency_window: "routine cycle",
                           crew_assignment: "Crew-D1 (Routine Watch)",
                           crew_conflict: false,
@@ -725,7 +810,8 @@ function LiveGridPage() {
                         {action.asset_id}
                       </td>
                       <td className="py-3 px-3 text-muted-foreground">
-                        {action.substation_name} <span className="font-mono text-[10px]">({action.grid_zone})</span>
+                        {action.substation_name}{" "}
+                        <span className="font-mono text-[10px]">({action.grid_zone})</span>
                       </td>
                       <td className="py-3 px-3">
                         <span className="pill bg-surface border border-border px-2 py-0.5 font-mono text-[10px] font-bold">
@@ -737,7 +823,9 @@ function LiveGridPage() {
                       </td>
                       <td className="py-3 px-3 text-foreground/90 max-w-xs">
                         <div className="font-medium">{action.short_action}</div>
-                        <div className="text-[11px] text-muted-foreground mt-0.5 truncate">{action.detail}</div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                          {action.detail}
+                        </div>
                       </td>
                       <td className="py-3 px-3">
                         <span
@@ -745,8 +833,8 @@ function LiveGridPage() {
                             action.urgency_window.includes("24 hours")
                               ? "bg-danger text-white"
                               : action.urgency_window.includes("48 hours")
-                              ? "bg-warning text-foreground"
-                              : "bg-surface border border-border text-muted-foreground"
+                                ? "bg-warning text-foreground"
+                                : "bg-surface border border-border text-muted-foreground"
                           }`}
                         >
                           {action.urgency_window}
@@ -816,14 +904,16 @@ function LiveGridPage() {
                     coreTempC: Number((curr.coreTempC - 4.5).toFixed(1)),
                     healthScore: Math.min(95, curr.healthScore + 15),
                   }
-                : null
+                : null,
             );
           }}
           onCooling={() => {
             setInspectorAsset((curr) =>
-              curr ? { ...curr, coreTempC: Number((curr.coreTempC - 6.2).toFixed(1)) } : null
+              curr ? { ...curr, coreTempC: Number((curr.coreTempC - 6.2).toFixed(1)) } : null,
             );
-            toast.success(`Forced auxiliary cooling engaged for ${inspectorAsset.id}: −6.2°C thermal reduction`);
+            toast.success(
+              `Forced auxiliary cooling engaged for ${inspectorAsset.id}: −6.2°C thermal reduction`,
+            );
           }}
           onReportHazard={() => {
             setIncidentDefaultZone(inspectorAsset.substation || inspectorAsset.region || "");
@@ -964,11 +1054,15 @@ function AssetInspectorModal({
                   asset.status === "risk"
                     ? "bg-danger text-white"
                     : asset.status === "watch"
-                    ? "bg-warning text-foreground"
-                    : "bg-signal text-signal-foreground"
+                      ? "bg-warning text-foreground"
+                      : "bg-signal text-signal-foreground"
                 }`}
               >
-                {asset.status === "risk" ? "Critical Risk" : asset.status === "watch" ? "Watch Tier" : "Nominal"}
+                {asset.status === "risk"
+                  ? "Critical Risk"
+                  : asset.status === "watch"
+                    ? "Watch Tier"
+                    : "Nominal"}
               </span>
             </div>
             <h2 className="mt-2 font-sans text-2xl font-semibold sm:text-3xl text-foreground">
@@ -1011,14 +1105,16 @@ function AssetInspectorModal({
           </div>
 
           <p className="mt-3 text-xs sm:text-sm leading-relaxed text-foreground/90 font-serif italic">
-            "{detail?.advisory_text ||
+            "
+            {detail?.advisory_text ||
               (asset.id === "TX-115"
                 ? "TX-115 is in post-maintenance recovery following a cooling fan repair and load curtailment at Day 78. Health index stabilized at 36.1 and remaining useful life recovered to 97 days. Continued routine thermal monitoring is recommended."
                 : asset.id === "TX-107"
-                ? "TX-107 at GIDC Phase-2 Substation is in critical electrical arcing failure (D1/D2). Acetylene (C2H2) exceeds 2,500 ppm and remaining useful life is down to 33.2 days. Immediate emergency crew dispatch and load curtailment required within 24 hours."
-                : asset.id === "TX-104"
-                ? "TX-104 displays progressive thermal overheating (T1) correlated with high summer ambient temperatures. Top-oil temperature reached 84°C. Schedule radiator fan bank inspection within 1 week."
-                : `${asset.name} is operating with stable insulation chemistry (Health Index ${asset.healthIndexRaw.toFixed(1)}). Normal scheduled monitoring recommended.`)}"
+                  ? "TX-107 at GIDC Phase-2 Substation is in critical electrical arcing failure (D1/D2). Acetylene (C2H2) exceeds 2,500 ppm and remaining useful life is down to 33.2 days. Immediate emergency crew dispatch and load curtailment required within 24 hours."
+                  : asset.id === "TX-104"
+                    ? "TX-104 displays progressive thermal overheating (T1) correlated with high summer ambient temperatures. Top-oil temperature reached 84°C. Schedule radiator fan bank inspection within 1 week."
+                    : `${asset.name} is operating with stable insulation chemistry (Health Index ${asset.healthIndexRaw.toFixed(1)}). Normal scheduled monitoring recommended.`)}
+            "
           </p>
         </div>
 
@@ -1109,12 +1205,18 @@ function AssetInspectorModal({
           </div>
 
           <div className="space-y-2.5">
-            {(detail?.top_3_shap || asset.top3Shap || [
-              ["Methane (CH4)", 11.4],
-              ["Hydrogen (H2)", 6.2],
-              ["Dielectric Rigidity", -4.8],
-            ]).map(([featureName, shapVal]) => (
-              <div key={featureName} className="flex items-center justify-between text-xs font-mono">
+            {(
+              detail?.top_3_shap ||
+              asset.top3Shap || [
+                ["Methane (CH4)", 11.4],
+                ["Hydrogen (H2)", 6.2],
+                ["Dielectric Rigidity", -4.8],
+              ]
+            ).map(([featureName, shapVal]) => (
+              <div
+                key={featureName}
+                className="flex items-center justify-between text-xs font-mono"
+              >
                 <span className="text-foreground/90 font-medium">{featureName}</span>
                 <div className="flex items-center gap-3">
                   <div className="w-36 h-2 rounded-full bg-border/60 overflow-hidden">
@@ -1139,23 +1241,29 @@ function AssetInspectorModal({
         {/* Diagnostic Key Gauges */}
         <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="rounded-2xl border border-border/60 bg-surface/70 p-3.5 text-xs">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">Health Index (Damage)</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">
+              Health Index (Damage)
+            </p>
             <p className="mt-1 font-mono text-lg font-bold text-foreground">
               HI {asset.healthIndexRaw.toFixed(1)}
             </p>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">Pristine: 13.4 · Hazard: &gt;50</p>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">
+              Pristine: 13.4 · Hazard: &gt;50
+            </p>
           </div>
 
           <div className="rounded-2xl border border-border/60 bg-surface/70 p-3.5 text-xs">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">Remaining Useful Life</p>
-            <p className="mt-1 font-mono text-lg font-bold text-signal">
-              {asset.rulDays} days
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">
+              Remaining Useful Life
             </p>
+            <p className="mt-1 font-mono text-lg font-bold text-signal">{asset.rulDays} days</p>
             <p className="mt-0.5 text-[10px] text-muted-foreground">Calibrated decay model</p>
           </div>
 
           <div className="rounded-2xl border border-border/60 bg-surface/70 p-3.5 text-xs">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">Fault Classification</p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">
+              Fault Classification
+            </p>
             <p className="mt-1 font-mono text-lg font-bold text-foreground">
               IEC {detail?.fault_type || asset.faultType}
             </p>
@@ -1163,10 +1271,10 @@ function AssetInspectorModal({
           </div>
 
           <div className="rounded-2xl border border-border/60 bg-surface/70 p-3.5 text-xs">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">Top-Oil Core Temp</p>
-            <p className="mt-1 font-mono text-lg font-bold text-foreground">
-              {asset.coreTempC}°C
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">
+              Top-Oil Core Temp
             </p>
+            <p className="mt-1 font-mono text-lg font-bold text-foreground">{asset.coreTempC}°C</p>
             <p className="mt-0.5 text-[10px] text-muted-foreground">Max limit: 95°C</p>
           </div>
         </div>
@@ -1180,11 +1288,7 @@ function AssetInspectorModal({
             >
               <RefreshCw className="size-3.5 mr-1" /> Reroute load (-8 MVA)
             </Button>
-            <Button
-              onClick={onCooling}
-              variant="outline"
-              className="pill text-xs border-border/70"
-            >
+            <Button onClick={onCooling} variant="outline" className="pill text-xs border-border/70">
               <Thermometer className="size-3.5 mr-1" /> Force auxiliary cooling
             </Button>
             <Button
@@ -1196,10 +1300,7 @@ function AssetInspectorModal({
             </Button>
           </div>
 
-          <Button
-            asChild
-            className="pill bg-ink text-xs text-cream hover:bg-ink/90"
-          >
+          <Button asChild className="pill bg-ink text-xs text-cream hover:bg-ink/90">
             <Link to="/predict">
               Run Outage Prediction <ArrowRight className="size-3.5 ml-1" />
             </Link>
@@ -1237,10 +1338,17 @@ function SimulationModal({
       >
         <div className="flex items-center justify-between border-b border-border/50 pb-4">
           <div>
-            <h3 className="font-sans text-xl font-semibold text-foreground">Inject Grid Sensor Node</h3>
-            <p className="text-xs text-muted-foreground">Register simulated telemetry parameters into the live feed</p>
+            <h3 className="font-sans text-xl font-semibold text-foreground">
+              Inject Grid Sensor Node
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Register simulated telemetry parameters into the live feed
+            </p>
           </div>
-          <button onClick={onClose} className="grid size-8 place-items-center rounded-full hover:bg-muted">
+          <button
+            onClick={onClose}
+            className="grid size-8 place-items-center rounded-full hover:bg-muted"
+          >
             <X className="size-4" />
           </button>
         </div>
@@ -1304,7 +1412,7 @@ function SimulationModal({
                 nominalVoltageKv: voltageKv,
                 currentLoadMw: loadMw,
                 ratedCapacityMw: capacityMw,
-                frequencyHz: 50.00,
+                frequencyHz: 50.0,
                 coreTempC: tempC,
                 healthScore: 82,
                 healthIndexRaw: 16.5,

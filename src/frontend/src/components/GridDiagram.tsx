@@ -10,11 +10,46 @@ export type GridNode = {
 };
 
 export const anandDistrictGridNodes: GridNode[] = [
-  { id: "TX-101", label: "Civil Hospital Node", substation: "Anand Urban Core", status: "stable", x: 10, y: 36 },
-  { id: "TX-104", label: "Central 132kV Node", substation: "Anand Central Transmission", status: "watch", x: 28, y: 64 },
-  { id: "TX-107", label: "GIDC Industrial Phase-2", substation: "GIDC Heavy Industry", status: "risk", x: 48, y: 30 },
-  { id: "TX-112", label: "Borsad Feeder Node", substation: "Borsad Industrial", status: "risk", x: 68, y: 66 },
-  { id: "TX-115", label: "South Bulk Node (Recovered)", substation: "Anand South Bulk", status: "watch", x: 88, y: 34 },
+  {
+    id: "TX-101",
+    label: "Civil Hospital Node",
+    substation: "Anand Urban Core",
+    status: "stable",
+    x: 10,
+    y: 36,
+  },
+  {
+    id: "TX-104",
+    label: "Central 132kV Node",
+    substation: "Anand Central Transmission",
+    status: "watch",
+    x: 28,
+    y: 64,
+  },
+  {
+    id: "TX-107",
+    label: "GIDC Industrial Phase-2",
+    substation: "GIDC Heavy Industry",
+    status: "risk",
+    x: 48,
+    y: 30,
+  },
+  {
+    id: "TX-112",
+    label: "Borsad Feeder Node",
+    substation: "Borsad Industrial",
+    status: "risk",
+    x: 68,
+    y: 66,
+  },
+  {
+    id: "TX-115",
+    label: "South Bulk Node (Recovered)",
+    substation: "Anand South Bulk",
+    status: "watch",
+    x: 88,
+    y: 34,
+  },
 ];
 
 export function GridDiagram({
@@ -29,7 +64,9 @@ export function GridDiagram({
   compact?: boolean;
 }) {
   return (
-    <div className={`grid-map relative overflow-hidden ${compact ? "h-64" : "h-[360px] md:h-[440px]"}`}>
+    <div
+      className={`grid-map relative overflow-hidden ${compact ? "h-64" : "h-[360px] md:h-[440px]"}`}
+    >
       {/* Dynamic Power Line Interconnects */}
       <div className="absolute left-[10%] top-[36%] h-px w-[20%] power-line rotate-[12deg]" />
       <div className="absolute left-[28%] top-[64%] h-px w-[22%] power-line -rotate-[14deg]" />

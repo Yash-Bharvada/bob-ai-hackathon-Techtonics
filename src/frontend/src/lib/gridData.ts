@@ -99,7 +99,11 @@ export const initialGridAssets: GridAsset[] = [
     coolingType: "ONAF (Forced Air)",
     sf6PressureBar: 5.1,
     acousticDba: 74.2,
-    top3Shap: [["Methane", 9.16], ["Acethylene", 9.05], ["Hydrogen", 5.58]],
+    top3Shap: [
+      ["Methane", 9.16],
+      ["Acethylene", 9.05],
+      ["Hydrogen", 5.58],
+    ],
     telemetryHistory: [
       { time: "Day 60", loadMw: 18.2, voltageKv: 66.0, tempC: 58.2 },
       { time: "Day 70", loadMw: 19.5, voltageKv: 65.8, tempC: 64.1 },
@@ -107,8 +111,18 @@ export const initialGridAssets: GridAsset[] = [
       { time: "Day 89", loadMw: 21.8, voltageKv: 65.1, tempC: 78.4 },
     ],
     incidentLog: [
-      { id: "INC-107-1", timestamp: "2026-09-09", message: "High C2H2 (>2500 ppm) rate-of-rise detected by DGA monitor.", severity: "critical" },
-      { id: "INC-107-2", timestamp: "2026-08-11", message: "65 mph storm gust flashover transient recorded.", severity: "warning" },
+      {
+        id: "INC-107-1",
+        timestamp: "2026-09-09",
+        message: "High C2H2 (>2500 ppm) rate-of-rise detected by DGA monitor.",
+        severity: "critical",
+      },
+      {
+        id: "INC-107-2",
+        timestamp: "2026-08-11",
+        message: "65 mph storm gust flashover transient recorded.",
+        severity: "warning",
+      },
     ],
   },
   {
@@ -137,7 +151,11 @@ export const initialGridAssets: GridAsset[] = [
     coolingType: "OFAF (Forced Oil / Air)",
     sf6PressureBar: 5.8,
     acousticDba: 68.5,
-    top3Shap: [["Methane", 13.13], ["DBDS", -3.70], ["Hydrogen", -3.49]],
+    top3Shap: [
+      ["Methane", 13.13],
+      ["DBDS", -3.7],
+      ["Hydrogen", -3.49],
+    ],
     telemetryHistory: [
       { time: "Day 60", loadMw: 72.0, voltageKv: 132.1, tempC: 62.0 },
       { time: "Day 70", loadMw: 78.5, voltageKv: 131.8, tempC: 71.4 },
@@ -145,7 +163,12 @@ export const initialGridAssets: GridAsset[] = [
       { time: "Day 89", loadMw: 86.4, voltageKv: 131.0, tempC: 84.2 },
     ],
     incidentLog: [
-      { id: "INC-104-1", timestamp: "2026-09-05", message: "Heatwave ambient 39.5°C elevated top-oil to 95°C limit.", severity: "warning" },
+      {
+        id: "INC-104-1",
+        timestamp: "2026-09-05",
+        message: "Heatwave ambient 39.5°C elevated top-oil to 95°C limit.",
+        severity: "warning",
+      },
     ],
   },
   {
@@ -174,7 +197,11 @@ export const initialGridAssets: GridAsset[] = [
     coolingType: "ONAF (Repaired Fan Banks)",
     sf6PressureBar: 5.6,
     acousticDba: 61.2,
-    top3Shap: [["Methane", 8.42], ["Ethylene", -4.11], ["Hydrogen", -2.85]],
+    top3Shap: [
+      ["Methane", 8.42],
+      ["Ethylene", -4.11],
+      ["Hydrogen", -2.85],
+    ],
     telemetryHistory: [
       { time: "Day 65", loadMw: 74.0, voltageKv: 66.0, tempC: 62.1 },
       { time: "Day 78 (Peak)", loadMw: 92.5, voltageKv: 65.2, tempC: 91.4 },
@@ -182,8 +209,18 @@ export const initialGridAssets: GridAsset[] = [
       { time: "Day 89 (Current)", loadMw: 62.0, voltageKv: 66.0, tempC: 56.8 },
     ],
     incidentLog: [
-      { id: "INC-115-1", timestamp: "2026-08-31", message: "Cooling fan motor replacement & 20% load curtailment completed.", severity: "info" },
-      { id: "INC-115-2", timestamp: "2026-08-30", message: "Day 78 critical alert: HI reached 71.3, RUL collapsed to 7.7 days.", severity: "critical" },
+      {
+        id: "INC-115-1",
+        timestamp: "2026-08-31",
+        message: "Cooling fan motor replacement & 20% load curtailment completed.",
+        severity: "info",
+      },
+      {
+        id: "INC-115-2",
+        timestamp: "2026-08-30",
+        message: "Day 78 critical alert: HI reached 71.3, RUL collapsed to 7.7 days.",
+        severity: "critical",
+      },
     ],
   },
   {
@@ -212,7 +249,11 @@ export const initialGridAssets: GridAsset[] = [
     coolingType: "ONAN (Natural Convection)",
     sf6PressureBar: 5.2,
     acousticDba: 71.0,
-    top3Shap: [["Methane", 12.30], ["Acethylene", 8.68], ["Hydrogen", 4.99]],
+    top3Shap: [
+      ["Methane", 12.3],
+      ["Acethylene", 8.68],
+      ["Hydrogen", 4.99],
+    ],
     telemetryHistory: [
       { time: "Day 60", loadMw: 17.5, voltageKv: 132.0, tempC: 55.0 },
       { time: "Day 72 (Strike)", loadMw: 19.8, voltageKv: 131.6, tempC: 68.4 },
@@ -220,7 +261,13 @@ export const initialGridAssets: GridAsset[] = [
       { time: "Day 89", loadMw: 20.4, voltageKv: 131.4, tempC: 72.1 },
     ],
     incidentLog: [
-      { id: "INC-112-1", timestamp: "2026-08-25", message: "Nearby excavation strike caused high-frequency mechanical shock & vibration spike.", severity: "warning" },
+      {
+        id: "INC-112-1",
+        timestamp: "2026-08-25",
+        message:
+          "Nearby excavation strike caused high-frequency mechanical shock & vibration spike.",
+        severity: "warning",
+      },
     ],
   },
   {
@@ -233,7 +280,7 @@ export const initialGridAssets: GridAsset[] = [
     nominalVoltageKv: 11,
     currentLoadMw: 16.5,
     ratedCapacityMw: 25.0,
-    frequencyHz: 50.00,
+    frequencyHz: 50.0,
     coreTempC: 51.4,
     healthScore: 86,
     healthIndexRaw: 13.8,
@@ -249,7 +296,11 @@ export const initialGridAssets: GridAsset[] = [
     coolingType: "ONAN",
     sf6PressureBar: 6.0,
     acousticDba: 54.0,
-    top3Shap: [["Dielectric rigidity", -5.2], ["Water content", -3.1], ["Interfacial V", -2.8]],
+    top3Shap: [
+      ["Dielectric rigidity", -5.2],
+      ["Water content", -3.1],
+      ["Interfacial V", -2.8],
+    ],
     telemetryHistory: [
       { time: "Day 60", loadMw: 16.0, voltageKv: 11.0, tempC: 50.5 },
       { time: "Day 70", loadMw: 16.2, voltageKv: 11.0, tempC: 51.0 },
@@ -276,7 +327,7 @@ export const initialGridAssets: GridAsset[] = [
     faultType: "NF",
     status: "stable",
     riskTier: "LOW",
-    compositeScore: 0.220,
+    compositeScore: 0.22,
     criticality: "High",
     archetype: "Stable",
     activeAnomalies: 0,
@@ -316,7 +367,10 @@ export const initialGridAssets: GridAsset[] = [
     coolingType: "OFAF",
     sf6PressureBar: 5.8,
     acousticDba: 56.0,
-    telemetryHistory: [{ time: "Day 60", loadMw: 65.0, voltageKv: 11.0, tempC: 53.0 }, { time: "Day 89", loadMw: 68.0, voltageKv: 11.0, tempC: 54.2 }],
+    telemetryHistory: [
+      { time: "Day 60", loadMw: 65.0, voltageKv: 11.0, tempC: 53.0 },
+      { time: "Day 89", loadMw: 68.0, voltageKv: 11.0, tempC: 54.2 },
+    ],
     incidentLog: [],
   },
   {
@@ -329,7 +383,7 @@ export const initialGridAssets: GridAsset[] = [
     nominalVoltageKv: 33,
     currentLoadMw: 17.1,
     ratedCapacityMw: 25.0,
-    frequencyHz: 50.00,
+    frequencyHz: 50.0,
     coreTempC: 52.8,
     healthScore: 86,
     healthIndexRaw: 13.9,
@@ -345,21 +399,114 @@ export const initialGridAssets: GridAsset[] = [
     coolingType: "ONAN",
     sf6PressureBar: 5.9,
     acousticDba: 53.4,
-    telemetryHistory: [{ time: "Day 60", loadMw: 16.8, voltageKv: 33.0, tempC: 52.0 }, { time: "Day 89", loadMw: 17.1, voltageKv: 33.0, tempC: 52.8 }],
+    telemetryHistory: [
+      { time: "Day 60", loadMw: 16.8, voltageKv: 33.0, tempC: 52.0 },
+      { time: "Day 89", loadMw: 17.1, voltageKv: 33.0, tempC: 52.8 },
+    ],
     incidentLog: [],
   },
   // Stable baseline assets (TX-102, 103, 106, 108, 109, 111, 113, 114, 117, 118)
   ...[
-    { id: "TX-102", mva: 63, kv: 33, zone: "Zone-A", crit: "Low", hi: 14.1, temp: 49.2, fault: "NF" },
-    { id: "TX-103", mva: 40, kv: 66, zone: "Zone-A", crit: "Low", hi: 15.0, temp: 51.0, fault: "NF" },
-    { id: "TX-106", mva: 160, kv: 33, zone: "Zone-B", crit: "Medium", hi: 14.8, temp: 53.5, fault: "NF" },
-    { id: "TX-108", mva: 100, kv: 132, zone: "Zone-B", crit: "Low", hi: 13.6, temp: 48.5, fault: "NF" },
-    { id: "TX-109", mva: 63, kv: 11, zone: "Zone-C", crit: "Medium", hi: 38.6, temp: 64.0, fault: "T1" },
-    { id: "TX-111", mva: 160, kv: 66, zone: "Zone-C", crit: "Low", hi: 14.0, temp: 50.1, fault: "NF" },
-    { id: "TX-113", mva: 100, kv: 11, zone: "Zone-D", crit: "Low", hi: 13.5, temp: 47.9, fault: "NF" },
-    { id: "TX-114", mva: 63, kv: 33, zone: "Zone-D", crit: "Low", hi: 14.2, temp: 49.5, fault: "NF" },
-    { id: "TX-117", mva: 63, kv: 11, zone: "Zone-A", crit: "Low", hi: 13.9, temp: 48.0, fault: "NF" },
-    { id: "TX-118", mva: 160, kv: 33, zone: "Zone-A", crit: "Low", hi: 14.5, temp: 52.0, fault: "NF" },
+    {
+      id: "TX-102",
+      mva: 63,
+      kv: 33,
+      zone: "Zone-A",
+      crit: "Low",
+      hi: 14.1,
+      temp: 49.2,
+      fault: "NF",
+    },
+    {
+      id: "TX-103",
+      mva: 40,
+      kv: 66,
+      zone: "Zone-A",
+      crit: "Low",
+      hi: 15.0,
+      temp: 51.0,
+      fault: "NF",
+    },
+    {
+      id: "TX-106",
+      mva: 160,
+      kv: 33,
+      zone: "Zone-B",
+      crit: "Medium",
+      hi: 14.8,
+      temp: 53.5,
+      fault: "NF",
+    },
+    {
+      id: "TX-108",
+      mva: 100,
+      kv: 132,
+      zone: "Zone-B",
+      crit: "Low",
+      hi: 13.6,
+      temp: 48.5,
+      fault: "NF",
+    },
+    {
+      id: "TX-109",
+      mva: 63,
+      kv: 11,
+      zone: "Zone-C",
+      crit: "Medium",
+      hi: 38.6,
+      temp: 64.0,
+      fault: "T1",
+    },
+    {
+      id: "TX-111",
+      mva: 160,
+      kv: 66,
+      zone: "Zone-C",
+      crit: "Low",
+      hi: 14.0,
+      temp: 50.1,
+      fault: "NF",
+    },
+    {
+      id: "TX-113",
+      mva: 100,
+      kv: 11,
+      zone: "Zone-D",
+      crit: "Low",
+      hi: 13.5,
+      temp: 47.9,
+      fault: "NF",
+    },
+    {
+      id: "TX-114",
+      mva: 63,
+      kv: 33,
+      zone: "Zone-D",
+      crit: "Low",
+      hi: 14.2,
+      temp: 49.5,
+      fault: "NF",
+    },
+    {
+      id: "TX-117",
+      mva: 63,
+      kv: 11,
+      zone: "Zone-A",
+      crit: "Low",
+      hi: 13.9,
+      temp: 48.0,
+      fault: "NF",
+    },
+    {
+      id: "TX-118",
+      mva: 160,
+      kv: 33,
+      zone: "Zone-A",
+      crit: "Low",
+      hi: 14.5,
+      temp: 52.0,
+      fault: "NF",
+    },
   ].map((b): GridAsset => ({
     id: b.id,
     name: `${b.id} · ${b.mva} MVA Regional Unit`,
@@ -370,7 +517,7 @@ export const initialGridAssets: GridAsset[] = [
     nominalVoltageKv: b.kv,
     currentLoadMw: Math.round(b.mva * 0.65),
     ratedCapacityMw: b.mva,
-    frequencyHz: 50.00,
+    frequencyHz: 50.0,
     coreTempC: b.temp,
     healthScore: Math.round(100 - b.hi),
     healthIndexRaw: b.hi,
@@ -399,28 +546,32 @@ export const initialGridTicker: GridTickerEvent[] = [
     id: "TICK-1",
     timestamp: "13:48:10",
     assetId: "TX-107",
-    message: "Critical DGA arcing alert: C2H2 rate-of-rise exceeds IEC thresholds. Immediate dispatch recommended.",
+    message:
+      "Critical DGA arcing alert: C2H2 rate-of-rise exceeds IEC thresholds. Immediate dispatch recommended.",
     severity: "critical",
   },
   {
     id: "TICK-2",
     timestamp: "13:42:05",
     assetId: "TX-115",
-    message: "Stalled recovery verified: Health index stabilized at 36.1 post fan replacement and load curtailment.",
+    message:
+      "Stalled recovery verified: Health index stabilized at 36.1 post fan replacement and load curtailment.",
     severity: "info",
   },
   {
     id: "TICK-3",
     timestamp: "13:30:18",
     assetId: "TX-104",
-    message: "Progressive thermal signature: CH4 and C2H4 elevation correlates with heatwave ambient peak.",
+    message:
+      "Progressive thermal signature: CH4 and C2H4 elevation correlates with heatwave ambient peak.",
     severity: "warning",
   },
   {
     id: "TICK-4",
     timestamp: "13:15:00",
     assetId: "TX-112",
-    message: "Excavation strike transient damping complete; D1 low-energy discharge monitoring continues.",
+    message:
+      "Excavation strike transient damping complete; D1 low-energy discharge monitoring continues.",
     severity: "warning",
   },
 ];
@@ -428,7 +579,10 @@ export const initialGridTicker: GridTickerEvent[] = [
 /**
  * Merge live FastAPI /api/ranked response into the GridAsset list
  */
-export function mergeRankedIntoAssets(baseAssets: GridAsset[], rankedList: RankedAsset[]): GridAsset[] {
+export function mergeRankedIntoAssets(
+  baseAssets: GridAsset[],
+  rankedList: RankedAsset[],
+): GridAsset[] {
   const rankedMap = new Map(rankedList.map((r) => [r.asset_id, r]));
 
   return baseAssets.map((asset) => {
@@ -448,8 +602,8 @@ export function mergeRankedIntoAssets(baseAssets: GridAsset[], rankedList: Ranke
       faultType: live.fault_type || asset.faultType,
       riskTier: live.risk_tier,
       compositeScore: live.composite_score,
-      status: (isCritical || isHigh) ? "risk" : isMedium ? "watch" : "stable",
-      activeAnomalies: (isCritical || isHigh) ? 3 : isMedium ? 1 : 0,
+      status: isCritical || isHigh ? "risk" : isMedium ? "watch" : "stable",
+      activeAnomalies: isCritical || isHigh ? 3 : isMedium ? 1 : 0,
       top3Shap: live.top_3_shap || asset.top3Shap,
     };
   });
