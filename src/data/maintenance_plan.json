@@ -18,7 +18,9 @@
       "crew_type": "HV Electrical + Oil Chemistry",
       "deadline": "2026-09-20",
       "mva_rating": 25.0,
-      "advisory_text": "nan"
+      "advisory_text": "nan",
+      "fault_type": "D1",
+      "detail": "1. Perform comprehensive DGA oil sampling (on-site lab or sealed syringe).\n2. Inspect bushing connections and tap changer contacts for pitting/carbonisation.\n3. Reduce load by 15-20% to lower arc energy.\n4. Schedule follow-up DGA in 72 hours \u2014 confirm D1\u2192D2 escalation or stabilisation.\n5. Stage replacement transformer within 30 days if D1 progresses."
     },
     {
       "rank": 2,
@@ -34,7 +36,9 @@
       "crew_type": "HV Electrical + Oil Chemistry",
       "deadline": "2026-09-20",
       "mva_rating": 25.0,
-      "advisory_text": "nan"
+      "advisory_text": "nan",
+      "fault_type": "D1",
+      "detail": "1. Perform comprehensive DGA oil sampling (on-site lab or sealed syringe).\n2. Inspect bushing connections and tap changer contacts for pitting/carbonisation.\n3. Reduce load by 15-20% to lower arc energy.\n4. Schedule follow-up DGA in 72 hours \u2014 confirm D1\u2192D2 escalation or stabilisation.\n5. Stage replacement transformer within 30 days if D1 progresses."
     },
     {
       "rank": 3,
@@ -50,7 +54,9 @@
       "crew_type": "Thermal + Mechanical",
       "deadline": "2026-09-27",
       "mva_rating": 100.0,
-      "advisory_text": "nan"
+      "advisory_text": "nan",
+      "fault_type": "T1",
+      "detail": "1. Inspect ONAN/ONAF cooling fans and radiator condition.\n2. Verify oil circulation pump operation.\n3. Check load profile over last 30 days \u2014 sustained overload is common cause.\n4. Install online temperature monitor if not already present.\n5. DGA oil sampling to baseline CH4/C2H4 trend."
     },
     {
       "rank": 4,
@@ -66,7 +72,9 @@
       "crew_type": "Thermal + Monitoring",
       "deadline": "2026-09-27",
       "mva_rating": 100.0,
-      "advisory_text": "nan"
+      "advisory_text": "nan",
+      "fault_type": "T2",
+      "detail": "Post-intervention monitoring \u2014 cooling fan repair successful. Track thermal dissipation, verify DGA trends are stable. No urgent intervention required."
     },
     {
       "rank": 5,
@@ -82,7 +90,9 @@
       "crew_type": "Thermal + Mechanical",
       "deadline": "2026-09-27",
       "mva_rating": 100.0,
-      "advisory_text": "nan"
+      "advisory_text": "nan",
+      "fault_type": "T1",
+      "detail": "1. Inspect ONAN/ONAF cooling fans and radiator condition.\n2. Verify oil circulation pump operation.\n3. Check load profile over last 30 days \u2014 sustained overload is common cause.\n4. Install online temperature monitor if not already present.\n5. DGA oil sampling to baseline CH4/C2H4 trend."
     },
     {
       "rank": 6,
@@ -98,7 +108,9 @@
       "crew_type": "Thermal + Mechanical",
       "deadline": "2026-09-27",
       "mva_rating": 25.0,
-      "advisory_text": "nan"
+      "advisory_text": "nan",
+      "fault_type": "T1",
+      "detail": "1. Inspect ONAN/ONAF cooling fans and radiator condition.\n2. Verify oil circulation pump operation.\n3. Check load profile over last 30 days \u2014 sustained overload is common cause.\n4. Install online temperature monitor if not already present.\n5. DGA oil sampling to baseline CH4/C2H4 trend."
     },
     {
       "rank": 7,
@@ -114,7 +126,9 @@
       "crew_type": "Thermal + Mechanical",
       "deadline": "2026-09-27",
       "mva_rating": 40.0,
-      "advisory_text": "nan"
+      "advisory_text": "nan",
+      "fault_type": "T1",
+      "detail": "1. Inspect ONAN/ONAF cooling fans and radiator condition.\n2. Verify oil circulation pump operation.\n3. Check load profile over last 30 days \u2014 sustained overload is common cause.\n4. Install online temperature monitor if not already present.\n5. DGA oil sampling to baseline CH4/C2H4 trend."
     },
     {
       "rank": 8,
@@ -130,7 +144,9 @@
       "crew_type": "Thermal + Mechanical",
       "deadline": "2026-09-27",
       "mva_rating": 63.0,
-      "advisory_text": "nan"
+      "advisory_text": "nan",
+      "fault_type": "T1",
+      "detail": "1. Inspect ONAN/ONAF cooling fans and radiator condition.\n2. Verify oil circulation pump operation.\n3. Check load profile over last 30 days \u2014 sustained overload is common cause.\n4. Install online temperature monitor if not already present.\n5. DGA oil sampling to baseline CH4/C2H4 trend."
     },
     {
       "rank": 9,
@@ -146,7 +162,9 @@
       "crew_type": "Thermal + Mechanical",
       "deadline": "2026-09-27",
       "mva_rating": 160.0,
-      "advisory_text": "nan"
+      "advisory_text": "nan",
+      "fault_type": "T1",
+      "detail": "1. Inspect ONAN/ONAF cooling fans and radiator condition.\n2. Verify oil circulation pump operation.\n3. Check load profile over last 30 days \u2014 sustained overload is common cause.\n4. Install online temperature monitor if not already present.\n5. DGA oil sampling to baseline CH4/C2H4 trend."
     },
     {
       "rank": 10,
@@ -162,7 +180,9 @@
       "crew_type": "Thermal + Mechanical",
       "deadline": "2026-09-27",
       "mva_rating": 25.0,
-      "advisory_text": "nan"
+      "advisory_text": "nan",
+      "fault_type": "T1",
+      "detail": "1. Inspect ONAN/ONAF cooling fans and radiator condition.\n2. Verify oil circulation pump operation.\n3. Check load profile over last 30 days \u2014 sustained overload is common cause.\n4. Install online temperature monitor if not already present.\n5. DGA oil sampling to baseline CH4/C2H4 trend."
     },
     {
       "rank": 11,
@@ -178,7 +198,9 @@
       "crew_type": "Thermal + Mechanical",
       "deadline": "2026-09-27",
       "mva_rating": 160.0,
-      "advisory_text": "nan"
+      "advisory_text": "nan",
+      "fault_type": "T1",
+      "detail": "1. Inspect ONAN/ONAF cooling fans and radiator condition.\n2. Verify oil circulation pump operation.\n3. Check load profile over last 30 days \u2014 sustained overload is common cause.\n4. Install online temperature monitor if not already present.\n5. DGA oil sampling to baseline CH4/C2H4 trend."
     },
     {
       "rank": 12,
@@ -194,7 +216,9 @@
       "crew_type": "Thermal + Mechanical",
       "deadline": "2026-09-27",
       "mva_rating": 63.0,
-      "advisory_text": "nan"
+      "advisory_text": "nan",
+      "fault_type": "T1",
+      "detail": "1. Inspect ONAN/ONAF cooling fans and radiator condition.\n2. Verify oil circulation pump operation.\n3. Check load profile over last 30 days \u2014 sustained overload is common cause.\n4. Install online temperature monitor if not already present.\n5. DGA oil sampling to baseline CH4/C2H4 trend."
     },
     {
       "rank": 13,
@@ -210,7 +234,9 @@
       "crew_type": "Thermal + Mechanical",
       "deadline": "2026-09-27",
       "mva_rating": 160.0,
-      "advisory_text": "nan"
+      "advisory_text": "nan",
+      "fault_type": "T1",
+      "detail": "1. Inspect ONAN/ONAF cooling fans and radiator condition.\n2. Verify oil circulation pump operation.\n3. Check load profile over last 30 days \u2014 sustained overload is common cause.\n4. Install online temperature monitor if not already present.\n5. DGA oil sampling to baseline CH4/C2H4 trend."
     },
     {
       "rank": 14,
@@ -226,7 +252,9 @@
       "crew_type": "Thermal + Mechanical",
       "deadline": "2026-09-27",
       "mva_rating": 63.0,
-      "advisory_text": "nan"
+      "advisory_text": "nan",
+      "fault_type": "T1",
+      "detail": "1. Inspect ONAN/ONAF cooling fans and radiator condition.\n2. Verify oil circulation pump operation.\n3. Check load profile over last 30 days \u2014 sustained overload is common cause.\n4. Install online temperature monitor if not already present.\n5. DGA oil sampling to baseline CH4/C2H4 trend."
     },
     {
       "rank": 15,
@@ -242,7 +270,9 @@
       "crew_type": "Thermal + Mechanical",
       "deadline": "2026-09-27",
       "mva_rating": 40.0,
-      "advisory_text": "nan"
+      "advisory_text": "nan",
+      "fault_type": "T1",
+      "detail": "1. Inspect ONAN/ONAF cooling fans and radiator condition.\n2. Verify oil circulation pump operation.\n3. Check load profile over last 30 days \u2014 sustained overload is common cause.\n4. Install online temperature monitor if not already present.\n5. DGA oil sampling to baseline CH4/C2H4 trend."
     },
     {
       "rank": 16,
@@ -258,7 +288,9 @@
       "crew_type": "Thermal + Mechanical",
       "deadline": "2026-09-27",
       "mva_rating": 100.0,
-      "advisory_text": "nan"
+      "advisory_text": "nan",
+      "fault_type": "T1",
+      "detail": "1. Inspect ONAN/ONAF cooling fans and radiator condition.\n2. Verify oil circulation pump operation.\n3. Check load profile over last 30 days \u2014 sustained overload is common cause.\n4. Install online temperature monitor if not already present.\n5. DGA oil sampling to baseline CH4/C2H4 trend."
     },
     {
       "rank": 17,
@@ -274,7 +306,9 @@
       "crew_type": "Thermal + Mechanical",
       "deadline": "2026-09-27",
       "mva_rating": 63.0,
-      "advisory_text": "nan"
+      "advisory_text": "nan",
+      "fault_type": "T1",
+      "detail": "1. Inspect ONAN/ONAF cooling fans and radiator condition.\n2. Verify oil circulation pump operation.\n3. Check load profile over last 30 days \u2014 sustained overload is common cause.\n4. Install online temperature monitor if not already present.\n5. DGA oil sampling to baseline CH4/C2H4 trend."
     },
     {
       "rank": 18,
@@ -290,7 +324,9 @@
       "crew_type": "Thermal + Mechanical",
       "deadline": "2026-09-27",
       "mva_rating": 100.0,
-      "advisory_text": "nan"
+      "advisory_text": "nan",
+      "fault_type": "T1",
+      "detail": "1. Inspect ONAN/ONAF cooling fans and radiator condition.\n2. Verify oil circulation pump operation.\n3. Check load profile over last 30 days \u2014 sustained overload is common cause.\n4. Install online temperature monitor if not already present.\n5. DGA oil sampling to baseline CH4/C2H4 trend."
     }
   ],
   "crew_pre_positioning": [

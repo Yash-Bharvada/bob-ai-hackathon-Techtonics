@@ -1,0 +1,19 @@
+asset_id,health_index_score,risk_tier,RUL_days,fault_type,fault_label,fault_confidence,top3_shap_features,advisory_text,grid_zone,mva_rating,voltage_kv,criticality,archetype,composite_score,incident_rate_per_yr,rank
+TX-107,56.37,HIGH,33.2,D1,D1,0.649,"[('Methane', 9.164), ('Acethylene', 9.052), ('Hydrogen', 5.585)]",nan,Zone-B,25.0,66kV,Critical,Electrical_Arcing,1.0,0.33,1
+TX-112,53.25,HIGH,39.0,D1,D1,0.605,"[('Methane', 12.3), ('Acethylene', 8.678), ('Hydrogen', 4.99)]",nan,Zone-C,25.0,132kV,Critical,Shock_PD,1.0,0.33,2
+TX-104,38.64,MEDIUM,87.9,T1,possible T1,0.427,"[('Methane', 13.13), ('DBDS', -3.704), ('Hydrogen', -3.491)]",nan,Zone-A,100.0,132kV,Critical,Progressive_Thermal,0.9165,0.0,3
+TX-115,36.13,MEDIUM,97.0,T2,possible T2,0.404,"[('Methane', 17.533), ('DBDS', -3.985), ('Hydrogen', -3.886)]",nan,Zone-D,100.0,66kV,Critical,Intervention_Recovery,0.8894,0.0,4
+TX-105,33.96,MEDIUM,105.0,T1,possible T1,0.543,"[('Methane', 10.406), ('Hydrogen', -4.132), ('Interfacial V', 2.612)]",nan,Zone-B,100.0,11kV,High,Stable,0.6789,1.0,5
+TX-110,31.36,MEDIUM,114.5,T1,possible T1,0.591,"[('Methane', 12.256), ('Hydrogen', -4.123), ('Interfacial V', -2.2)]",nan,Zone-C,25.0,33kV,High,Stable,0.6228,1.33,6
+TX-116,29.17,LOW,122.4,T1,possible T1,0.535,"[('Methane', 12.139), ('DBDS', -4.136), ('Hydrogen', -3.326)]",nan,Zone-D,40.0,132kV,High,Stable,0.5408,0.0,7
+TX-109,38.62,MEDIUM,87.9,T1,possible T1,0.576,"[('Methane', 18.146), ('Hydrogen', -4.25), ('Interfacial V', -1.45)]",nan,Zone-C,63.0,11kV,Medium,Stable,0.4958,0.0,8
+TX-106,33.69,MEDIUM,106.0,T1,possible T1,0.538,"[('Methane', 9.78), ('Hydrogen', -3.936), ('Interfacial V', 2.653)]",nan,Zone-B,160.0,33kV,Medium,Stable,0.4931,0.67,9
+TX-101,29.97,LOW,119.5,T1,possible T1,0.526,"[('Methane', 12.299), ('DBDS', -4.057), ('Hydrogen', -3.187)]",nan,Zone-A,25.0,11kV,Medium,Stable,0.4186,0.67,10
+TX-111,34.53,MEDIUM,102.9,T1,possible T1,0.591,"[('Methane', 13.509), ('DBDS', -4.246), ('Hydrogen', -3.912)]",nan,Zone-C,160.0,66kV,Low,Stable,0.356,0.33,11
+TX-114,33.65,MEDIUM,106.1,T1,possible T1,0.539,"[('Methane', 13.042), ('DBDS', -4.429), ('Hydrogen', -3.968)]",nan,Zone-D,63.0,33kV,Low,Stable,0.3439,0.67,12
+TX-118,31.5,MEDIUM,113.9,T1,possible T1,0.509,"[('Methane', 10.678), ('DBDS', -4.488), ('Hydrogen', -3.631)]",nan,Zone-A,160.0,33kV,Low,Stable,0.3346,0.33,13
+TX-117,31.93,MEDIUM,112.4,T1,possible T1,0.571,"[('Methane', 10.899), ('DBDS', -4.515), ('Hydrogen', -3.769)]",nan,Zone-A,63.0,11kV,Low,Stable,0.3323,0.67,14
+TX-103,32.92,MEDIUM,108.8,T1,possible T1,0.525,"[('Methane', 10.942), ('DBDS', -4.361), ('Hydrogen', -3.347)]",nan,Zone-A,40.0,66kV,Low,Stable,0.3317,0.67,15
+TX-113,32.27,MEDIUM,111.1,T1,T1,0.627,"[('Methane', 10.894), ('DBDS', -4.43), ('Hydrogen', -3.498)]",nan,Zone-D,100.0,11kV,Low,Stable,0.3246,0.0,16
+TX-102,31.74,MEDIUM,113.1,T1,possible T1,0.562,"[('Methane', 12.136), ('Hydrogen', -3.934), ('Interfacial V', -2.048)]",nan,Zone-A,63.0,33kV,Low,Stable,0.3221,0.33,17
+TX-108,29.0,LOW,123.0,T1,possible T1,0.544,"[('Methane', 7.157), ('DBDS', -4.925), ('Hydrogen', -2.992)]",nan,Zone-B,100.0,132kV,Low,Stable,0.3193,0.67,18

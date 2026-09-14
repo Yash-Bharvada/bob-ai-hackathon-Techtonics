@@ -1,19 +1,19 @@
-asset_id,grid_zone,voltage_kv,mva_rating,install_year,archetype,criticality
-TX-101,Zone-A,11kV,25.0,2008,Stable,Medium
-TX-102,Zone-A,33kV,63.0,2010,Stable,Low
-TX-103,Zone-A,66kV,40.0,1987,Stable,Low
-TX-104,Zone-A,132kV,100.0,2007,Progressive_Thermal,Critical
-TX-105,Zone-B,11kV,100.0,2008,Stable,High
-TX-106,Zone-B,33kV,160.0,1998,Stable,Medium
-TX-107,Zone-B,66kV,25.0,2012,Electrical_Arcing,Critical
-TX-108,Zone-B,132kV,100.0,2004,Stable,Low
-TX-109,Zone-C,11kV,63.0,1998,Stable,Medium
-TX-110,Zone-C,33kV,25.0,2001,Stable,High
-TX-111,Zone-C,66kV,160.0,2009,Stable,Low
-TX-112,Zone-C,132kV,25.0,2007,Shock_PD,Critical
-TX-113,Zone-D,11kV,100.0,1995,Stable,Low
-TX-114,Zone-D,33kV,63.0,2011,Stable,Low
-TX-115,Zone-D,66kV,100.0,1990,Intervention_Recovery,Critical
-TX-116,Zone-D,132kV,40.0,1999,Stable,High
-TX-117,Zone-A,11kV,63.0,1989,Stable,Low
-TX-118,Zone-A,33kV,160.0,2007,Stable,Low
+asset_id,substation_name,grid_zone,voltage_kv,mva_rating,install_year,archetype,criticality,customer_count_served
+TX-101,Anand City Civil Hospital Substation,Zone-A,11kV,25.0,2008,Stable,Medium,18500
+TX-102,Zone-A Substation Node,Zone-A,33kV,63.0,2010,Stable,Low,9200
+TX-103,Zone-A Substation Node,Zone-A,66kV,40.0,1987,Stable,Low,7800
+TX-104,Anand Central Transmission Substation,Zone-A,132kV,100.0,2007,Progressive_Thermal,Critical,24500
+TX-105,Vitthal Udyognagar Feeder,Zone-B,11kV,100.0,2008,Stable,High,21000
+TX-106,Zone-B Heavy Manufacturing Substation,Zone-B,33kV,160.0,1998,Stable,Medium,14300
+TX-107,GIDC Industrial Phase-2 Substation,Zone-B,66kV,25.0,2012,Electrical_Arcing,Critical,31000
+TX-108,Zone-B Heavy Manufacturing Substation,Zone-B,132kV,100.0,2004,Stable,Low,11400
+TX-109,Zone-C Industrial Transition Substation,Zone-C,11kV,63.0,1998,Stable,Medium,8900
+TX-110,Borsad Substation,Zone-C,33kV,25.0,2001,Stable,High,12600
+TX-111,Zone-C Industrial Transition Substation,Zone-C,66kV,160.0,2009,Stable,Low,17200
+TX-112,Borsad Industrial Feeder,Zone-C,132kV,25.0,2007,Shock_PD,Critical,19800
+TX-113,Zone-D South Distribution Substation,Zone-D,11kV,100.0,1995,Stable,Low,6700
+TX-114,Zone-D South Distribution Substation,Zone-D,33kV,63.0,2011,Stable,Low,8100
+TX-115,Anand South Bulk Substation,Zone-D,66kV,100.0,1990,Intervention_Recovery,Critical,22000
+TX-116,Anand University Feeder Substation,Zone-D,132kV,40.0,1999,Stable,High,15500
+TX-117,Zone-A Substation Node,Zone-A,11kV,63.0,1989,Stable,Low,5400
+TX-118,Zone-A Substation Node,Zone-A,33kV,160.0,2007,Stable,Low,10200
