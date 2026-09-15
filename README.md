@@ -34,8 +34,8 @@ Power utilities operate thousands of high-value transformers whose sensor data (
 
 **VOLTRA — Grid Risk Advisor** combines two ML models trained on **real Kaggle transformer failure datasets** into a single end-to-end pipeline:
 
-1. **Health Index regression** (R²=0.72, MAE=5.88) — predicts a continuous damage score (0–100) from 14 DGA/electrical features, converted to Remaining Useful Life in days
-2. **DGA Fault Classifier** (accuracy 90.8%, macro F1 0.896) — classifies fault type into 7 IEC 60599 categories: NF, PD, D1, D2, T1, T2, T3
+1. **[Health Index regression](https://www.kaggle.com/code/bharvadayash/health-index)** (R²=0.72, MAE=5.88) — predicts a continuous damage score (0–100) from 14 DGA/electrical features, converted to Remaining Useful Life in days
+2. **[DGA Fault Classifier](https://www.kaggle.com/code/bharvadayash/dga-fault-model)** (accuracy 90.8%, macro F1 0.896) — classifies fault type into 7 IEC 60599 categories: NF, PD, D1, D2, T1, T2, T3
 3. **Composite grid impact ranking** — 5-component weighted formula (HI 35%, RUL 25%, fault severity 20%, MVA 10%, history 10%) with criticality multiplier
 4. **IBM Bob advisory generation** — per-asset plain-English maintenance advisories grounded in real SHAP feature contributions; full deterministic fallback when key is absent
 5. **VOLTRA operator console** — React 19 + TanStack Start full-stack app with 5 pages, live telemetry, ML prediction studio, community incident reporting, and cinematic landing
@@ -70,7 +70,8 @@ The **TX-115 case** is the key demo differentiator: a transformer that peaked at
 | **Auth** | JWT (python-jose), bcrypt, Google OAuth 2.0 |
 | **IBM Technologies** | IBM Bob (Claude claude-3-5-haiku-20241022) |
 | **Other AI** | Groq LPU API (trajectory forecasting), Google Gemini Flash (geospatial search) |
-| **External APIs** | Open-Meteo (real-time weather + thermal stress), kagglehub (Kaggle dataset download) |
+| **External APIs** | [Open-Meteo](https://open-meteo.com/) (real-time weather + thermal stress) |
+| **Kaggle Datasets** | [Health Index — Transformer Failure Analysis](https://www.kaggle.com/code/bharvadayash/health-index) (470 real records · Model 1 training), [DGA Fault Model](https://www.kaggle.com/code/bharvadayash/dga-fault-model) (4,150 real records · Model 2 training) |
 | **Infrastructure** | Docker (multi-stage), Nitro SSR server |
 
 ---
@@ -109,6 +110,8 @@ bob-ai-hackathon-Techtonics/
 │   └── screenshots/
 │
 └── presentation/
+    ├── slides.pdf               ← Official slide deck PDF
+    ├── slides-link.txt          ← Public Google Drive presentation link
     └── SLIDES_CONTENT.md        ← Full 8-slide pitch deck blueprint
 ```
 
@@ -160,7 +163,7 @@ docker run -p 8000:8000 --env-file src/backend/.env voltra
 | Demo Video | [demo/demo-video-link.txt](demo/demo-video-link.txt) |
 | Live Demo | [demo/live-demo-url.txt](demo/live-demo-url.txt) |
 | Screenshots | [demo/screenshots/](demo/screenshots/) |
-| Presentation | [presentation/SLIDES_CONTENT.md](presentation/SLIDES_CONTENT.md) |
+| Presentation | [presentation/slides.pdf](presentation/slides.pdf) · [Google Drive Slides](https://drive.google.com/file/d/1ofH9Uwx8e3LzIzHkyNeI7fxrSgX1BslL/view?usp=sharing) · [presentation/SLIDES_CONTENT.md](presentation/SLIDES_CONTENT.md) |
 
 ---
 
