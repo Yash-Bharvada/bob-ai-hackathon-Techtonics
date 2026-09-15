@@ -47,12 +47,16 @@ _mongo_client: MongoClient | None = None
 
 
 def _get_db():
-    """Return the 'voltra' database, opening the client once per process."""
+    """Return the 'voltra' database, opening the client once per process with certifi TLS."""
     global _mongo_client
     if _mongo_client is None:
         if not MONGODB_URI:
             raise RuntimeError("MONGODB_URI is not set — check src/backend/.env")
-        _mongo_client = MongoClient(MONGODB_URI)
+        try:
+            import certifi
+            _mongo_client = MongoClient(MONGODB_URI, tlsCAFile=certifi.where(), serverSelectionTimeoutMS=10000)
+        except Exception:
+            _mongo_client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=10000)
     return _mongo_client["voltra"]
 
 
@@ -63,6 +67,39 @@ def _users():
     # Idempotent — safe to call multiple times
     col.create_index([("email", ASCENDING)], unique=True, background=True)
     return col
+
+
+def _sessions():
+    """Return the 'sessions' collection for safe multi-user session tracking and auditing."""
+    db = _get_db()
+    col = db["sessions"]
+    col.create_index([("userId", ASCENDING)], background=True)
+    col.create_index([("email", ASCENDING)], background=True)
+    col.create_index([("createdAt", ASCENDING)], background=True)
+    return col
+
+
+def _record_session(user_id: str, email: str, token: str, request: Request | None = None) -> str:
+    """Safely log active operator session in MongoDB Atlas."""
+    client_ip = request.client.host if (request and request.client) else "127.0.0.1"
+    user_agent = request.headers.get("user-agent", "unknown") if request else "unknown"
+    token_sig_hash = bcrypt.hashpw(token[-16:].encode(), bcrypt.gensalt()).decode()
+    session_doc = {
+        "userId": user_id,
+        "email": email,
+        "tokenSigHash": token_sig_hash,
+        "ipAddress": client_ip,
+        "userAgent": user_agent,
+        "createdAt": datetime.now(timezone.utc),
+        "lastActiveAt": datetime.now(timezone.utc),
+        "active": True,
+    }
+    try:
+        res = _sessions().insert_one(session_doc)
+        return str(res.inserted_id)
+    except Exception as e:
+        print(f"[Auth] Session audit write error: {e}")
+        return ""
 
 
 # ── JWT helpers ───────────────────────────────────────────────────────────────
@@ -165,7 +202,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 # ── POST /api/auth/register ───────────────────────────────────────────────────
 
 @router.post("/register", status_code=201)
-def register(body: RegisterRequest):
+def register(body: RegisterRequest, request: Request):
     """
     Create a new operator account.
     Password is bcrypt-hashed before storage — never stored in plaintext.
@@ -198,6 +235,7 @@ def register(body: RegisterRequest):
     doc["_id"] = result.inserted_id
     profile = _doc_to_profile(doc)
     token = _create_token({"sub": profile["email"], "id": profile["id"]})
+    _record_session(profile["id"], profile["email"], token, request)
 
     return {"token": token, "profile": profile}
 
@@ -205,7 +243,7 @@ def register(body: RegisterRequest):
 # ── POST /api/auth/login ──────────────────────────────────────────────────────
 
 @router.post("/login")
-def login(body: LoginRequest):
+def login(body: LoginRequest, request: Request):
     """
     Verify email + password and return a JWT.
     Works for both 'credentials' and 'google' accounts that later set a password.
@@ -228,6 +266,7 @@ def login(body: LoginRequest):
 
     profile = _doc_to_profile(doc)
     token = _create_token({"sub": profile["email"], "id": profile["id"]})
+    _record_session(profile["id"], profile["email"], token, request)
 
     return {"token": token, "profile": profile}
 
@@ -253,12 +292,21 @@ def get_me(request: Request):
 # ── POST /api/auth/logout ─────────────────────────────────────────────────────
 
 @router.post("/logout")
-def logout():
+def logout(request: Request):
     """
-    JWT is stateless — actual invalidation is handled on the client by
-    deleting the token from localStorage. This endpoint exists so the
-    frontend can call it for future server-side session tracking.
+    Invalidate active session in MongoDB sessions collection and confirm sign out.
     """
+    try:
+        token = _bearer_token(request)
+        claims = _decode_token(token)
+        email = claims.get("sub")
+        if email:
+            _sessions().update_many(
+                {"email": email, "active": True},
+                {"$set": {"active": False, "loggedOutAt": datetime.now(timezone.utc)}}
+            )
+    except Exception:
+        pass
     return {"status": "ok", "message": "Signed out."}
 
 
@@ -366,6 +414,7 @@ def google_callback(request: Request, code: str = "", state: str = "", error: st
     doc = _users().find_one({"email": email})
     profile = _doc_to_profile(doc)
     voltra_token = _create_token({"sub": email, "id": profile["id"]})
+    _record_session(profile["id"], email, voltra_token, request)
 
     # Redirect to frontend — SPA picks up token from query param and saves to localStorage
     redirect_url = (

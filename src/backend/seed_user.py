@@ -40,7 +40,11 @@ DEMO_USER = {
 
 def seed():
     print("Connecting to MongoDB Atlas...")
-    client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=10000)
+    try:
+        import certifi
+        client = MongoClient(MONGODB_URI, tlsCAFile=certifi.where(), serverSelectionTimeoutMS=10000)
+    except Exception:
+        client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=10000)
 
     # Verify connection
     client.admin.command("ping")
