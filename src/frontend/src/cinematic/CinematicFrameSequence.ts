@@ -137,7 +137,7 @@ export class CinematicFrameSequence {
 
     const firstImg = new Image();
     firstImg.src = firstUrl;
-    firstImg.onload = () => {
+    const handleFirstLoad = () => {
       this.frames[0] = firstImg;
       this.loadedCount++;
       if (this._currentFrame === 0) {
@@ -145,16 +145,26 @@ export class CinematicFrameSequence {
       }
       this.options.onReady?.();
     };
+    if (firstImg.complete) {
+      handleFirstLoad();
+    } else {
+      firstImg.onload = handleFirstLoad;
+    }
 
     const lastImg = new Image();
     lastImg.src = lastUrl;
-    lastImg.onload = () => {
+    const handleLastLoad = () => {
       this.frames[this.metadata.lastIndex] = lastImg;
       this.loadedCount++;
       if (this._currentFrame === this.metadata.lastIndex) {
         this.renderFrame(this.metadata.lastIndex);
       }
     };
+    if (lastImg.complete) {
+      handleLastLoad();
+    } else {
+      lastImg.onload = handleLastLoad;
+    }
 
     // Begin background preloading of full sequence
     this.startBackgroundPreload();

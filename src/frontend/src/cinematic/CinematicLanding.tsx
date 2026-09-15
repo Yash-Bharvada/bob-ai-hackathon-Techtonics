@@ -1,143 +1,326 @@
-/**
- * CinematicLanding.tsx
- *
- * Full-screen cinematic landing layer rendered above the React app.
- * SSR-safe: cinematic modules are loaded via dynamic import() inside useEffect,
- * so the SSR bundle never evaluates any browser-only code (HTMLElement, canvas,
- * ResizeObserver, localStorage, customElements, document, window).
- *
- * Flow:
- *  1. Server renders an empty shell div — no browser APIs touched.
- *  2. Client hydrates, useEffect fires, dynamically imports cinematic classes.
- *  3. Cinematic animation boots, frame sequence plays, slice overlay works.
- *  4. "Explore Platform" CTA fires voltra:enter-platform → onEnter() called
- *     → cinematic unmounts, dashboard fades in.
- */
-
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import type { Theme } from "./types.ts";
 
 interface CinematicLandingProps {
-  onEnter: () => void;
+  children: React.ReactNode;
+  isHomePage?: boolean;
 }
 
-export function CinematicLanding({ onEnter }: CinematicLandingProps) {
+const HOUSE_POINTS =
+  "0,1440 0,1160 176,1160 176,1070 415,1070 415,792 360,792 335,772 333,760 806,636 806,488 954,488 954,574 1635,422 1638,432 1634,462 1629,482 1619,502 1609,522 1598,542 1588,562 1583,582 1583,694 2283,694 2305,712 2280,718 2315,737 2277,749 2272,1070 2285,1070 2285,1160 2560,1160 2560,1440";
+
+const LETTERS = [
+  { char: "V", x: 185, y: 615 },
+  { char: "O", x: 600, y: 615 },
+  { char: "L", x: 1005, y: 615 },
+  { char: "T", x: 1250, y: 615 },
+  { char: "R", x: 1580, y: 615 },
+  { char: "A", x: 1960, y: 615 },
+];
+
+export function CinematicLanding({ children, isHomePage = true }: CinematicLandingProps) {
+  if (!isHomePage) {
+    return <>{children}</>;
+  }
+
   const [theme, setTheme] = useState<Theme>("light");
+  const [isSliceOpen, setIsSliceOpen] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
 
-  const shellRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const exploreRef = useRef<HTMLButtonElement>(null);
-  const onEnterRef = useRef(onEnter);
-  onEnterRef.current = onEnter;
+  const sliceOverlayRef = useRef<HTMLDivElement>(null);
+  const sliceContentRef = useRef<HTMLDivElement>(null);
+  const cinematicRef = useRef<any>(null);
+  const leaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const updateTheme = useCallback((newTheme: Theme) => {
+    setTheme(newTheme);
+    if (typeof document !== "undefined") {
+      if (newTheme === "dark") {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+    }
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("cinematic-theme", newTheme);
+    }
+  }, []);
+
+  const handleOpenSlice = useCallback(() => {
+    if (leaveTimerRef.current) {
+      clearTimeout(leaveTimerRef.current);
+      leaveTimerRef.current = null;
+    }
+    setIsLeaving(false);
+    setIsSliceOpen(true);
+  }, []);
+
+  const handleCloseSlice = useCallback(() => {
+    setIsLeaving(true);
+    setIsSliceOpen(false);
+    if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current);
+    leaveTimerRef.current = setTimeout(() => {
+      setIsLeaving(false);
+    }, 850);
+  }, []);
+
+  const handleToggleTheme = useCallback(() => {
+    if (cinematicRef.current) {
+      const nextTheme = cinematicRef.current.toggleTheme();
+      updateTheme(nextTheme);
+    } else {
+      updateTheme(theme === "dark" ? "light" : "dark");
+    }
+  }, [theme, updateTheme]);
+
+  // Initialize interactive frame player on client
   useEffect(() => {
-    // Dynamic imports — SSR never reaches this code path
-    Promise.all([
-      import("./CinematicThemeTransition.ts"),
-      import("./VoltraDepthText.ts"),
-      import("./VoltraSliceSlide.ts"),
-    ]).then(([{ CinematicThemeTransition }, { VoltraDepthText }, { VoltraSliceSlide }]) => {
-      const shell = shellRef.current;
-      const container = containerRef.current;
-      if (!shell || !container) return;
-
-      // Read saved theme (safe — we are on the client)
-      const saved = (localStorage.getItem("cinematic-theme") ||
+    const savedTheme = (typeof localStorage !== "undefined" &&
+      (localStorage.getItem("cinematic-theme") ||
         localStorage.getItem("blackout-theme") ||
-        "light") as Theme;
-      setTheme(saved);
+        "light")) as Theme;
 
-      // Boot cinematic modules
-      const cinematic = new CinematicThemeTransition(container, {
-        initialTheme: saved,
-        fit: "cover",
-        storageKey: "cinematic-theme",
-        onThemeSettled: (t: Theme) => {
-          setTheme(t);
-          depthText.setTheme(t);
-          sliceSlide.setTheme(t);
-        },
-      });
+    updateTheme(savedTheme);
 
-      const depthText = new VoltraDepthText(container);
-      depthText.setTheme(saved);
+    let isCleanedUp = false;
 
-      const sliceSlide = new VoltraSliceSlide(shell, {
-        sliceCount: 5,
-        onOpen: () => exploreRef.current?.classList.add("explore-hidden"),
-        onClose: () => exploreRef.current?.classList.remove("explore-hidden"),
-      });
-      sliceSlide.setTheme(saved);
+    import("./CinematicThemeTransition.ts")
+      .then(({ CinematicThemeTransition }) => {
+        if (isCleanedUp || !containerRef.current) return;
 
-      // Theme toggle wired via event
-      const themeBtn = shell.querySelector<HTMLButtonElement>(".theme-toggle-btn");
-      if (themeBtn) {
-        themeBtn.addEventListener("click", () => {
-          const next = cinematic.toggleTheme();
-          setTheme(next);
-          depthText.setTheme(next);
-          sliceSlide.setTheme(next);
+        const cinematic = new CinematicThemeTransition(containerRef.current, {
+          initialTheme: savedTheme,
+          fit: "cover",
+          storageKey: "cinematic-theme",
+          onFrameChange: (state) => {
+            if (state.targetTheme !== theme) {
+              setTheme(state.targetTheme);
+            }
+          },
+          onThemeSettled: (settledTheme: Theme) => {
+            updateTheme(settledTheme);
+          },
         });
-      }
 
-      // Explore pill
-      const exploreBtn = exploreRef.current;
-      if (exploreBtn) {
-        exploreBtn.addEventListener("click", () => sliceSlide.open());
-      }
+        cinematicRef.current = cinematic;
+      })
+      .catch((err) => {
+        console.error("[Cinematic] Failed to load frame transition engine:", err);
+      });
 
-      // Enter-platform event (fired by VoltraSliceSlide CTA)
-      const handleEnter = () => onEnterRef.current();
-      window.addEventListener("voltra:enter-platform", handleEnter);
-
-      // Store cleanup on the shell element for the return callback
-      (shell as HTMLDivElement & { _cinematicCleanup?: () => void })._cinematicCleanup = () => {
-        window.removeEventListener("voltra:enter-platform", handleEnter);
-        cinematic.destroy();
-        depthText.destroy();
-        sliceSlide.destroy();
-      };
-    });
-
-    // Capture ref value at effect time for safe cleanup
-    const shellEl = shellRef.current as
-      (HTMLDivElement & { _cinematicCleanup?: () => void }) | null;
     return () => {
-      shellEl?._cinematicCleanup?.();
+      isCleanedUp = true;
+      if (cinematicRef.current) {
+        cinematicRef.current.destroy();
+        cinematicRef.current = null;
+      }
     };
-  }, []); // runs once on client mount only
+  }, [updateTheme]);
+
+  // Window wheel / touch scroll listener for slice transition
+  useEffect(() => {
+    let wheelAcc = 0;
+    let wheelTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (!isSliceOpen && e.deltaY > 20) {
+        wheelAcc += e.deltaY;
+        if (wheelAcc > 40) {
+          handleOpenSlice();
+          wheelAcc = 0;
+        }
+        if (wheelTimer) clearTimeout(wheelTimer);
+        wheelTimer = setTimeout(() => {
+          wheelAcc = 0;
+        }, 350);
+      } else if (isSliceOpen && e.deltaY < -30) {
+        const content = sliceContentRef.current;
+        if (content && content.scrollTop <= 5) {
+          handleCloseSlice();
+        }
+      }
+    };
+
+    let touchStartY = 0;
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0].clientY;
+    };
+    const handleTouchEnd = (e: TouchEvent) => {
+      const delta = touchStartY - e.changedTouches[0].clientY;
+      if (!isSliceOpen && delta > 40) {
+        handleOpenSlice();
+      } else if (isSliceOpen && delta < -40) {
+        const content = sliceContentRef.current;
+        if (content && content.scrollTop <= 5) {
+          handleCloseSlice();
+        }
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isSliceOpen) {
+        handleCloseSlice();
+      }
+    };
+
+    window.addEventListener("wheel", handleWheel, { passive: true });
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd, { passive: true });
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("wheel", handleWheel);
+      window.removeEventListener("touchstart", handleTouchStart);
+      window.removeEventListener("touchend", handleTouchEnd);
+      window.removeEventListener("keydown", handleKeyDown);
+      if (wheelTimer) clearTimeout(wheelTimer);
+    };
+  }, [isSliceOpen, handleOpenSlice, handleCloseSlice]);
 
   return (
     <div
-      ref={shellRef}
-      id="cinematic-landing"
-      style={{ position: "fixed", inset: 0, zIndex: 9000 }}
+      id="cinematicLandingLayer"
+      className={`cinematic-landing-root ${isSliceOpen ? "slice-is-active" : ""}`}
     >
-      {/* Canvas target for CinematicThemeTransition */}
-      <div ref={containerRef} id="cinematicContainer" className="fullscreen-cinematic" />
+      {/* 3D Canvas + SVG Depth Mask Typography */}
+      <div
+        ref={containerRef}
+        id="cinematicContainer"
+        className="fullscreen-cinematic"
+        aria-hidden={isSliceOpen}
+      >
+        {/* Instant first-frame fallback image so screen is never black */}
+        <img
+          src={theme === "dark" ? "/assets/cinematic/last-frame.webp" : "/assets/cinematic/first-frame.webp"}
+          alt="VOLTRA Architectural Scene"
+          className="cinematic-fallback-frame"
+        />
 
-      {/* Floating theme toggle */}
-      <div className="theme-controls">
-        <button
-          className="theme-toggle-btn"
-          aria-label={theme === "dark" ? "Switch to Day Mode" : "Switch to Night Mode"}
+        {/* Crisp SVG Depth Typography with Roofline Occlusion Mask */}
+        <svg
+          viewBox="0 0 2560 1440"
+          preserveAspectRatio="xMidYMid slice"
+          className={`voltra-depth-svg voltra-theme-${theme}`}
+          aria-hidden="true"
         >
-          <span className="theme-icon">{theme === "dark" ? "☀" : "☾"}</span>
-          <span className="theme-label">{theme === "dark" ? "Day Mode" : "Night Mode"}</span>
+          <defs>
+            <mask id="houseOcclusionMask">
+              <rect x="0" y="0" width="2560" height="1440" fill="#ffffff" />
+              <polygon points={HOUSE_POINTS} fill="#000000" />
+            </mask>
+          </defs>
+
+          {/* Subtitles */}
+          <g className="voltra-subtitles">
+            <text x="185" y="208" textAnchor="start" className="voltra-subtitle-text" fontSize="28">
+              <tspan x="185" dy="0">Smarter predictions.</tspan>
+              <tspan x="185" dy="36">More reliable power.</tspan>
+            </text>
+            <text x="1250" y="208" textAnchor="middle" className="voltra-subtitle-text" fontSize="28">
+              <tspan x="1250" dy="0">AI-powered</tspan>
+              <tspan x="1250" dy="36">grid intelligence.</tspan>
+            </text>
+            <text x="2310" y="208" textAnchor="end" className="voltra-subtitle-text" fontSize="28">
+              <tspan x="2310" dy="0">A more stable</tspan>
+              <tspan x="2310" dy="36">tomorrow.</tspan>
+            </text>
+          </g>
+
+          {/* VOLTRA Masked Typography */}
+          <g className="voltra-brand-group" mask="url(#houseOcclusionMask)">
+            {LETTERS.map((item) => (
+              <text
+                key={item.char + item.x}
+                x={item.x}
+                y={item.y}
+                className="voltra-letter"
+                fontFamily="'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+                fontWeight="800"
+                fontSize="410"
+              >
+                {item.char}
+              </text>
+            ))}
+          </g>
+        </svg>
+      </div>
+
+      {/* Minimal Glassmorphic Day/Night Theme Controls */}
+      <div className={`theme-controls ${isSliceOpen ? "theme-controls-slice-open" : ""}`}>
+        <button
+          id="themeToggle"
+          className="theme-toggle-btn group"
+          aria-label={theme === "dark" ? "Switch to Day Mode" : "Switch to Night Mode"}
+          title={theme === "dark" ? "Switch to Day Mode" : "Switch to Night Mode"}
+          onClick={handleToggleTheme}
+        >
+          {theme === "dark" ? (
+            <svg
+              className="theme-svg transition-transform duration-300 group-hover:rotate-45"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+            </svg>
+          ) : (
+            <svg
+              className="theme-svg transition-transform duration-300 group-hover:-rotate-12"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+            </svg>
+          )}
         </button>
       </div>
 
-      {/* Bottom explore pill */}
-      <div className="explore-indicator-container">
-        <button
-          ref={exploreRef}
-          className="explore-trigger-btn"
-          aria-label="Explore VOLTRA Grid Intelligence"
-        >
-          <span className="explore-pulse" />
-          <span className="explore-text">Explore Grid Intelligence</span>
-          <span className="explore-arrow">↓</span>
-        </button>
+      {/* ================================================================
+          VOLTRA "SLICE & DICER" APPROACHING SYSTEM
+          Contains 5 vertical sliced strips.
+          DIRECTLY inside this sliced dice page, the React frontend starts!
+         ================================================================ */}
+      <div
+        ref={sliceOverlayRef}
+        id="voltraSliceOverlay"
+        className={`voltra-slice-overlay slice-theme-${theme} ${
+          isSliceOpen ? "slice-approaching" : isLeaving ? "slice-leaving" : ""
+        }`}
+        role="region"
+        aria-label="VOLTRA Grid Intelligence Platform"
+      >
+        {/* 5 Vertical Slices */}
+        <div className="voltra-slice-strips">
+          <div className="slice-strip strip-1" />
+          <div className="slice-strip strip-2" />
+          <div className="slice-strip strip-3" />
+          <div className="slice-strip strip-4" />
+          <div className="slice-strip strip-5" />
+        </div>
+
+        {/* Foreground Content Layer — DIRECTLY STARTS THE FRONTEND! */}
+        <div ref={sliceContentRef} className="voltra-slice-content">
+
+          {/* ================================================================
+              DIRECTLY THE SECOND IMAGE PART: The React Frontend Starts Here!
+             ================================================================ */}
+          <div id="voltra-frontend-app" className="voltra-frontend-content-boundary">
+            {children}
+          </div>
+        </div>
       </div>
     </div>
   );
