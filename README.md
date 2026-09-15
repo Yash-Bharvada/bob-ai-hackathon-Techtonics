@@ -109,6 +109,8 @@ bob-ai-hackathon-Techtonics/
 │   └── screenshots/
 │
 └── presentation/
+    ├── slides.pdf               ← Official slide deck PDF
+    ├── slides-link.txt          ← Public Google Drive presentation link
     └── SLIDES_CONTENT.md        ← Full 8-slide pitch deck blueprint
 ```
 
@@ -160,7 +162,7 @@ docker run -p 8000:8000 --env-file src/backend/.env voltra
 | Demo Video | [demo/demo-video-link.txt](demo/demo-video-link.txt) |
 | Live Demo | [demo/live-demo-url.txt](demo/live-demo-url.txt) |
 | Screenshots | [demo/screenshots/](demo/screenshots/) |
-| Presentation | [presentation/SLIDES_CONTENT.md](presentation/SLIDES_CONTENT.md) |
+| Presentation | [presentation/slides.pdf](presentation/slides.pdf) · [Google Drive Slides](https://drive.google.com/file/d/1ofH9Uwx8e3LzIzHkyNeI7fxrSgX1BslL/view?usp=sharing) · [presentation/SLIDES_CONTENT.md](presentation/SLIDES_CONTENT.md) |
 
 ---
 
