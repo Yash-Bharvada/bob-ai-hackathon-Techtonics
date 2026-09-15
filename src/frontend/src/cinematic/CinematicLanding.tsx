@@ -26,7 +26,6 @@ export function CinematicLanding({ children, isHomePage = true }: CinematicLandi
   const [theme, setTheme] = useState<Theme>("light");
   const [isSliceOpen, setIsSliceOpen] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
-  const [hasLoadedCanvas, setHasLoadedCanvas] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const sliceOverlayRef = useRef<HTMLDivElement>(null);
@@ -75,13 +74,6 @@ export function CinematicLanding({ children, isHomePage = true }: CinematicLandi
     }
   }, [theme, updateTheme]);
 
-  const handleScrollToPlatform = useCallback(() => {
-    const platformEl = document.getElementById("voltra-frontend-app");
-    if (platformEl && sliceContentRef.current) {
-      platformEl.scrollIntoView({ behavior: "smooth" });
-    }
-  }, []);
-
   // Initialize interactive frame player on client
   useEffect(() => {
     const savedTheme = (typeof localStorage !== "undefined" &&
@@ -112,7 +104,6 @@ export function CinematicLanding({ children, isHomePage = true }: CinematicLandi
         });
 
         cinematicRef.current = cinematic;
-        setHasLoadedCanvas(true);
       })
       .catch((err) => {
         console.error("[Cinematic] Failed to load frame transition engine:", err);
@@ -204,7 +195,6 @@ export function CinematicLanding({ children, isHomePage = true }: CinematicLandi
           src={theme === "dark" ? "/assets/cinematic/last-frame.webp" : "/assets/cinematic/first-frame.webp"}
           alt="VOLTRA Architectural Scene"
           className="cinematic-fallback-frame"
-          style={{ opacity: hasLoadedCanvas ? 0 : 1, transition: "opacity 0.5s ease" }}
         />
 
         {/* Crisp SVG Depth Typography with Roofline Occlusion Mask */}
@@ -256,41 +246,52 @@ export function CinematicLanding({ children, isHomePage = true }: CinematicLandi
         </svg>
       </div>
 
-      {/* Floating Day/Night Theme Controls */}
+      {/* Minimal Glassmorphic Day/Night Theme Controls */}
       <div className={`theme-controls ${isSliceOpen ? "theme-controls-slice-open" : ""}`}>
         <button
           id="themeToggle"
-          className="theme-toggle-btn"
+          className="theme-toggle-btn group"
           aria-label={theme === "dark" ? "Switch to Day Mode" : "Switch to Night Mode"}
+          title={theme === "dark" ? "Switch to Day Mode" : "Switch to Night Mode"}
           onClick={handleToggleTheme}
         >
-          <span className="theme-icon" id="themeIcon">
-            {theme === "dark" ? "☀" : "☾"}
-          </span>
-          <span className="theme-label" id="themeLabel">
-            {theme === "dark" ? "Day Mode" : "Night Mode"}
-          </span>
-        </button>
-      </div>
-
-      {/* Ambient Bottom Explore Pill Trigger */}
-      <div className={`explore-indicator-container ${isSliceOpen ? "explore-hidden" : ""}`}>
-        <button
-          id="exploreTrigger"
-          className="explore-trigger-btn"
-          aria-label="Explore VOLTRA Grid Intelligence"
-          onClick={handleOpenSlice}
-        >
-          <span className="explore-pulse" />
-          <span className="explore-text">Explore Grid Intelligence</span>
-          <span className="explore-arrow">↓</span>
+          {theme === "dark" ? (
+            <svg
+              className="theme-svg transition-transform duration-300 group-hover:rotate-45"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+            </svg>
+          ) : (
+            <svg
+              className="theme-svg transition-transform duration-300 group-hover:-rotate-12"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+            </svg>
+          )}
         </button>
       </div>
 
       {/* ================================================================
           VOLTRA "SLICE & DICER" APPROACHING SYSTEM
-          Contains 5 vertical sliced strips and the foreground editorial flow.
-          Directly inside this sliced dice page, the React frontend begins!
+          Contains 5 vertical sliced strips.
+          DIRECTLY inside this sliced dice page, the React frontend starts!
          ================================================================ */}
       <div
         ref={sliceOverlayRef}
@@ -310,130 +311,11 @@ export function CinematicLanding({ children, isHomePage = true }: CinematicLandi
           <div className="slice-strip strip-5" />
         </div>
 
-        {/* Foreground Content Layer — Scrollable */}
+        {/* Foreground Content Layer — DIRECTLY STARTS THE FRONTEND! */}
         <div ref={sliceContentRef} className="voltra-slice-content">
-          {/* Navigation Bar inside Slice */}
-          <nav className="slice-nav">
-            <div className="slice-nav-brand">
-              <span className="slice-nav-pulse" />
-              <span className="slice-nav-wordmark">VOLTRA</span>
-            </div>
-            <button
-              className="slice-close-btn"
-              id="sliceCloseBtn"
-              onClick={handleCloseSlice}
-              aria-label="Return to 3D Cinematic View"
-            >
-              <span className="slice-close-label">Return to 3D View</span>
-              <span className="slice-close-x" aria-hidden="true">
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path
-                    d="M1 1l10 10M11 1L1 11"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </span>
-            </button>
-          </nav>
-
-          {/* Sliced Diced Editorial Header */}
-          <div className="slice-body">
-            {/* Left Column: Editorial */}
-            <section className="slice-editorial">
-              <div className="slice-kicker">
-                <span className="slice-kicker-line" />
-                <span className="slice-kicker-text">AUTONOMOUS POWER INTELLIGENCE</span>
-              </div>
-
-              <h1 className="slice-headline">
-                The Grid,<br />
-                <span className="slice-headline-accent">Reimagined.</span>
-              </h1>
-
-              <p className="slice-lead">
-                VOLTRA unites architectural solar intelligence with AI grid orchestration.
-                Continuous power — day, sunset, and night — through real-time foresight
-                and zero-touch autonomous dispatch.
-              </p>
-
-              {/* Horizontal Stats Bar */}
-              <div className="slice-stats-bar">
-                <div className="slice-stat">
-                  <span className="slice-stat-value">99.99<small>%</small></span>
-                  <span className="slice-stat-name">Grid Uptime</span>
-                </div>
-                <div className="slice-stat-sep" />
-                <div className="slice-stat">
-                  <span className="slice-stat-value">4.8<small>GW</small></span>
-                  <span className="slice-stat-name">Clean Dispatch</span>
-                </div>
-                <div className="slice-stat-sep" />
-                <div className="slice-stat">
-                  <span className="slice-stat-value">12<small>ms</small></span>
-                  <span className="slice-stat-name">Response</span>
-                </div>
-                <div className="slice-stat-sep" />
-                <div className="slice-stat">
-                  <span className="slice-stat-value">100<small>%</small></span>
-                  <span className="slice-stat-name">Autonomous</span>
-                </div>
-              </div>
-
-              {/* CTA Row */}
-              <div className="slice-cta-row">
-                <button
-                  className="slice-cta-primary"
-                  id="sliceCtaBtn"
-                  onClick={handleScrollToPlatform}
-                >
-                  Explore Platform
-                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden="true">
-                    <path
-                      d="M2.5 7.5h10m-4-4 4 4-4 4"
-                      stroke="currentColor"
-                      strokeWidth="1.7"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </button>
-                <div className="slice-live-badge">
-                  <span className="slice-live-dot" />
-                  System Live
-                </div>
-              </div>
-            </section>
-
-            {/* Right Column: Capability Cards */}
-            <aside className="slice-cards-col">
-              <div className="slice-capability-card">
-                <div className="slice-cap-num">01</div>
-                <h3 className="slice-cap-title">Predictive Dispatch</h3>
-                <p className="slice-cap-body">
-                  ML forecasting pre-charges buffers 48 hrs ahead of peak tariff surges across the nodal network.
-                </p>
-              </div>
-              <div className="slice-capability-card">
-                <div className="slice-cap-num">02</div>
-                <h3 className="slice-cap-title">Sub-Cycle Islanding</h3>
-                <p className="slice-cap-body">
-                  Semiconductor switching islands facilities during blackouts — zero voltage sag, zero interruption.
-                </p>
-              </div>
-              <div className="slice-capability-card">
-                <div className="slice-cap-num">03</div>
-                <h3 className="slice-cap-title">Decarbonized Arbitrage</h3>
-                <p className="slice-cap-body">
-                  Maximises clean solar harvest with automated carbon-index routing into transmission hubs.
-                </p>
-              </div>
-            </aside>
-          </div>
 
           {/* ================================================================
-              DIRECTLY IN THAT SLICED DICED PAGE: The React Frontend Starts Here!
+              DIRECTLY THE SECOND IMAGE PART: The React Frontend Starts Here!
              ================================================================ */}
           <div id="voltra-frontend-app" className="voltra-frontend-content-boundary">
             {children}

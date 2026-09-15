@@ -73,40 +73,40 @@ export class VoltraSliceSlide {
         <section class="slice-editorial">
           <div class="slice-kicker">
             <span class="slice-kicker-line"></span>
-            <span class="slice-kicker-text">AUTONOMOUS POWER INTELLIGENCE</span>
+            <span class="slice-kicker-text">PREDICTIVE GRID INTELLIGENCE · TEAM TECHTONICS</span>
           </div>
 
           <h1 class="slice-headline">
             The Grid,<br/>
-            <span class="slice-headline-accent">Reimagined.</span>
+            <span class="slice-headline-accent">Protected.</span>
           </h1>
 
           <p class="slice-lead">
-            VOLTRA unites architectural solar intelligence with AI grid orchestration.
-            Continuous power — day, sunset, and night — through real-time foresight
-            and zero-touch autonomous dispatch.
+            VOLTRA combines two machine learning models trained on Kaggle transformer datasets —
+            Health Index regression (R²=0.72) and DGA Fault classification (90.8% accuracy) —
+            with IBM Bob plain-English advisories to turn catastrophic failures into scheduled interventions.
           </p>
 
           <!-- Horizontal Stats Bar -->
           <div class="slice-stats-bar">
             <div class="slice-stat">
-              <span class="slice-stat-value">99.99<small>%</small></span>
-              <span class="slice-stat-name">Grid Uptime</span>
+              <span class="slice-stat-value">90.8<small>%</small></span>
+              <span class="slice-stat-name">DGA Accuracy</span>
             </div>
             <div class="slice-stat-sep"></div>
             <div class="slice-stat">
-              <span class="slice-stat-value">4.8<small>GW</small></span>
-              <span class="slice-stat-name">Clean Dispatch</span>
+              <span class="slice-stat-value">0.72<small>R²</small></span>
+              <span class="slice-stat-name">Health Index</span>
             </div>
             <div class="slice-stat-sep"></div>
             <div class="slice-stat">
-              <span class="slice-stat-value">12<small>ms</small></span>
-              <span class="slice-stat-name">Response</span>
+              <span class="slice-stat-value">+89<small>d</small></span>
+              <span class="slice-stat-name">TX-115 Saved</span>
             </div>
             <div class="slice-stat-sep"></div>
             <div class="slice-stat">
-              <span class="slice-stat-value">100<small>%</small></span>
-              <span class="slice-stat-name">Autonomous</span>
+              <span class="slice-stat-value">18</span>
+              <span class="slice-stat-name">Fleet Assets</span>
             </div>
           </div>
 
@@ -118,7 +118,7 @@ export class VoltraSliceSlide {
             </button>
             <div class="slice-live-badge">
               <span class="slice-live-dot"></span>
-              System Live
+              FastAPI :8000 Ready
             </div>
           </div>
         </section>
@@ -127,26 +127,26 @@ export class VoltraSliceSlide {
         <aside class="slice-cards-col">
           <div class="slice-capability-card">
             <div class="slice-cap-num">01</div>
-            <h3 class="slice-cap-title">Predictive Dispatch</h3>
-            <p class="slice-cap-body">ML forecasting pre-charges buffers 48 hrs ahead of peak tariff surges across the nodal network.</p>
+            <h3 class="slice-cap-title">Dual-Model ML Pipeline</h3>
+            <p class="slice-cap-body">Random Forest Health Index regression (MAE=5.88) paired with 7-class IEC 60599 DGA fault classification.</p>
           </div>
           <div class="slice-capability-card">
             <div class="slice-cap-num">02</div>
-            <h3 class="slice-cap-title">Sub-Cycle Islanding</h3>
-            <p class="slice-cap-body">Semiconductor switching islands facilities during blackouts — zero voltage sag, zero interruption.</p>
+            <h3 class="slice-cap-title">Intervention Tracking</h3>
+            <p class="slice-cap-body">Tracks degradation trajectories and validates post-maintenance recovery, as proven on TX-115 (+89 days).</p>
           </div>
           <div class="slice-capability-card">
             <div class="slice-cap-num">03</div>
-            <h3 class="slice-cap-title">Decarbonized Arbitrage</h3>
-            <p class="slice-cap-body">Maximises clean solar harvest with automated carbon-index routing into transmission hubs.</p>
+            <h3 class="slice-cap-title">IBM Bob Advisories</h3>
+            <p class="slice-cap-body">Generates actionable plain-English operator advice grounded in SHAP feature contributions and sensor readings.</p>
           </div>
         </aside>
       </div>
 
       <!-- Footer Strip -->
       <footer class="slice-footer">
-        <span class="slice-footer-copy">© VOLTRA Intelligence Systems</span>
-        <span class="slice-footer-tagline">Powering the architecture of tomorrow.</span>
+        <span class="slice-footer-copy">© VOLTRA Intelligence Systems · Techtonics</span>
+        <span class="slice-footer-tagline">Predict before equipment failure.</span>
         <span class="slice-footer-scroll-hint">Scroll up to return ↑</span>
       </footer>
     `;

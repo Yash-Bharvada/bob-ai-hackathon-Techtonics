@@ -215,7 +215,7 @@ function PredictionStudioPage() {
       <div className="flex flex-col gap-4 border-b border-border/50 pb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-muted-foreground">
-            <span>VOLTRA Neural Sandbox</span>
+            <span>VOLTRA Risk Studio</span>
             <span>/</span>
             <span className="text-foreground font-semibold">Dual ML Scenario Studio</span>
           </div>
@@ -326,24 +326,24 @@ function PredictionStudioPage() {
               <select
                 value={selectedAssetId}
                 onChange={(e) => setSelectedAssetId(e.target.value)}
-                className="w-full rounded-xl border border-border/70 bg-surface px-3 py-2 text-xs font-semibold text-foreground outline-none"
+                className="w-full rounded-xl border border-border/80 bg-background px-3.5 py-2.5 text-xs font-semibold text-foreground outline-none shadow-sm focus:border-primary/60 focus:ring-2 focus:ring-primary/10 transition-all cursor-pointer"
               >
                 {initialGridAssets.map((asset) => (
-                  <option key={asset.id} value={asset.id}>
+                  <option key={asset.id} value={asset.id} className="bg-background text-foreground">
                     {asset.id} — {asset.name}
                   </option>
                 ))}
               </select>
             </div>
 
-            <div className="mt-3 flex items-center justify-between rounded-xl bg-surface/80 p-2.5 text-xs font-mono text-muted-foreground border border-border/40">
+            <div className="mt-3 flex items-center justify-between rounded-xl bg-muted/40 p-3 text-xs font-mono text-muted-foreground border border-border/60">
               <span>Substation: <strong className="text-foreground">{targetAsset.substation}</strong></span>
               <span>Capacity: <strong className="text-foreground">{targetAsset.ratedCapacityMw} MVA</strong></span>
             </div>
           </div>
 
           {/* Interactive Sliders Console */}
-          <div className="rounded-3xl border border-border/60 bg-card p-5 sm:p-6 shadow-sm">
+          <div className="rounded-3xl border border-border/80 bg-card p-6 shadow-sm">
             <div className="flex items-center justify-between">
               <h3 className="font-sans text-base font-semibold text-foreground">Stress & Gas Parameters</h3>
               <Sliders className="size-4 text-muted-foreground" />
@@ -354,7 +354,7 @@ function PredictionStudioPage() {
               <div>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-foreground">Operational Load Saturation</span>
-                  <span className="font-mono text-sm font-bold text-signal">
+                  <span className="font-mono text-sm font-bold text-foreground">
                     {loadFactor}% ({Math.round((targetAsset.ratedCapacityMw * loadFactor) / 100)} MVA)
                   </span>
                 </div>
@@ -364,7 +364,7 @@ function PredictionStudioPage() {
                   max={140}
                   value={loadFactor}
                   onChange={(e) => setLoadFactor(Number(e.target.value))}
-                  className="mt-2 w-full accent-signal cursor-pointer"
+                  className="mt-2 w-full accent-primary cursor-pointer"
                 />
               </div>
 
@@ -372,7 +372,7 @@ function PredictionStudioPage() {
               <div>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-foreground">Ambient Temperature</span>
-                  <span className={`font-mono text-sm font-bold ${ambientTemp > 38 ? "text-danger" : "text-foreground"}`}>
+                  <span className={`font-mono text-sm font-bold ${ambientTemp > 38 ? "text-red-600 dark:text-red-400" : "text-foreground"}`}>
                     {ambientTemp}°C
                   </span>
                 </div>
@@ -382,7 +382,7 @@ function PredictionStudioPage() {
                   max={50}
                   value={ambientTemp}
                   onChange={(e) => setAmbientTemp(Number(e.target.value))}
-                  className="mt-2 w-full accent-signal cursor-pointer"
+                  className="mt-2 w-full accent-primary cursor-pointer"
                 />
               </div>
 
@@ -390,7 +390,7 @@ function PredictionStudioPage() {
               <div className="border-t border-border/40 pt-3">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-foreground">Dissolved Acetylene (C2H2) — Arcing Gas</span>
-                  <span className={`font-mono text-sm font-bold ${acethylenePpm > 100 ? "text-danger" : "text-foreground"}`}>
+                  <span className={`font-mono text-sm font-bold ${acethylenePpm > 100 ? "text-red-600 dark:text-red-400" : "text-foreground"}`}>
                     {acethylenePpm} ppm
                   </span>
                 </div>
@@ -400,12 +400,12 @@ function PredictionStudioPage() {
                   max={3000}
                   value={acethylenePpm}
                   onChange={(e) => setAcethylenePpm(Number(e.target.value))}
-                  className="mt-2 w-full accent-danger cursor-pointer"
+                  className="mt-2 w-full accent-red-600 cursor-pointer"
                 />
-                <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+                <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5 font-mono">
                   <span>0 (Pristine)</span>
                   <span>50 (Threshold)</span>
-                  <span>3,000 ppm (Arcing Alarm)</span>
+                  <span>3,000 ppm (Alarm)</span>
                 </div>
               </div>
 
@@ -413,7 +413,7 @@ function PredictionStudioPage() {
               <div>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-foreground">Dissolved Methane (CH4) — Thermal Gas</span>
-                  <span className={`font-mono text-sm font-bold ${methanePpm > 400 ? "text-warning" : "text-foreground"}`}>
+                  <span className={`font-mono text-sm font-bold ${methanePpm > 400 ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>
                     {methanePpm} ppm
                   </span>
                 </div>
@@ -423,7 +423,7 @@ function PredictionStudioPage() {
                   max={2500}
                   value={methanePpm}
                   onChange={(e) => setMethanePpm(Number(e.target.value))}
-                  className="mt-2 w-full accent-warning cursor-pointer"
+                  className="mt-2 w-full accent-amber-600 cursor-pointer"
                 />
               </div>
 
@@ -431,7 +431,7 @@ function PredictionStudioPage() {
               <div>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-foreground">Oil Dielectric Rigidity</span>
-                  <span className={`font-mono text-sm font-bold ${dielectricRigidity < 35 ? "text-danger" : "text-signal"}`}>
+                  <span className={`font-mono text-sm font-bold ${dielectricRigidity < 35 ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>
                     {dielectricRigidity} kV
                   </span>
                 </div>
@@ -441,7 +441,7 @@ function PredictionStudioPage() {
                   max={70}
                   value={dielectricRigidity}
                   onChange={(e) => setDielectricRigidity(Number(e.target.value))}
-                  className="mt-2 w-full accent-signal cursor-pointer"
+                  className="mt-2 w-full accent-primary cursor-pointer"
                 />
               </div>
             </div>
@@ -449,7 +449,7 @@ function PredictionStudioPage() {
             <Button
               onClick={handleRunPrediction}
               disabled={calculating}
-              className="pill mt-6 w-full bg-signal text-xs font-semibold text-signal-foreground hover:bg-signal/90 shadow-glass"
+              className="pill rounded-full mt-6 w-full bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90 shadow-sm transition-transform hover:scale-[1.01]"
             >
               {calculating ? (
                 <>
@@ -468,29 +468,29 @@ function PredictionStudioPage() {
         <div className="space-y-6 lg:col-span-7">
           {/* Main Forecast Hero Card */}
           <div
-            className={`relative overflow-hidden rounded-3xl border p-6 sm:p-8 transition-all ${
+            className={`relative overflow-hidden rounded-3xl border p-6 sm:p-8 transition-all shadow-sm ${
               displayedHI >= 50
-                ? "border-danger/50 bg-danger/5 ring-1 ring-danger/20"
+                ? "border-red-500/30 bg-red-500/5 ring-1 ring-red-500/20"
                 : displayedHI >= 30
-                ? "border-warning/50 bg-warning/5"
-                : "border-signal/40 bg-signal/5"
+                ? "border-amber-500/30 bg-amber-500/5"
+                : "border-emerald-500/30 bg-emerald-500/5"
             }`}
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <span
-                  className={`pill inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold ${
+                  className={`pill inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
                     displayedHI >= 50
-                      ? "bg-danger text-white animate-pulse"
+                      ? "bg-red-600 text-white"
                       : displayedHI >= 30
-                      ? "bg-warning text-foreground"
-                      : "bg-signal text-signal-foreground"
+                      ? "bg-amber-600 text-white"
+                      : "bg-emerald-600 text-white"
                   }`}
                 >
                   <AlertTriangle className="size-3.5" />
                   {displayedHI >= 50 ? "CRITICAL RISK · TIER 1" : displayedHI >= 30 ? "WATCH TIER" : "NOMINAL CONDITION"}
                 </span>
-                <span className="pill bg-ink text-cream px-2.5 py-1 text-xs font-mono font-bold">
+                <span className="pill rounded-full bg-foreground text-background px-3 py-1 text-xs font-mono font-bold">
                   {selectedAssetId}
                 </span>
               </div>
@@ -498,39 +498,39 @@ function PredictionStudioPage() {
               <div className="text-right">
                 <span className="font-mono text-xs text-muted-foreground">Scoring Source</span>
                 <p className="font-mono text-xs font-bold text-foreground">
-                  {liveResult ? "FastAPI Live :8000" : "Calibrated Pipeline Heuristic"}
+                  {liveResult ? "FastAPI Live :8000 (Trained Models)" : "Real Pipeline Calibrated"}
                 </p>
               </div>
             </div>
 
             {/* Big Headline Output */}
-            <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <div className="rounded-2xl bg-surface/80 p-3.5 border border-border/60">
-                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">Health Index</p>
-                <p className={`mt-1 font-mono text-2xl font-bold ${displayedHI >= 50 ? "text-danger" : displayedHI >= 30 ? "text-warning" : "text-signal"}`}>
+            <div className="mt-6 grid grid-cols-2 gap-3.5 sm:grid-cols-4">
+              <div className="rounded-2xl bg-muted/40 p-4 border border-border/70">
+                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-semibold">Health Index</p>
+                <p className={`mt-1 font-mono text-2xl font-bold ${displayedHI >= 50 ? "text-red-600 dark:text-red-400" : displayedHI >= 30 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
                   {displayedHI.toFixed(1)}
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">Model 1 (R²=0.72)</p>
               </div>
 
-              <div className="rounded-2xl bg-surface/80 p-3.5 border border-border/60">
-                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">Remaining Life</p>
-                <p className={`mt-1 font-mono text-2xl font-bold ${displayedRUL < 40 ? "text-danger" : "text-signal"}`}>
+              <div className="rounded-2xl bg-muted/40 p-4 border border-border/70">
+                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-semibold">Remaining Life</p>
+                <p className={`mt-1 font-mono text-2xl font-bold ${displayedRUL < 40 ? "text-red-600 dark:text-red-400" : "text-foreground"}`}>
                   {displayedRUL.toFixed(1)}d
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">{Math.round(displayedRUL * 24)}h to failure</p>
               </div>
 
-              <div className="rounded-2xl bg-surface/80 p-3.5 border border-border/60">
-                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">Fault Class</p>
+              <div className="rounded-2xl bg-muted/40 p-4 border border-border/70">
+                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-semibold">Fault Class</p>
                 <p className="mt-1 font-mono text-2xl font-bold text-foreground">
                   {displayedFault}
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">Model 2 (90.8% acc)</p>
               </div>
 
-              <div className="rounded-2xl bg-surface/80 p-3.5 border border-border/60">
-                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">Protected Load</p>
+              <div className="rounded-2xl bg-muted/40 p-4 border border-border/70">
+                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-semibold">Protected Load</p>
                 <p className="mt-1 font-mono text-2xl font-bold text-foreground">
                   {targetAsset.ratedCapacityMw} MVA
                 </p>
@@ -539,12 +539,12 @@ function PredictionStudioPage() {
             </div>
 
             {/* AI Summary / Advisory */}
-            <div className="mt-6 rounded-2xl border border-border/60 bg-surface/90 p-4">
-              <div className="flex items-center gap-2 text-xs font-bold text-foreground mb-1">
-                <BrainCircuit className="size-4 text-signal" />
+            <div className="mt-6 rounded-2xl border border-border/80 bg-card p-5 shadow-sm">
+              <div className="flex items-center gap-2 text-xs font-bold text-foreground mb-1.5">
+                <BrainCircuit className="size-4 text-primary" />
                 <span>Executive Operational Assessment</span>
               </div>
-              <p className="text-xs sm:text-sm leading-relaxed text-foreground/90 font-serif italic">
+              <p className="text-xs sm:text-sm leading-relaxed text-foreground/90 font-sans">
                 "{liveResult?.advisory_text || prediction.summary}"
               </p>
             </div>

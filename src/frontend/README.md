@@ -32,7 +32,7 @@ VOLTRA is an enterprise-grade AI-powered grid risk advisory system built for the
 | `/` | Home | Product narrative, TX-115 intervention story |
 | `/grid` | Live Grid | Real-time operator console — 18 transformers, live telemetry, asset inspector |
 | `/predict` | Prediction Studio | Dual ML simulation: DGA sliders, health index, RUL, fault classification |
-| `/technology` | Technology | 4 sensing pillars, 5-stage ML pipeline, NERC CIP compliance |
+| `/technology` | Technology | 4 sensing pillars, 5-stage ML pipeline, empirical benchmarks & limitations |
 
 ---
 

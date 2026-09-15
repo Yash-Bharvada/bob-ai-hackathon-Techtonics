@@ -5,7 +5,7 @@ import { Activity, AlertTriangle, ArrowRight, BrainCircuit, Check, Clock3, Cloud
 import { Button } from "@/components/ui/button";
 import { GridDiagram } from "@/components/GridDiagram";
 import { TX115InterventionBanner } from "@/components/TX115InterventionBanner";
-import homeImage from "@/assets/voltra-home.jpg";
+import homeImage from "@/assets/voltra-home.jpeg";
 import gridImage from "@/assets/voltra-grid.jpg";
 
 export const Route = createFileRoute("/")({
@@ -137,24 +137,56 @@ function Problem() {
 }
 
 function FlowPanel({ title, tone, items, footer }: { title: string; tone: "muted" | "signal"; items: string[]; footer: string }) {
+  const isSignal = tone === "signal";
+
   return (
-    <div className={`rounded-3xl border border-border/60 p-6 ${tone === "signal" ? "bg-signal/20" : "glass"}`}>
+    <div
+      className={`rounded-3xl border p-6 sm:p-7 shadow-sm transition-all ${
+        isSignal
+          ? "border-emerald-500/30 bg-emerald-500/5"
+          : "border-border/80 bg-card"
+      }`}
+    >
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold">{title}</p>
-        <span className={`size-2 rounded-full ${tone === "signal" ? "bg-signal" : "bg-muted-foreground"}`} />
+        <p className="text-sm font-bold text-foreground">{title}</p>
+        <span
+          className={`size-2.5 rounded-full ${
+            isSignal ? "bg-emerald-500" : "bg-muted-foreground"
+          }`}
+        />
       </div>
-      <div className="mt-8 space-y-2">
+      <div className="mt-6 space-y-2.5">
         {items.map((item, i) => (
           <div key={item}>
-            <div className="flex items-center gap-3 rounded-xl bg-surface/70 px-4 py-3 text-sm">
-              <span className="grid size-6 place-items-center rounded-full bg-ink text-[10px] text-cream font-mono">{i + 1}</span>
-              {item}
+            <div
+              className={`flex items-center gap-3.5 rounded-2xl px-4 py-3 text-xs font-semibold ${
+                isSignal
+                  ? "border border-emerald-500/20 bg-card text-foreground shadow-sm"
+                  : "border border-border/60 bg-muted/40 text-foreground"
+              }`}
+            >
+              <span
+                className={`grid size-6 place-items-center rounded-full text-[10px] font-mono font-bold ${
+                  isSignal
+                    ? "bg-emerald-600 text-white"
+                    : "bg-muted text-muted-foreground border border-border"
+                }`}
+              >
+                {i + 1}
+              </span>
+              <span>{item}</span>
             </div>
-            {i < items.length - 1 && <div className="ml-7 h-3 w-px bg-border" />}
+            {i < items.length - 1 && <div className="ml-7 h-2.5 w-px bg-border/70" />}
           </div>
         ))}
       </div>
-      <p className="mt-5 text-xs text-muted-foreground">{footer}</p>
+      <p
+        className={`mt-6 text-xs font-medium ${
+          isSignal ? "text-emerald-700 dark:text-emerald-400 font-semibold" : "text-muted-foreground"
+        }`}
+      >
+        {footer}
+      </p>
     </div>
   );
 }
@@ -256,13 +288,15 @@ function Dashboard() {
             <Metric icon={Clock3} value="89.4d" label="Mean RUL" status="Fleet Wide" />
           </div>
         </div>
-        <div className="glass rounded-3xl p-3">
-          <div className="flex items-center justify-between px-3 py-2">
+        <div className="rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-sm">
+          <div className="flex items-center justify-between px-2 pb-4">
             <div>
-              <p className="text-sm font-semibold">Anand District Regional Sub-Transmission</p>
-              <p className="text-[10px] text-muted-foreground font-mono">LIVE · 5 NODES MAPPED</p>
+              <p className="text-sm font-bold text-foreground">Anand District Regional Sub-Transmission</p>
+              <p className="text-[10px] text-muted-foreground font-mono font-semibold uppercase">LIVE · 5 NODES MAPPED</p>
             </div>
-            <span className="pill bg-signal/20 px-3 py-1 text-[10px] font-medium font-mono">SYNCHRONIZED</span>
+            <span className="pill rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[10px] font-bold font-mono text-emerald-700 dark:text-emerald-400">
+              SYNCHRONIZED
+            </span>
           </div>
           <GridDiagram />
         </div>
@@ -277,7 +311,9 @@ function Metric({ icon: Icon, value, label, status }: { icon: typeof Activity; v
       <Icon className="size-4 text-muted-foreground" />
       <p className="mt-4 text-2xl font-bold font-mono text-foreground">{value}</p>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-2 text-[10px] uppercase font-mono text-foreground">● {status}</p>
+      <p className="mt-2 text-[10px] uppercase font-mono text-foreground flex items-center gap-1.5">
+        <span className="size-1.5 rounded-full bg-signal inline-block" /> {status}
+      </p>
     </div>
   );
 }
