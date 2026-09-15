@@ -71,6 +71,7 @@ The **TX-115 case** is the key demo differentiator: a transformer that peaked at
 | **IBM Technologies** | IBM Bob (Claude claude-3-5-haiku-20241022) |
 | **Other AI** | Groq LPU API (trajectory forecasting), Google Gemini Flash (geospatial search) |
 | **External APIs** | [Open-Meteo](https://open-meteo.com/) (real-time weather + thermal stress) |
+| **Kaggle Datasets** | [Health Index — Transformer Failure Analysis](https://www.kaggle.com/code/bharvadayash/health-index) (470 real records · Model 1 training), [DGA Fault Model](https://www.kaggle.com/code/bharvadayash/dga-fault-model) (4,150 real records · Model 2 training) |
 | **Infrastructure** | Docker (multi-stage), Nitro SSR server |
 
 ---
