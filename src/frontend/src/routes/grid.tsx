@@ -102,6 +102,12 @@ function LiveGridPage() {
   const [displayMode, setDisplayMode] = useState<"grid" | "table">("grid");
   const [apiConnected, setApiConnected] = useState<boolean>(false);
 
+  // Auth state — declared at top so useEffect guards work correctly
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  const isAuthed = mounted && authSession.isAuthenticated();
+  const [guestBannerDismissed, setGuestBannerDismissed] = useState(false);
+
   // Gemini Area Hazard Search State
   const [hazardQuery, setHazardQuery] = useState("GIDC Phase-2 industrial excavation and arcing");
   const [hazardZone, setHazardZone] = useState("GIDC Phase-2");
@@ -138,8 +144,16 @@ function LiveGridPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch live ranked assets and maintenance plan from FastAPI backend
+  // Fetch live ranked assets and maintenance plan from FastAPI backend — ONLY when authenticated
   useEffect(() => {
+    if (!mounted) return; // wait for auth check
+    if (!isAuthed) {
+      // Guests see the curated Day-89 static data — no API calls
+      setAssets(initialGridAssets);
+      setApiConnected(false);
+      return;
+    }
+
     let active = true;
 
     async function loadLiveData() {
@@ -196,7 +210,7 @@ function LiveGridPage() {
       active = false;
       clearInterval(interval);
     };
-  }, []);
+  }, [mounted, isAuthed]);
 
   const filteredAssets = useMemo(() => {
     return assets.filter((asset) => {
@@ -279,13 +293,35 @@ function LiveGridPage() {
     }
   };
 
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-  const isAuthed = mounted && authSession.isAuthenticated();
+  // (mounted/isAuthed declared above near other state)
 
   return (
     <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6">
+      {/* ── Guest Preview Banner ── */}
+      {!isAuthed && !guestBannerDismissed && (
+        <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm shadow-sm">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="shrink-0 size-7 grid place-items-center rounded-full bg-amber-500/20">
+              <Lock className="size-3.5 text-amber-400" />
+            </span>
+            <div className="min-w-0">
+              <p className="font-semibold text-amber-300 text-xs sm:text-sm">Preview Mode — Curated Day-89 Snapshot</p>
+              <p className="text-[11px] text-muted-foreground truncate">Sign in to unlock live FastAPI telemetry, real-time model inference, and Groq AI reports.</p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link to="/login" className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-[11px] font-bold text-black hover:bg-amber-400 transition-colors">
+              <LogIn className="size-3" /> Sign In
+            </Link>
+            <button onClick={() => setGuestBannerDismissed(true)} className="text-muted-foreground hover:text-foreground transition-colors p-1">
+              <X className="size-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* macOS Window Breadcrumb & Realtime Header */}
+
       <div className="flex flex-col gap-5 border-b border-border/60 pb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-muted-foreground">
@@ -1240,6 +1276,28 @@ function LiveGridPage() {
 
       {/* ── Guest Preview Overlay ── */}
       {!isAuthed && <GuestPreviewBanner page="Live Grid Console" />}
+
+      {/* ── Sticky Guest Sign-In Footer ── */}
+      {!isAuthed && (
+        <div className="fixed bottom-0 inset-x-0 z-50 flex items-center justify-between gap-4 border-t border-amber-500/30 bg-background/95 backdrop-blur-md px-4 py-3 sm:px-8 shadow-[0_-4px_24px_rgba(0,0,0,0.4)]">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="shrink-0 size-8 grid place-items-center rounded-full bg-gradient-to-br from-amber-500/30 to-orange-500/20 border border-amber-500/40">
+              <Lock className="size-4 text-amber-400" />
+            </span>
+            <div className="min-w-0">
+              <p className="font-bold text-xs text-foreground sm:text-sm">You are viewing a curated preview</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Sign in to access live telemetry, real-time ML scoring, Groq reports and Gemini hazard search.</p>
+            </div>
+          </div>
+          <Link
+            to="/login"
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2 text-xs font-bold text-black shadow-lg hover:from-amber-400 hover:to-orange-400 transition-all hover:scale-[1.02]"
+          >
+            <LogIn className="size-3.5" />
+            Sign In to Unlock
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
@@ -2011,5 +2069,6 @@ function AssetInspectorModal({
     </div>
   );
 }
+
 
 

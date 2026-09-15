@@ -1,6 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo, useEffect } from "react";
-import { authSession } from "@/lib/authSession";
+import { useState, useMemo } from "react";
 import { IncidentReportModal } from "@/components/IncidentReportModal";
 import {
   Area,
@@ -37,8 +36,6 @@ import {
   Gauge,
   Layers,
   Loader2,
-  Lock,
-  LogIn,
   Radio,
   RefreshCw,
   Send,
@@ -50,12 +47,11 @@ import {
   Thermometer,
   Waves,
   Wrench,
-  X,
   Zap,
   Flag,
 } from "lucide-react";
 
-export const Route = createFileRoute("/predict")({
+export const Route = createFileRoute("/scan")({
   head: () => ({
     meta: [
       { title: "Outage Prediction Studio · VOLTRA" },
@@ -79,34 +75,25 @@ const WEATHER_OPTIONS: { id: WeatherCondition; label: string; icon: string }[] =
 function PredictionStudioPage() {
   const [activeScenarioId, setActiveScenarioId] = useState<string>("tx107-arcing");
   const [selectedAssetId, setSelectedAssetId] = useState<string>("TX-107");
-  // Start at neutral values — will be overwritten immediately by the API fetch below
-  const [loadFactor, setLoadFactor] = useState<number>(65);
-  const [ambientTemp, setAmbientTemp] = useState<number>(30);
-  const [voltageDeviation, setVoltageDeviation] = useState<number>(0);
+  const [loadFactor, setLoadFactor] = useState<number>(88);
+  const [ambientTemp, setAmbientTemp] = useState<number>(36);
+  const [voltageDeviation, setVoltageDeviation] = useState<number>(-4.8);
   const [weatherCondition, setWeatherCondition] = useState<WeatherCondition>("clear");
-  const [equipmentWear, setEquipmentWear] = useState<number>(50);
+  const [equipmentWear, setEquipmentWear] = useState<number>(85);
   const [waveformType, setWaveformType] = useState<"live" | "transient" | "harmonic">("transient");
-  const [sensorLoading, setSensorLoading] = useState(true);
 
-  // DGA gas sliders (ppm) — zero defaults, overwritten by real API data on mount
-  const [acethylenePpm, setAcethylenePpm] = useState<number>(0);
-  const [methanePpm, setMethanePpm] = useState<number>(0);
-  const [hydrogenPpm, setHydrogenPpm] = useState<number>(0);
-  const [dielectricRigidity, setDielectricRigidity] = useState<number>(60);
+  // DGA gas sliders (ppm)
+  const [acethylenePpm, setAcethylenePpm] = useState<number>(2592);
+  const [methanePpm, setMethanePpm] = useState<number>(1850);
+  const [hydrogenPpm, setHydrogenPpm] = useState<number>(3280);
+  const [dielectricRigidity, setDielectricRigidity] = useState<number>(28);
 
   const [calculating, setCalculating] = useState(false);
   const [calculationTrigger, setCalculationTrigger] = useState(0);
   const [liveResult, setLiveResult] = useState<AdhocScoreResponse | null>(null);
-  const [liveTsHistory, setLiveTsHistory] = useState<Array<{ day: number; rulDays: number; loadPct: number }>>([]);
   const [reportModalOpen, setReportModalOpen] = useState(false);
 
-  // Auth state — must be at top before any auth-gated useEffect
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-  const isAuthed = mounted && authSession.isAuthenticated();
-  const [guestBannerDismissed, setGuestBannerDismissed] = useState(false);
-
-  // Compute prediction results based on current sliders (used only as fallback when API offline)
+  // Compute prediction results based on current sliders
   const currentInputs: ScenarioInput = useMemo(
     () => ({
       assetId: selectedAssetId,
@@ -142,86 +129,29 @@ function PredictionStudioPage() {
     return initialGridAssets.find((a) => a.id === selectedAssetId) || initialGridAssets[0];
   }, [selectedAssetId]);
 
-  // Load real telemetry + sensor readings from backend API — ONLY when authenticated
-  useEffect(() => {
-    if (!mounted) return; // wait for auth check
-    if (!isAuthed) {
-      // Guests stay on static calculated predictions from presets — no API calls
-      setSensorLoading(false);
-      setLiveResult(null);
-      return;
-    }
-
-    let active = true;
-    setSensorLoading(true);
-    setLiveResult(null);
-
-    // Fetch asset detail for ML scores + sensor readings to pre-fill sliders
-    techtonicsApi.getAssetDetail(selectedAssetId, false).then((detail) => {
-      if (!active) return;
-      // Cast: both AssetDetailResponse and AdhocScoreResponse share the normalised fields
-      setLiveResult(detail as unknown as AdhocScoreResponse);
-      const readings = detail.sensor_readings;
-      if (readings) {
-        if (readings.Acethylene != null) setAcethylenePpm(Math.round(readings.Acethylene));
-        if (readings.Methane != null) setMethanePpm(Math.round(readings.Methane));
-        if (readings.Hydrogen != null) setHydrogenPpm(Math.round(readings.Hydrogen));
-        if (readings["Dielectric rigidity"] != null) setDielectricRigidity(Math.round(readings["Dielectric rigidity"]));
-        if (readings.load_pct != null) setLoadFactor(Math.round(readings.load_pct));
-        if (readings.top_oil_temp_c != null) setAmbientTemp(Math.max(20, Math.round(readings.top_oil_temp_c - 35)));
-      }
-    }).catch(() => {}).finally(() => { if (active) setSensorLoading(false); });
-
-    // Fetch timeseries for the 90-day RUL trajectory chart
-    techtonicsApi.getTimeseries(selectedAssetId).then((ts) => {
-      if (!active || !ts.timeseries?.length) return;
-      const stride = Math.max(1, Math.floor(ts.timeseries.length / 40));
-      const pts = ts.timeseries
-        .filter((_, i) => i % stride === 0 || i === ts.timeseries.length - 1)
-        .map((pt) => ({
-          day: pt.day,
-          rulDays: pt.RUL_days ?? 0,
-          loadPct: pt.load_pct ?? pt.load_percentage ?? 0,
-        }));
-      setLiveTsHistory(pts);
-    }).catch(() => {});
-
-    return () => { active = false; };
-  }, [mounted, isAuthed, selectedAssetId]);
-
-  // Handle Preset Scenario Selection — switch asset and let the useEffect fetch live data
+  // Handle Preset Scenario Selection
   const applyPreset = (presetId: string) => {
     const found = presetScenarios.find((p) => p.id === presetId);
     if (!found) return;
     setActiveScenarioId(presetId);
-
-    // Only set weather/waveform from preset — gas values come from real API
+    setSelectedAssetId(found.inputs.assetId);
+    setLoadFactor(found.inputs.loadFactorPercent);
+    setAmbientTemp(found.inputs.ambientTempC);
+    setVoltageDeviation(found.inputs.voltageDeviationPercent);
     setWeatherCondition(found.inputs.weatherCondition);
+    setEquipmentWear(found.inputs.equipmentWearPercent);
+
+    if (found.inputs.acethylenePpm !== undefined) setAcethylenePpm(found.inputs.acethylenePpm);
+    if (found.inputs.methanePpm !== undefined) setMethanePpm(found.inputs.methanePpm);
+    if (found.inputs.hydrogenPpm !== undefined) setHydrogenPpm(found.inputs.hydrogenPpm);
+    if (found.inputs.dielectricRigidityKv !== undefined) setDielectricRigidity(found.inputs.dielectricRigidityKv);
+
     if (presetId.includes("arcing")) setWaveformType("transient");
     else if (presetId.includes("thermal")) setWaveformType("harmonic");
     else setWaveformType("live");
 
-    // Changing selectedAssetId will trigger the useEffect that fetches live sensor data
-    if (found.inputs.assetId !== selectedAssetId) {
-      setSelectedAssetId(found.inputs.assetId);
-      toast.info(`Loaded archetype: ${found.title} — fetching live sensor data...`);
-    } else {
-      // Same asset — immediately score with current slider values
-      toast.info(`Archetype selected: ${found.title}`);
-      techtonicsApi.scoreAdhoc({
-        asset_id: found.inputs.assetId,
-        Hydrogen: hydrogenPpm,
-        Methane: methanePpm,
-        Acethylene: acethylenePpm,
-        Ethylene: found.inputs.ethylenePpm ?? 200,
-        Ethane: found.inputs.ethanePpm ?? 80,
-        Dielectric_rigidity: dielectricRigidity,
-        top_oil_temp_c: ambientTemp + 35,
-        generate_advisory: false,
-      }).then((score) => {
-        setLiveResult(score);
-      }).catch(() => {});
-    }
+    setLiveResult(null);
+    toast.info(`Loaded preset: ${found.title}`);
   };
 
   // Run Prediction button action (Calls FastAPI POST /api/score with fallback)
@@ -279,37 +209,13 @@ function PredictionStudioPage() {
   const displayedFault = liveResult ? liveResult.fault_type : prediction.faultType;
   const displayedRiskTier = liveResult ? liveResult.risk_tier : prediction.statusSeverity.toUpperCase();
 
-  // (mounted/isAuthed declared above near other state hooks)
   return (
-    <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      {/* ── Guest Preview Banner ── */}
-      {!isAuthed && !guestBannerDismissed && (
-        <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm shadow-sm">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="shrink-0 size-7 grid place-items-center rounded-full bg-amber-500/20">
-              <Lock className="size-3.5 text-amber-400" />
-            </span>
-            <div className="min-w-0">
-              <p className="font-semibold text-amber-300 text-xs sm:text-sm">Preview Mode — Calculated Predictions Only</p>
-              <p className="text-[11px] text-muted-foreground truncate">Sign in to load live model inference, real asset sensor readings, and 90-day RUL trajectory from the backend.</p>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Link to="/login" className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-[11px] font-bold text-black hover:bg-amber-400 transition-colors">
-              <LogIn className="size-3" /> Sign In
-            </Link>
-            <button onClick={() => setGuestBannerDismissed(true)} className="text-muted-foreground hover:text-foreground transition-colors p-1">
-              <X className="size-3.5" />
-            </button>
-          </div>
-        </div>
-      )}
-
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
       {/* Studio Header */}
       <div className="flex flex-col gap-4 border-b border-border/50 pb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-muted-foreground">
-            <span>VOLTRA Risk Studio</span>
+            <span>VOLTRA Neural Sandbox</span>
             <span>/</span>
             <span className="text-foreground font-semibold">Dual ML Scenario Studio</span>
           </div>
@@ -342,7 +248,7 @@ function PredictionStudioPage() {
             asChild
             className="pill bg-signal text-xs font-semibold text-signal-foreground hover:bg-signal/90"
           >
-            <Link to="/grid">
+            <Link to="/market">
               Return to Live Grid <ArrowRight className="size-3.5 ml-1" />
             </Link>
           </Button>
@@ -420,35 +326,27 @@ function PredictionStudioPage() {
               <select
                 value={selectedAssetId}
                 onChange={(e) => setSelectedAssetId(e.target.value)}
-                className="w-full rounded-xl border border-border/80 bg-background px-3.5 py-2.5 text-xs font-semibold text-foreground outline-none shadow-sm focus:border-primary/60 focus:ring-2 focus:ring-primary/10 transition-all cursor-pointer"
+                className="w-full rounded-xl border border-border/70 bg-surface px-3 py-2 text-xs font-semibold text-foreground outline-none"
               >
                 {initialGridAssets.map((asset) => (
-                  <option key={asset.id} value={asset.id} className="bg-background text-foreground">
+                  <option key={asset.id} value={asset.id}>
                     {asset.id} — {asset.name}
                   </option>
                 ))}
               </select>
             </div>
 
-            <div className="mt-3 flex items-center justify-between rounded-xl bg-muted/40 p-3 text-xs font-mono text-muted-foreground border border-border/60">
+            <div className="mt-3 flex items-center justify-between rounded-xl bg-surface/80 p-2.5 text-xs font-mono text-muted-foreground border border-border/40">
               <span>Substation: <strong className="text-foreground">{targetAsset.substation}</strong></span>
               <span>Capacity: <strong className="text-foreground">{targetAsset.ratedCapacityMw} MVA</strong></span>
             </div>
           </div>
 
           {/* Interactive Sliders Console */}
-          <div className="rounded-3xl border border-border/80 bg-card p-6 shadow-sm">
+          <div className="rounded-3xl border border-border/60 bg-card p-5 sm:p-6 shadow-sm">
             <div className="flex items-center justify-between">
               <h3 className="font-sans text-base font-semibold text-foreground">Stress & Gas Parameters</h3>
-              {sensorLoading ? (
-                <span className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground">
-                  <Loader2 className="size-3 animate-spin" /> Loading live sensor data...
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5 text-[10px] font-mono text-emerald-500 font-semibold">
-                  <span className="size-1.5 rounded-full bg-emerald-500" /> Live — Day 89 snapshot
-                </span>
-              )}
+              <Sliders className="size-4 text-muted-foreground" />
             </div>
 
             <div className="mt-5 space-y-4 text-xs">
@@ -456,7 +354,7 @@ function PredictionStudioPage() {
               <div>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-foreground">Operational Load Saturation</span>
-                  <span className="font-mono text-sm font-bold text-foreground">
+                  <span className="font-mono text-sm font-bold text-signal">
                     {loadFactor}% ({Math.round((targetAsset.ratedCapacityMw * loadFactor) / 100)} MVA)
                   </span>
                 </div>
@@ -466,7 +364,7 @@ function PredictionStudioPage() {
                   max={140}
                   value={loadFactor}
                   onChange={(e) => setLoadFactor(Number(e.target.value))}
-                  className="mt-2 w-full accent-primary cursor-pointer"
+                  className="mt-2 w-full accent-signal cursor-pointer"
                 />
               </div>
 
@@ -474,7 +372,7 @@ function PredictionStudioPage() {
               <div>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-foreground">Ambient Temperature</span>
-                  <span className={`font-mono text-sm font-bold ${ambientTemp > 38 ? "text-red-600 dark:text-red-400" : "text-foreground"}`}>
+                  <span className={`font-mono text-sm font-bold ${ambientTemp > 38 ? "text-danger" : "text-foreground"}`}>
                     {ambientTemp}°C
                   </span>
                 </div>
@@ -484,7 +382,7 @@ function PredictionStudioPage() {
                   max={50}
                   value={ambientTemp}
                   onChange={(e) => setAmbientTemp(Number(e.target.value))}
-                  className="mt-2 w-full accent-primary cursor-pointer"
+                  className="mt-2 w-full accent-signal cursor-pointer"
                 />
               </div>
 
@@ -492,7 +390,7 @@ function PredictionStudioPage() {
               <div className="border-t border-border/40 pt-3">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-foreground">Dissolved Acetylene (C2H2) — Arcing Gas</span>
-                  <span className={`font-mono text-sm font-bold ${acethylenePpm > 100 ? "text-red-600 dark:text-red-400" : "text-foreground"}`}>
+                  <span className={`font-mono text-sm font-bold ${acethylenePpm > 100 ? "text-danger" : "text-foreground"}`}>
                     {acethylenePpm} ppm
                   </span>
                 </div>
@@ -502,12 +400,12 @@ function PredictionStudioPage() {
                   max={3000}
                   value={acethylenePpm}
                   onChange={(e) => setAcethylenePpm(Number(e.target.value))}
-                  className="mt-2 w-full accent-red-600 cursor-pointer"
+                  className="mt-2 w-full accent-danger cursor-pointer"
                 />
-                <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5 font-mono">
+                <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
                   <span>0 (Pristine)</span>
                   <span>50 (Threshold)</span>
-                  <span>3,000 ppm (Alarm)</span>
+                  <span>3,000 ppm (Arcing Alarm)</span>
                 </div>
               </div>
 
@@ -515,7 +413,7 @@ function PredictionStudioPage() {
               <div>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-foreground">Dissolved Methane (CH4) — Thermal Gas</span>
-                  <span className={`font-mono text-sm font-bold ${methanePpm > 400 ? "text-amber-600 dark:text-amber-400" : "text-foreground"}`}>
+                  <span className={`font-mono text-sm font-bold ${methanePpm > 400 ? "text-warning" : "text-foreground"}`}>
                     {methanePpm} ppm
                   </span>
                 </div>
@@ -525,7 +423,7 @@ function PredictionStudioPage() {
                   max={2500}
                   value={methanePpm}
                   onChange={(e) => setMethanePpm(Number(e.target.value))}
-                  className="mt-2 w-full accent-amber-600 cursor-pointer"
+                  className="mt-2 w-full accent-warning cursor-pointer"
                 />
               </div>
 
@@ -533,7 +431,7 @@ function PredictionStudioPage() {
               <div>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-foreground">Oil Dielectric Rigidity</span>
-                  <span className={`font-mono text-sm font-bold ${dielectricRigidity < 35 ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                  <span className={`font-mono text-sm font-bold ${dielectricRigidity < 35 ? "text-danger" : "text-signal"}`}>
                     {dielectricRigidity} kV
                   </span>
                 </div>
@@ -543,7 +441,7 @@ function PredictionStudioPage() {
                   max={70}
                   value={dielectricRigidity}
                   onChange={(e) => setDielectricRigidity(Number(e.target.value))}
-                  className="mt-2 w-full accent-primary cursor-pointer"
+                  className="mt-2 w-full accent-signal cursor-pointer"
                 />
               </div>
             </div>
@@ -551,7 +449,7 @@ function PredictionStudioPage() {
             <Button
               onClick={handleRunPrediction}
               disabled={calculating}
-              className="pill rounded-full mt-6 w-full bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90 shadow-sm transition-transform hover:scale-[1.01]"
+              className="pill mt-6 w-full bg-signal text-xs font-semibold text-signal-foreground hover:bg-signal/90 shadow-glass"
             >
               {calculating ? (
                 <>
@@ -570,29 +468,29 @@ function PredictionStudioPage() {
         <div className="space-y-6 lg:col-span-7">
           {/* Main Forecast Hero Card */}
           <div
-            className={`relative overflow-hidden rounded-3xl border p-6 sm:p-8 transition-all shadow-sm ${
+            className={`relative overflow-hidden rounded-3xl border p-6 sm:p-8 transition-all ${
               displayedHI >= 50
-                ? "border-red-500/30 bg-red-500/5 ring-1 ring-red-500/20"
+                ? "border-danger/50 bg-danger/5 ring-1 ring-danger/20"
                 : displayedHI >= 30
-                ? "border-amber-500/30 bg-amber-500/5"
-                : "border-emerald-500/30 bg-emerald-500/5"
+                ? "border-warning/50 bg-warning/5"
+                : "border-signal/40 bg-signal/5"
             }`}
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <span
-                  className={`pill inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
+                  className={`pill inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold ${
                     displayedHI >= 50
-                      ? "bg-red-600 text-white"
+                      ? "bg-danger text-white animate-pulse"
                       : displayedHI >= 30
-                      ? "bg-amber-600 text-white"
-                      : "bg-emerald-600 text-white"
+                      ? "bg-warning text-foreground"
+                      : "bg-signal text-signal-foreground"
                   }`}
                 >
                   <AlertTriangle className="size-3.5" />
                   {displayedHI >= 50 ? "CRITICAL RISK · TIER 1" : displayedHI >= 30 ? "WATCH TIER" : "NOMINAL CONDITION"}
                 </span>
-                <span className="pill rounded-full bg-foreground text-background px-3 py-1 text-xs font-mono font-bold">
+                <span className="pill bg-ink text-cream px-2.5 py-1 text-xs font-mono font-bold">
                   {selectedAssetId}
                 </span>
               </div>
@@ -600,39 +498,39 @@ function PredictionStudioPage() {
               <div className="text-right">
                 <span className="font-mono text-xs text-muted-foreground">Scoring Source</span>
                 <p className="font-mono text-xs font-bold text-foreground">
-                  {liveResult ? "FastAPI Live :8000 (Trained Models)" : "Real Pipeline Calibrated"}
+                  {liveResult ? "FastAPI Live :8000" : "Calibrated Pipeline Heuristic"}
                 </p>
               </div>
             </div>
 
             {/* Big Headline Output */}
-            <div className="mt-6 grid grid-cols-2 gap-3.5 sm:grid-cols-4">
-              <div className="rounded-2xl bg-muted/40 p-4 border border-border/70">
-                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-semibold">Health Index</p>
-                <p className={`mt-1 font-mono text-2xl font-bold ${displayedHI >= 50 ? "text-red-600 dark:text-red-400" : displayedHI >= 30 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+            <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div className="rounded-2xl bg-surface/80 p-3.5 border border-border/60">
+                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">Health Index</p>
+                <p className={`mt-1 font-mono text-2xl font-bold ${displayedHI >= 50 ? "text-danger" : displayedHI >= 30 ? "text-warning" : "text-signal"}`}>
                   {displayedHI.toFixed(1)}
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">Model 1 (R²=0.72)</p>
               </div>
 
-              <div className="rounded-2xl bg-muted/40 p-4 border border-border/70">
-                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-semibold">Remaining Life</p>
-                <p className={`mt-1 font-mono text-2xl font-bold ${displayedRUL < 40 ? "text-red-600 dark:text-red-400" : "text-foreground"}`}>
+              <div className="rounded-2xl bg-surface/80 p-3.5 border border-border/60">
+                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">Remaining Life</p>
+                <p className={`mt-1 font-mono text-2xl font-bold ${displayedRUL < 40 ? "text-danger" : "text-signal"}`}>
                   {displayedRUL.toFixed(1)}d
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">{Math.round(displayedRUL * 24)}h to failure</p>
               </div>
 
-              <div className="rounded-2xl bg-muted/40 p-4 border border-border/70">
-                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-semibold">Fault Class</p>
+              <div className="rounded-2xl bg-surface/80 p-3.5 border border-border/60">
+                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">Fault Class</p>
                 <p className="mt-1 font-mono text-2xl font-bold text-foreground">
                   {displayedFault}
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">Model 2 (90.8% acc)</p>
               </div>
 
-              <div className="rounded-2xl bg-muted/40 p-4 border border-border/70">
-                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground font-semibold">Protected Load</p>
+              <div className="rounded-2xl bg-surface/80 p-3.5 border border-border/60">
+                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">Protected Load</p>
                 <p className="mt-1 font-mono text-2xl font-bold text-foreground">
                   {targetAsset.ratedCapacityMw} MVA
                 </p>
@@ -641,99 +539,85 @@ function PredictionStudioPage() {
             </div>
 
             {/* AI Summary / Advisory */}
-            <div className="mt-6 rounded-2xl border border-border/80 bg-card p-5 shadow-sm">
-              <div className="flex items-center gap-2 text-xs font-bold text-foreground mb-1.5">
-                <BrainCircuit className="size-4 text-primary" />
+            <div className="mt-6 rounded-2xl border border-border/60 bg-surface/90 p-4">
+              <div className="flex items-center gap-2 text-xs font-bold text-foreground mb-1">
+                <BrainCircuit className="size-4 text-signal" />
                 <span>Executive Operational Assessment</span>
               </div>
-              <p className="text-xs sm:text-sm leading-relaxed text-foreground/90 font-sans">
+              <p className="text-xs sm:text-sm leading-relaxed text-foreground/90 font-serif italic">
                 "{liveResult?.advisory_text || prediction.summary}"
               </p>
             </div>
           </div>
 
-          {/* 90-Day RUL Degradation & Load Trajectory (real timeseries from model) */}
+          {/* 24-Hour Projected Outage Risk Trajectory Curve */}
           <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-sans text-sm font-semibold text-foreground">
-                  90-Day Degradation Trajectory (Live Model Data)
+                  24-Hour Outage Risk Trajectory Projection
                 </h4>
                 <p className="text-[11px] text-muted-foreground">
-                  Remaining Useful Life (days) and Load % from the real per-day ML pipeline output
+                  Simulated risk escalation against 80% critical outage threshold
                 </p>
               </div>
               <span className="pill bg-surface px-2.5 py-0.5 text-[10px] font-mono text-muted-foreground border border-border">
-                {liveTsHistory.length > 0 ? `${liveTsHistory.length} data points · FastAPI Live` : "Loading..."}
+                Sampling: Hourly Step
               </span>
             </div>
 
             <div className="mt-5 h-52 w-full">
-              {liveTsHistory.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={liveTsHistory}>
-                    <defs>
-                      <linearGradient id="rulGlow" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={displayedHI >= 50 ? "#ef4444" : "#22c55e"} stopOpacity={0.4} />
-                        <stop offset="100%" stopColor={displayedHI >= 50 ? "#ef4444" : "#22c55e"} stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="loadGlow" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} />
-                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid stroke="var(--color-border)" vertical={false} opacity={0.4} />
-                    <XAxis
-                      dataKey="day"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 9, fill: "var(--color-muted-foreground)" }}
-                      tickFormatter={(v) => `D${v}`}
-                    />
-                    <YAxis
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 9, fill: "var(--color-muted-foreground)" }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "var(--color-card)",
-                        borderColor: "var(--color-border)",
-                        borderRadius: "0.75rem",
-                        fontSize: "0.72rem",
-                      }}
-                      labelFormatter={(v) => `Day ${v}`}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="rulDays"
-                      name="RUL (days)"
-                      stroke={displayedHI >= 50 ? "#ef4444" : "#22c55e"}
-                      strokeWidth={2}
-                      fill="url(#rulGlow)"
-                      isAnimationActive={false}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="loadPct"
-                      name="Load %"
-                      stroke="#3b82f6"
-                      strokeWidth={1.5}
-                      fill="url(#loadGlow)"
-                      isAnimationActive={false}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex h-full items-center justify-center">
-                  <Loader2 className="size-5 animate-spin text-primary mr-2" />
-                  <span className="text-xs text-muted-foreground">Loading real timeseries from FastAPI...</span>
-                </div>
-              )}
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={prediction.trajectory}>
+                  <defs>
+                    <linearGradient id="riskGlow" x1="0" y1="0" x2="0" y2="1">
+                      <stop
+                        offset="0%"
+                        stopColor={displayedHI >= 50 ? "var(--color-danger)" : "var(--color-signal)"}
+                        stopOpacity={0.4}
+                      />
+                      <stop
+                        offset="100%"
+                        stopColor={displayedHI >= 50 ? "var(--color-danger)" : "var(--color-signal)"}
+                        stopOpacity={0}
+                      />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="var(--color-border)" vertical={false} opacity={0.5} />
+                  <XAxis
+                    dataKey="label"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                  />
+                  <YAxis
+                    domain={[0, 100]}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "var(--color-card)",
+                      borderColor: "var(--color-border)",
+                      borderRadius: "0.75rem",
+                      fontSize: "0.75rem",
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="projectedRisk"
+                    name="Projected Risk %"
+                    stroke={displayedHI >= 50 ? "var(--color-danger)" : "var(--color-signal)"}
+                    strokeWidth={2}
+                    fill="url(#riskGlow)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Recommended Actions — derived from live model tier */}
+          {/* Recommended Actions */}
           <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-sm">
             <h4 className="font-sans text-sm font-semibold text-foreground mb-3">
               Automated Prescriptive Actions
@@ -772,49 +656,6 @@ function PredictionStudioPage() {
         onClose={() => setReportModalOpen(false)}
         defaultZone={targetAsset.substation}
       />
-
-      {/* ── Guest Preview Overlay ── */}
-      {!isAuthed && <GuestPreviewBanner page="Prediction Studio" />}
     </div>
   );
 }
-
-function GuestPreviewBanner({ page }: { page: string }) {
-  return (
-    <>
-      <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-30"
-        style={{ height: "50%", background: "linear-gradient(to bottom, transparent 0%, hsl(var(--background)/0.85) 35%, hsl(var(--background)) 65%)" }}
-      />
-      <div className="sticky bottom-0 z-40 border-t border-border/60 bg-background/95 backdrop-blur-xl px-4 py-4 sm:px-6">
-        <div className="mx-auto flex max-w-5xl flex-col items-center gap-3 sm:flex-row sm:justify-between">
-          <div className="flex items-center gap-3">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-              <Lock className="size-4" />
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-foreground">{page} · Preview Mode</p>
-              <p className="text-xs text-muted-foreground">Sign in to run real ML predictions against live transformer sensor data.</p>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-5 py-2.5 text-xs font-bold text-background transition-colors hover:bg-foreground/90"
-            >
-              <LogIn className="size-3.5" /> Sign In to Access
-            </Link>
-            <Link
-              to="/technology"
-              className="inline-flex items-center gap-1.5 rounded-full border border-border/70 px-4 py-2.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <ShieldCheck className="size-3.5" /> How It Works
-            </Link>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-

@@ -17,8 +17,10 @@ import {
   ShieldCheck,
   TrendingUp,
   User,
+  X,
   Zap,
 } from "lucide-react";
+
 import {
   BarChart,
   Bar,
@@ -80,6 +82,9 @@ function DashboardPage() {
   const [profile, setProfile] = useState<OperatorProfile>(() => authSession.getProfile() ?? DEFAULT_PROFILE);
   const [location, setLocation] = useState<UserLocationState>(() => authSession.getLocation());
   const [mounted, setMounted] = useState(false);
+  // isAuthed derived from mounted — placed here so auth-gated useEffect can reference it
+  const isAuthed = mounted && authSession.isAuthenticated();
+  const [guestBannerDismissed, setGuestBannerDismissed] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [locationModalOpen, setLocationModalOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState("");
@@ -106,6 +111,9 @@ function DashboardPage() {
   }, []);
 
   useEffect(() => {
+    if (!mounted) return; // wait for auth check
+    if (!isAuthed) return; // guests see static curated data
+
     techtonicsApi.getRanked().then((res) => {
       if (res.ranked_assets?.length) { setRankedAssets(res.ranked_assets); setApiConnected(true); }
     }).catch(() => setApiConnected(false));
@@ -125,7 +133,7 @@ function DashboardPage() {
     techtonicsApi.searchPastEvents("", "").then((res) => {
       if (res.events?.length) setIncidents(res.events.slice(0, 3));
     }).catch(() => {});
-  }, [location.latitude, location.longitude]);
+  }, [mounted, isAuthed, location.latitude, location.longitude]);
 
   const displayAssets = useMemo(() => {
     if (rankedAssets.length > 0) {
@@ -225,12 +233,35 @@ function DashboardPage() {
     ].filter(Boolean) as { rank: string; asset: string; action: string; confidence: number; priority: "HIGH" | "MEDIUM" | "LOW" }[];
   }, [planActions, topCriticalAsset, displayAssets, liveWeather.temperature_c]);
 
-  const isAuthed = mounted && authSession.isAuthenticated();
+  // (isAuthed + guestBannerDismissed declared above near mounted)
 
   if (!mounted) return null;
 
   return (
     <div className="relative min-h-screen bg-background px-4 py-6 sm:px-6 lg:px-8">
+
+      {/* ── Guest Preview Banner ── */}
+      {!isAuthed && !guestBannerDismissed && (
+        <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm shadow-sm">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="shrink-0 size-7 grid place-items-center rounded-full bg-amber-500/20">
+              <Lock className="size-3.5 text-amber-400" />
+            </span>
+            <div className="min-w-0">
+              <p className="font-semibold text-amber-300 text-xs sm:text-sm">Preview Mode — Curated ML Snapshot Data</p>
+              <p className="text-[11px] text-muted-foreground truncate">Sign in to unlock live model inference, Groq AI reports, and real-time grid telemetry.</p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link to="/login" className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-[11px] font-bold text-black hover:bg-amber-400 transition-colors">
+              <LogIn className="size-3" /> Sign In
+            </Link>
+            <button onClick={() => setGuestBannerDismissed(true)} className="text-muted-foreground hover:text-foreground transition-colors p-1">
+              <X className="size-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Header ── */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -625,9 +656,32 @@ function DashboardPage() {
 
       {/* ── Guest Preview Overlay ── */}
       {!isAuthed && <GuestPreviewBanner page="Command Dashboard" />}
+
+      {/* ── Sticky Guest Sign-In Footer ── */}
+      {!isAuthed && (
+        <div className="fixed bottom-0 inset-x-0 z-50 flex items-center justify-between gap-4 border-t border-amber-500/30 bg-background/95 backdrop-blur-md px-4 py-3 sm:px-8 shadow-[0_-4px_24px_rgba(0,0,0,0.4)]">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="shrink-0 size-8 grid place-items-center rounded-full bg-gradient-to-br from-amber-500/30 to-orange-500/20 border border-amber-500/40">
+              <Lock className="size-4 text-amber-400" />
+            </span>
+            <div className="min-w-0">
+              <p className="font-bold text-xs text-foreground sm:text-sm">You are viewing a curated preview</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Sign in to access live telemetry, real-time ML scoring, and Groq AI reports.</p>
+            </div>
+          </div>
+          <Link
+            to="/login"
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2 text-xs font-bold text-black shadow-lg hover:from-amber-400 hover:to-orange-400 transition-all hover:scale-[1.02]"
+          >
+            <LogIn className="size-3.5" />
+            Sign In to Unlock
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
+
 
 function GuestPreviewBanner({ page }: { page: string }) {
   return (
@@ -668,3 +722,4 @@ function GuestPreviewBanner({ page }: { page: string }) {
     </>
   );
 }
+
