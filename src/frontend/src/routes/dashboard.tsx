@@ -270,7 +270,7 @@ function DashboardPage() {
         action: "Monitor thermal gradient; verify forced-air cooling relay circuit.",
         confidence: 82,
         priority: (displayAssets[1].riskScore > 70 ? "HIGH" : "MEDIUM") as "HIGH" | "MEDIUM" | "LOW",
-        detail: `Operating at ${displayAssets[1].loadPct}% loading capacity with RUL ${displayAssets[1].rul.toFixed(0)} days.`,
+        detail: `Operating at ${displayAssets[1].loadPercentage ?? 70}% loading capacity with RUL ${displayAssets[1].rul.toFixed(0)} days.`,
       });
     }
     recs.push({
@@ -337,7 +337,14 @@ function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <DataSourceBadge />
+          <DataSourceBadge
+            dataSource={dataSource}
+            assetCount={displayAssets.length}
+            onReset={() => {
+              gridDataSource.clearDataSource();
+              setDataSource("none");
+            }}
+          />
           <button onClick={() => setLocationModalOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors">
             <Compass className="size-3.5 text-primary" />{location.autoDetected ? "GPS" : "Manual"} · {location.latitude.toFixed(2)}°N
           </button>
@@ -353,7 +360,17 @@ function DashboardPage() {
       {/* ── Empty Workspace Selector for Authenticated Operator ── */}
       {isAuthed && (dataSource === "none" || displayAssets.length === 0) && (
         <div className="mb-6">
-          <EmptyWorkspaceChoice />
+          <EmptyWorkspaceChoice
+            userName={profile.name.split(" ")[0]}
+            userCity={location.city}
+            onSelectAnand={() => {
+              gridDataSource.setAnandData();
+              setDataSource("anand");
+            }}
+            onCustomDataLoaded={() => {
+              setDataSource("custom");
+            }}
+          />
         </div>
       )}
 

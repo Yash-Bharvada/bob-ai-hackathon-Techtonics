@@ -20,8 +20,8 @@ import { toast } from "sonner";
 interface EmptyWorkspaceChoiceProps {
   userName?: string;
   userCity?: string;
-  onSelectAnand: () => void;
-  onCustomDataLoaded: (assets: RankedAsset[]) => void;
+  onSelectAnand?: () => void;
+  onCustomDataLoaded?: (assets: RankedAsset[]) => void;
 }
 
 export function EmptyWorkspaceChoice({
@@ -91,7 +91,9 @@ export function EmptyWorkspaceChoice({
 
       gridDataSource.setCustomAssets(convertedAssets);
       toast.success(`Successfully loaded & scored ${convertedAssets.length} custom transformers!`);
-      onCustomDataLoaded(convertedAssets);
+      if (onCustomDataLoaded) {
+        onCustomDataLoaded(convertedAssets);
+      }
     } catch (err: any) {
       const msg = err.message || "Failed to parse and score CSV.";
       setUploadError(msg);
@@ -99,6 +101,14 @@ export function EmptyWorkspaceChoice({
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleSelectAnand = () => {
+    gridDataSource.setAnandData();
+    toast.success("Loaded Anand District sample dataset (18 Transformers)");
+    if (onSelectAnand) {
+      onSelectAnand();
     }
   };
 
@@ -150,7 +160,7 @@ export function EmptyWorkspaceChoice({
 
           <button
             type="button"
-            onClick={onSelectAnand}
+            onClick={handleSelectAnand}
             className="mt-6 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2.5 text-xs font-bold text-ink hover:bg-emerald-400 transition-colors shadow-md hover:shadow-emerald-500/20"
           >
             <Zap className="size-3.5 fill-current" />

@@ -472,7 +472,17 @@ function LiveGridPage() {
       {/* ── Empty Workspace Selector for Authenticated Operator ── */}
       {isAuthed && (dataSource === "none" || assets.length === 0) && (
         <div className="mt-6">
-          <EmptyWorkspaceChoice />
+          <EmptyWorkspaceChoice
+            userName={profile?.name ? profile.name.split(" ")[0] : "Operator"}
+            userCity={userLocation.city}
+            onSelectAnand={() => {
+              gridDataSource.setAnandData();
+              setDataSource("anand");
+            }}
+            onCustomDataLoaded={() => {
+              setDataSource("custom");
+            }}
+          />
         </div>
       )}
 
