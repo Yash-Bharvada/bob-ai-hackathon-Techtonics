@@ -108,31 +108,71 @@ def generate_advisory_text(
     rate limit), falls back to a deterministic template — the core
     score/rank pipeline is NEVER broken by this failure.
     """
+    shap_lines = "\n".join(
+        f"  - {feat}: SHAP contribution {val:+.2f} (health-index units)"
+        for feat, val in top3_shap
+    )
+    prompt = (
+        f"You are a senior power grid asset health advisor. "
+        f"Provide a concise (2-3 sentence) plain-English maintenance advisory "
+        f"for transformer {asset_id} based strictly on the telemetry below. "
+        f"Do not add generic filler. State the primary driver and the recommended immediate action.\n\n"
+        f"Health Index: {health_index:.1f} (scale: 13.4=pristine, >=50=severe fault, >=70=critical)\n"
+        f"Risk Tier: {tier}\n"
+        f"Estimated RUL: {rul:.0f} days\n"
+        f"DGA Fault Classification: {fault_type} (confidence {fault_confidence*100:.0f}%)\n"
+        f"Top contributing sensor features (SHAP):\n{shap_lines}\n"
+        f"Key sensor readings: "
+        f"H2={sensor_row.get('Hydrogen', sensor_row.get('H2', 0)):.0f} ppm, "
+        f"C2H2={sensor_row.get('Acethylene', sensor_row.get('C2H2', 0)):.1f} ppm, "
+        f"CH4={sensor_row.get('Methane', sensor_row.get('CH4', 0)):.0f} ppm, "
+        f"Oil temp={sensor_row.get('top_oil_temp_c', 65):.0f}C, "
+        f"Dielectric rigidity={sensor_row.get('Dielectric rigidity', 60):.0f} kV"
+    )
+
+    # 1. Primary: Groq LPU (Ultra-fast inference)
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    if groq_key:
+        try:
+            import json, ssl, urllib.request
+            try:
+                import certifi
+                ctx = ssl.create_default_context(cafile=certifi.where())
+            except Exception:
+                ctx = ssl.create_default_context()
+
+            req_data = json.dumps({
+                "model": "openai/gpt-oss-120b",
+                "messages": [
+                    {"role": "system", "content": "You are an expert power transformer maintenance engineer and SCADA reliability advisor. Provide concise, professional 2-3 sentence advisory."},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.2,
+                "max_tokens": 250,
+            }).encode("utf-8")
+            req = urllib.request.Request(
+                "https://api.groq.com/openai/v1/chat/completions",
+                data=req_data,
+                headers={
+                    "Authorization": f"Bearer {groq_key}",
+                    "Content-Type": "application/json",
+                    "User-Agent": "Voltra-SCADA/1.0",
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req, context=ctx, timeout=8) as resp:
+                res_json = json.loads(resp.read().decode("utf-8"))
+                content = res_json["choices"][0]["message"]["content"].strip()
+                if content:
+                    return content
+        except Exception:
+            pass
+
+    # 2. Secondary: Anthropic Claude (if configured)
     bob_key = os.environ.get("ANTHROPIC_API_KEY", "")
     if bob_key:
         try:
             import anthropic
-            shap_lines = "\n".join(
-                f"  - {feat}: SHAP contribution {val:+.2f} (health-index units)"
-                for feat, val in top3_shap
-            )
-            prompt = (
-                f"You are a power grid asset health advisor. "
-                f"Provide a concise (3-4 sentence) plain-English maintenance advisory "
-                f"for transformer {asset_id} based ONLY on the data below. "
-                f"Do not add generic filler. Ground every sentence in the actual sensor values.\n\n"
-                f"Health Index: {health_index:.1f} (scale: 13.4=pristine, >=50=severe fault, >=70=critical)\n"
-                f"Risk Tier: {tier}\n"
-                f"Estimated RUL: {rul:.0f} days\n"
-                f"DGA Fault Classification: {fault_type} (confidence {fault_confidence*100:.0f}%)\n"
-                f"Top contributing sensor features (SHAP):\n{shap_lines}\n"
-                f"Key sensor readings: "
-                f"H2={sensor_row.get('Hydrogen', sensor_row.get('H2', 0)):.0f} ppm, "
-                f"C2H2={sensor_row.get('Acethylene', sensor_row.get('C2H2', 0)):.1f} ppm, "
-                f"CH4={sensor_row.get('Methane', sensor_row.get('CH4', 0)):.0f} ppm, "
-                f"Oil temp={sensor_row.get('top_oil_temp_c', 65):.0f}C, "
-                f"Dielectric rigidity={sensor_row.get('Dielectric rigidity', 60):.0f} kV"
-            )
             client = anthropic.Anthropic(api_key=bob_key)
             response = client.messages.create(
                 model="claude-3-5-haiku-20241022",
@@ -141,12 +181,9 @@ def generate_advisory_text(
             )
             return response.content[0].text.strip()
         except Exception:
-            return _fallback_advisory(
-                asset_id, health_index, rul, tier, fault_type,
-                fault_confidence, top3_shap, sensor_row
-            )
+            pass
 
-    # Deterministic SCADA advisory
+    # 3. Deterministic SCADA advisory fallback
     return _fallback_advisory(
         asset_id, health_index, rul, tier, fault_type,
         fault_confidence, top3_shap, sensor_row
