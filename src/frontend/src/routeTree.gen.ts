@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TechnologyRouteImport } from './routes/technology'
 import { Route as PredictRouteImport } from './routes/predict'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as GridRouteImport } from './routes/grid'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
@@ -23,6 +24,11 @@ const TechnologyRoute = TechnologyRouteImport.update({
 const PredictRoute = PredictRouteImport.update({
   id: '/predict',
   path: '/predict',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GridRoute = GridRouteImport.update({
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/grid': typeof GridRoute
+  '/login': typeof LoginRoute
   '/predict': typeof PredictRoute
   '/technology': typeof TechnologyRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/grid': typeof GridRoute
+  '/login': typeof LoginRoute
   '/predict': typeof PredictRoute
   '/technology': typeof TechnologyRoute
 }
@@ -60,21 +68,36 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/grid': typeof GridRoute
+  '/login': typeof LoginRoute
   '/predict': typeof PredictRoute
   '/technology': typeof TechnologyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/grid' | '/predict' | '/technology'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/grid'
+    | '/login'
+    | '/predict'
+    | '/technology'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/grid' | '/predict' | '/technology'
-  id: '__root__' | '/' | '/dashboard' | '/grid' | '/predict' | '/technology'
+  to: '/' | '/dashboard' | '/grid' | '/login' | '/predict' | '/technology'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboard'
+    | '/grid'
+    | '/login'
+    | '/predict'
+    | '/technology'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   GridRoute: typeof GridRoute
+  LoginRoute: typeof LoginRoute
   PredictRoute: typeof PredictRoute
   TechnologyRoute: typeof TechnologyRoute
 }
@@ -93,6 +116,13 @@ declare module '@tanstack/react-router' {
       path: '/predict'
       fullPath: '/predict'
       preLoaderRoute: typeof PredictRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/grid': {
@@ -123,6 +153,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   GridRoute: GridRoute,
+  LoginRoute: LoginRoute,
   PredictRoute: PredictRoute,
   TechnologyRoute: TechnologyRoute,
 }

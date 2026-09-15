@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, Component, type ReactNode, type ErrorInfo } from "react";
+import { authSession } from "@/lib/authSession";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   initialGridAssets,
   initialGridTicker,
   mergeRankedIntoAssets,
+  safeParseShap,
   type GridAsset,
   type GridAssetType,
   type AssetStatus,
@@ -33,6 +35,8 @@ import {
   Flame,
   Gauge,
   Layers,
+  Lock,
+  LogIn,
   Plus,
   Radio,
   RefreshCw,
@@ -45,6 +49,12 @@ import {
   X,
   Zap,
   Network,
+  FileText,
+  Sparkles,
+  Loader2,
+  TrendingDown,
+  MapPin,
+  Compass,
 } from "lucide-react";
 
 export const Route = createFileRoute("/grid")({
@@ -74,23 +84,71 @@ const VOLTAGE_FILTERS = ["All", "132 kV", "66 kV", "33 kV", "11 kV"] as const;
 
 function LiveGridPage() {
   const [assets, setAssets] = useState<GridAsset[]>(initialGridAssets);
-  const [tickerEvents, setTickerEvents] = useState<GridTickerEvent[]>(initialGridTicker);
+  const [tickerEvents, setTickerEvents] = useState<GridTickerEvent[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<"All" | GridAssetType>("All");
   const [selectedStatus, setSelectedStatus] = useState<"All" | AssetStatus>("All");
   const [selectedVoltage, setSelectedVoltage] = useState<string>("All");
   const [selectedNodeId, setSelectedNodeId] = useState<string>("TX-107");
   const [inspectorAsset, setInspectorAsset] = useState<GridAsset | null>(null);
-  const [simulationModalOpen, setSimulationModalOpen] = useState(false);
   const [incidentModalOpen, setIncidentModalOpen] = useState(false);
   const [incidentDefaultZone, setIncidentDefaultZone] = useState("");
-  const [currentTime, setCurrentTime] = useState("13:48:20 UTC");
+  const [currentTime, setCurrentTime] = useState(() => {
+    const n = new Date();
+    return `${String(n.getUTCHours()).padStart(2,"0")}:${String(n.getUTCMinutes()).padStart(2,"0")}:${String(n.getUTCSeconds()).padStart(2,"0")} UTC`;
+  });
+  const [syncing, setSyncing] = useState(false);
 
   // Maintenance Plan State
   const [planActions, setPlanActions] = useState<MaintenanceAction[]>([]);
-  const [activeViewTab, setActiveViewTab] = useState<"assets" | "plan" | "topology">("assets");
+  const [activeViewTab, setActiveViewTab] = useState<"assets" | "plan" | "topology" | "hazards">("assets");
   const [displayMode, setDisplayMode] = useState<"grid" | "table">("grid");
   const [apiConnected, setApiConnected] = useState<boolean>(false);
+
+  // Auth state — declared at top so useEffect guards work correctly
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  const isAuthed = mounted && authSession.isAuthenticated();
+  const [guestBannerDismissed, setGuestBannerDismissed] = useState(false);
+
+  // Gemini Area Hazard Search State
+  const [hazardQuery, setHazardQuery] = useState(() => {
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem("voltra_operator_session") : null;
+      if (!raw) return "GIDC Phase-2 industrial excavation and arcing";
+      const zone: string = JSON.parse(raw)?.profile?.zone ?? "";
+      return zone ? `${zone.split("·")[0].trim()} hazard incident reports` : "GIDC Phase-2 industrial excavation and arcing";
+    } catch { return "GIDC Phase-2 industrial excavation and arcing"; }
+  });
+  const [hazardZone, setHazardZone] = useState(() => {
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem("voltra_operator_session") : null;
+      if (!raw) return "GIDC Phase-2";
+      const zone: string = JSON.parse(raw)?.profile?.zone ?? "";
+      return zone ? zone.split("·")[0].trim() : "GIDC Phase-2";
+    } catch { return "GIDC Phase-2"; }
+  });
+  const [loadingHazardSearch, setLoadingHazardSearch] = useState(false);
+  const [hazardSearchResult, setHazardSearchResult] = useState<any | null>(null);
+
+  const runHazardSearch = async (q = hazardQuery, z = hazardZone) => {
+    setLoadingHazardSearch(true);
+    try {
+      const res = await techtonicsApi.searchPastEvents(q, z);
+      setHazardSearchResult(res);
+      toast.success(`Geospatial area search updated via ${res.provider || "Gemini 3.6 Flash"}`);
+    } catch {
+      toast.error("Failed to run Gemini area hazard search");
+    } finally {
+      setLoadingHazardSearch(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeViewTab === "hazards" && !hazardSearchResult) {
+      runHazardSearch("GIDC Phase-2 industrial excavation and arcing", "GIDC Phase-2");
+    }
+  }, [activeViewTab]);
 
   // Live timer
   useEffect(() => {
@@ -103,8 +161,16 @@ function LiveGridPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch live ranked assets and maintenance plan from FastAPI backend
+  // Fetch live ranked assets and maintenance plan from FastAPI backend — ONLY when authenticated
   useEffect(() => {
+    if (!mounted) return; // wait for auth check
+    if (!isAuthed) {
+      // Guests see the curated Day-89 static data — no API calls
+      setAssets(initialGridAssets);
+      setApiConnected(false);
+      return;
+    }
+
     let active = true;
 
     async function loadLiveData() {
@@ -113,6 +179,21 @@ function LiveGridPage() {
         if (active && rankedRes.ranked_assets) {
           setAssets((prev) => mergeRankedIntoAssets(prev, rankedRes.ranked_assets));
           setApiConnected(true);
+
+          const liveTickerItems: GridTickerEvent[] = rankedRes.ranked_assets
+            .filter((r) => r.risk_tier === "HIGH" || r.risk_tier === "MEDIUM")
+            .slice(0, 5)
+            .map((r) => ({
+              id: `TICK-${r.asset_id}`,
+              timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+              assetId: r.asset_id,
+              message: `${r.risk_tier} Model Alert: ${r.asset_id} at ${r.substation_name || r.grid_zone} in ${r.fault_type} mode. HI: ${r.health_index.toFixed(1)}, RUL: ${r.RUL_days.toFixed(0)}d.`,
+              severity: (r.risk_tier === "HIGH" ? "critical" : "warning") as "critical" | "warning",
+            }));
+
+          if (liveTickerItems.length > 0) {
+            setTickerEvents(liveTickerItems);
+          }
         }
       } catch {
         if (active) setApiConnected(false);
@@ -123,9 +204,21 @@ function LiveGridPage() {
         if (active && planRes.top_10_actions) {
           setPlanActions(planRes.top_10_actions);
         }
-      } catch {
-        // Fallback to local default plan if backend is not running
-      }
+      } catch {}
+
+      try {
+        const evtRes = await techtonicsApi.searchPastEvents("", "");
+        if (active && evtRes.events?.length) {
+          const incTickers: GridTickerEvent[] = evtRes.events.slice(0, 2).map((e: any) => ({
+            id: `TICK-${e.incident_id || Math.random()}`,
+            timestamp: e.received_at ? new Date(e.received_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "Live",
+            assetId: e.zone_name?.split(" ")[0] || "GRID",
+            message: `Ground Hazard [${e.category || "Field"}]: ${e.event_description} (Risk factor ×${e.risk_multiplier || "1.0"})`,
+            severity: (Number(e.risk_multiplier || 1) >= 1.2 ? "critical" : "warning") as "critical" | "warning",
+          }));
+          setTickerEvents((prev) => [...incTickers, ...prev]);
+        }
+      } catch {}
     }
 
     loadLiveData();
@@ -134,7 +227,7 @@ function LiveGridPage() {
       active = false;
       clearInterval(interval);
     };
-  }, []);
+  }, [mounted, isAuthed]);
 
   const filteredAssets = useMemo(() => {
     return assets.filter((asset) => {
@@ -164,96 +257,88 @@ function LiveGridPage() {
   const avgHealth = Math.round(assets.reduce((sum, a) => sum + a.healthScore, 0) / totalAssets);
   const totalCurrentLoadMw = Math.round(assets.reduce((sum, a) => sum + a.currentLoadMw, 0));
 
-  // Quick Surge Simulation
-  const triggerSurgeSimulation = () => {
-    setAssets((prev) =>
-      prev.map((item) => {
-        if (item.id === "TX-107") {
-          const newLoad = Math.min(item.ratedCapacityMw, item.currentLoadMw + 4);
-          return {
-            ...item,
-            currentLoadMw: Number(newLoad.toFixed(1)),
-            coreTempC: Number((item.coreTempC + 5.2).toFixed(1)),
-            healthScore: Math.max(10, item.healthScore - 12),
-            status: "risk" as AssetStatus,
-            activeAnomalies: item.activeAnomalies + 1,
-            telemetryHistory: [
-              ...item.telemetryHistory.slice(1),
-              {
-                time: "SURGE",
-                loadMw: Number(newLoad.toFixed(1)),
-                voltageKv: Number((item.voltageKv - 2.1).toFixed(1)),
-                tempC: Number((item.coreTempC + 5.2).toFixed(1)),
-              },
-            ],
-          };
+  // Live Sync Grid Telemetry
+  const handleSyncTelemetry = async () => {
+    setSyncing(true);
+    try {
+      const [rankedRes, planRes, evtRes] = await Promise.allSettled([
+        techtonicsApi.getRanked(),
+        techtonicsApi.getPlan(),
+        techtonicsApi.searchPastEvents("", ""),
+      ]);
+
+      if (rankedRes.status === "fulfilled" && rankedRes.value.ranked_assets) {
+        setAssets((prev) => mergeRankedIntoAssets(prev, rankedRes.value.ranked_assets));
+        setApiConnected(true);
+
+        const liveTickerItems: GridTickerEvent[] = rankedRes.value.ranked_assets
+          .filter((r) => r.risk_tier === "HIGH" || r.risk_tier === "MEDIUM")
+          .slice(0, 5)
+          .map((r) => ({
+            id: `TICK-${r.asset_id}`,
+            timestamp: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+            assetId: r.asset_id,
+            message: `${r.risk_tier} Model Alert: ${r.asset_id} at ${r.substation_name || r.grid_zone} in ${r.fault_type} mode. HI: ${r.health_index.toFixed(1)}, RUL: ${r.RUL_days.toFixed(0)}d.`,
+            severity: (r.risk_tier === "HIGH" ? "critical" : "warning") as "critical" | "warning",
+          }));
+
+        if (evtRes.status === "fulfilled" && evtRes.value.events?.length) {
+          const incTickers: GridTickerEvent[] = evtRes.value.events.slice(0, 2).map((e: any) => ({
+            id: `TICK-${e.incident_id || Math.random()}`,
+            timestamp: e.received_at ? new Date(e.received_at).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "Live",
+            assetId: e.zone_name?.split(" ")[0] || "GRID",
+            message: `Ground Hazard [${e.category || "Field"}]: ${e.event_description} (Risk factor ×${e.risk_multiplier || "1.0"})`,
+            severity: (Number(e.risk_multiplier || 1) >= 1.2 ? "critical" : "warning") as "critical" | "warning",
+          }));
+          setTickerEvents([...incTickers, ...liveTickerItems]);
+        } else {
+          setTickerEvents(liveTickerItems);
         }
-        return item;
-      })
-    );
+      }
 
-    setTickerEvents((prev) => [
-      {
-        id: `ev-${Date.now()}`,
-        timestamp: currentTime,
-        assetId: "TX-107",
-        message: "SIMULATED SURGE: Load spiked to 25.8 MW, top-oil temp +5.2°C. Critical arcing escalated.",
-        severity: "critical",
-      },
-      ...prev,
-    ]);
+      if (planRes.status === "fulfilled" && planRes.value.top_10_actions) {
+        setPlanActions(planRes.value.top_10_actions);
+      }
 
-    toast.error("Telemetry Surge Injected on TX-107 (GIDC Industrial) · Risk Escalated", {
-      description: "Health Index reduced, high acetylene (C2H2) threshold exceeded.",
-    });
+      toast.success("Synchronized with 18 live transformer streams", {
+        description: "All physical sensors, model inferences, and event logs are real-time updated.",
+      });
+    } catch {
+      toast.error("Telemetry sync failed. Verify FastAPI on :8000 is active.");
+    } finally {
+      setSyncing(false);
+    }
   };
 
-  // Operator Action: Emergency Load Reroute
-  const handleReroute = (assetId: string) => {
-    setAssets((prev) =>
-      prev.map((item) => {
-        if (item.id === assetId) {
-          const reducedLoad = Math.max(10, item.currentLoadMw - 8);
-          return {
-            ...item,
-            currentLoadMw: Number(reducedLoad.toFixed(1)),
-            coreTempC: Number((item.coreTempC - 4.5).toFixed(1)),
-            healthScore: Math.min(95, item.healthScore + 15),
-            status: (item.status === "risk" ? "watch" : item.status) as AssetStatus,
-            telemetryHistory: [
-              ...item.telemetryHistory.slice(1),
-              {
-                time: "REROUTE",
-                loadMw: Number(reducedLoad.toFixed(1)),
-                voltageKv: item.voltageKv,
-                tempC: Number((item.coreTempC - 4.5).toFixed(1)),
-              },
-            ],
-          };
-        }
-        return item;
-      })
-    );
-
-    setTickerEvents((prev) => [
-      {
-        id: `ev-${Date.now()}`,
-        timestamp: currentTime,
-        assetId,
-        message: `OPERATOR ACTION: Power flow rerouted from ${assetId}. Load reduced, thermal gradient stabilising.`,
-        severity: "info",
-      },
-      ...prev,
-    ]);
-
-    toast.success(`Power flow rerouted away from ${assetId}`, {
-      description: "Load shed executed. Risk tier reduced to Watch.",
-    });
-  };
+  // (mounted/isAuthed declared above near other state)
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+    <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6">
+      {/* ── Guest Preview Banner ── */}
+      {!isAuthed && !guestBannerDismissed && (
+        <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm shadow-sm">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="shrink-0 size-7 grid place-items-center rounded-full bg-amber-500/20">
+              <Lock className="size-3.5 text-amber-400" />
+            </span>
+            <div className="min-w-0">
+              <p className="font-semibold text-amber-300 text-xs sm:text-sm">Preview Mode — Curated Day-89 Snapshot</p>
+              <p className="text-[11px] text-muted-foreground truncate">Sign in to unlock live FastAPI telemetry, real-time model inference, and Groq AI reports.</p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link to="/login" className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-[11px] font-bold text-black hover:bg-amber-400 transition-colors">
+              <LogIn className="size-3" /> Sign In
+            </Link>
+            <button onClick={() => setGuestBannerDismissed(true)} className="text-muted-foreground hover:text-foreground transition-colors p-1">
+              <X className="size-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* macOS Window Breadcrumb & Realtime Header */}
+
       <div className="flex flex-col gap-5 border-b border-border/60 pb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-muted-foreground">
@@ -286,16 +371,24 @@ function LiveGridPage() {
           </div>
 
           <Button
-            onClick={triggerSurgeSimulation}
+            onClick={handleSyncTelemetry}
+            disabled={syncing}
             variant="outline"
-            className="pill rounded-full border-red-500/40 bg-red-500/10 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-500/20"
+            className="pill rounded-full border-primary/40 text-xs font-semibold hover:bg-primary/10 transition-colors"
           >
-            <Flame className="size-3.5 mr-1 text-red-500" />
-            Simulate Surge (TX-107)
+            <RefreshCw className={`size-3.5 mr-1 text-primary ${syncing ? "animate-spin" : ""}`} />
+            {syncing ? "Syncing Feed..." : "Sync Grid Telemetry"}
           </Button>
 
           <Button
-            onClick={() => { setIncidentDefaultZone(""); setIncidentModalOpen(true); }}
+            onClick={() => {
+              try {
+                const raw = typeof window !== "undefined" ? localStorage.getItem("voltra_operator_session") : null;
+                const zone: string = raw ? (JSON.parse(raw)?.profile?.zone ?? "") : "";
+                setIncidentDefaultZone(zone || "");
+              } catch { setIncidentDefaultZone(""); }
+              setIncidentModalOpen(true);
+            }}
             variant="outline"
             className="pill rounded-full border-amber-500/40 bg-amber-500/10 text-xs font-semibold text-amber-700 dark:text-amber-400 hover:bg-amber-500/20"
           >
@@ -304,45 +397,41 @@ function LiveGridPage() {
           </Button>
 
           <Button
-            onClick={() => setSimulationModalOpen(true)}
+            asChild
             className="pill rounded-full bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/90 shadow-sm"
           >
-            <Plus className="size-3.5 mr-1" />
-            Add Sensor Node
+            <Link to="/predict">
+              <Activity className="size-3.5 mr-1" />
+              Run ML Prediction
+            </Link>
           </Button>
         </div>
       </div>
 
-      {/* macOS Style Hero KPI Metrics */}
-      <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-5">
+      {/* Hero KPI Metrics */}
+      <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="macos-window p-5">
           <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-mono font-semibold">Monitored Assets</p>
           <p className="mt-2 font-mono text-2xl font-bold sm:text-3xl text-foreground">{totalAssets}</p>
-          <p className="mt-1 text-xs text-muted-foreground">18 Active Transformers</p>
+          <p className="mt-1 text-xs text-muted-foreground">Anand District Transformers</p>
         </div>
 
         <div className="macos-window border-red-500/30 bg-red-500/[0.04] p-5">
           <p className="text-[11px] uppercase tracking-wider text-red-600 dark:text-red-400 font-mono font-semibold">Critical / High Risk</p>
           <p className="mt-2 font-mono text-2xl font-bold sm:text-3xl text-red-600 dark:text-red-400">{criticalCount}</p>
-          <p className="mt-1 text-xs text-red-600/80 dark:text-red-400/80">TX-107 (Arcing), TX-112 (PD)</p>
+          <p className="mt-1 text-xs text-red-600/80 dark:text-red-400/80">Requires immediate dispatch</p>
         </div>
 
         <div className="macos-window border-amber-500/30 bg-amber-500/[0.04] p-5">
           <p className="text-[11px] uppercase tracking-wider text-amber-700 dark:text-amber-400 font-mono font-semibold">Watch Tier</p>
           <p className="mt-2 font-mono text-2xl font-bold sm:text-3xl text-amber-600 dark:text-amber-400">{watchCount}</p>
-          <p className="mt-1 text-xs text-muted-foreground">TX-104 & TX-115 Recovered</p>
+          <p className="mt-1 text-xs text-muted-foreground">Elevated monitoring active</p>
         </div>
 
         <div className="macos-window border-emerald-500/30 bg-emerald-500/[0.04] p-5">
           <p className="text-[11px] uppercase tracking-wider text-emerald-700 dark:text-emerald-400 font-mono font-semibold">Mean Health Score</p>
           <p className="mt-2 font-mono text-2xl font-bold sm:text-3xl text-emerald-600 dark:text-emerald-400">{avgHealth}%</p>
-          <p className="mt-1 text-xs text-muted-foreground">Fleet Health Stability</p>
-        </div>
-
-        <div className="macos-window col-span-2 border-emerald-500/30 bg-emerald-500/[0.04] p-5 sm:col-span-4 lg:col-span-1">
-          <p className="text-[11px] uppercase tracking-wider text-emerald-700 dark:text-emerald-400 font-mono font-semibold">Intervention Story</p>
-          <p className="mt-2 font-mono text-xl font-bold text-emerald-600 dark:text-emerald-400">TX-115 Rescued</p>
-          <p className="mt-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400">+89 Days Life Saved</p>
+          <p className="mt-1 text-xs text-muted-foreground">{stableCount} assets nominal</p>
         </div>
       </div>
 
@@ -364,9 +453,9 @@ function LiveGridPage() {
           </span>
           <div className="flex flex-1 items-center gap-4 overflow-x-auto whitespace-nowrap scrollbar-none">
             {tickerEvents.map((evt) => (
-              <div key={evt.id} className="inline-flex items-center gap-2">
+              <div key={evt.id} className="inline-flex items-center gap-2 shrink-0">
                 <span
-                  className={`size-1.5 rounded-full ${
+                  className={`size-1.5 rounded-full shrink-0 ${
                     evt.severity === "critical"
                       ? "bg-danger"
                       : evt.severity === "warning"
@@ -376,7 +465,10 @@ function LiveGridPage() {
                 />
                 <span className="font-mono text-[11px] text-muted-foreground">{evt.timestamp}</span>
                 <span className="font-semibold text-foreground">[{evt.assetId}]</span>
-                <span className="text-muted-foreground">{evt.message}</span>
+                <span className="ticker-full-message text-muted-foreground">{evt.message}</span>
+                <span className="ticker-short-message hidden text-muted-foreground text-[11px] truncate max-w-[120px]">
+                  {evt.message.slice(0, 40)}{evt.message.length > 40 ? "…" : ""}
+                </span>
               </div>
             ))}
           </div>
@@ -406,6 +498,13 @@ function LiveGridPage() {
           >
             <Network className="size-3.5" />
             <span>Grid Topology Map</span>
+          </button>
+          <button
+            onClick={() => setActiveViewTab("hazards")}
+            className={`macos-segmented-btn ${activeViewTab === "hazards" ? "active" : ""}`}
+          >
+            <ShieldAlert className="size-3.5 text-amber-500" />
+            <span>Area Hazard Search (Gemini AI)</span>
           </button>
         </div>
 
@@ -630,147 +729,159 @@ function LiveGridPage() {
               </div>
             </div>
           ) : (
-            /* Cards Grid */
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          /* Cards Grid */
+            <div className="mt-6 asset-card-grid grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {filteredAssets.map((asset) => {
                 const loadPercent = Math.round((asset.currentLoadMw / asset.ratedCapacityMw) * 100);
+                const isRisk = asset.status === "risk";
+                const isWatch = asset.status === "watch";
+
+                const accentBorder = isRisk
+                  ? "border-red-500/50"
+                  : isWatch
+                  ? "border-amber-500/40"
+                  : "border-emerald-500/30";
+
+                const accentBar = isRisk
+                  ? "bg-red-500"
+                  : isWatch
+                  ? "bg-amber-500"
+                  : "bg-emerald-500";
+
+                const hiColor = asset.healthIndexRaw > 50
+                  ? "text-red-400"
+                  : asset.healthIndexRaw > 30
+                  ? "text-amber-400"
+                  : "text-emerald-400";
+
+                const statusLabel = isRisk ? "Critical Risk" : isWatch ? "Watch" : "Nominal";
+                const statusTextColor = isRisk ? "text-red-400" : isWatch ? "text-amber-400" : "text-emerald-400";
 
                 return (
                   <div
                     key={asset.id}
                     onClick={() => setInspectorAsset(asset)}
-                    className={`macos-window group relative flex flex-col justify-between p-5 transition-all hover:-translate-y-1 hover:shadow-soft cursor-pointer ${
-                      asset.id === "TX-115"
-                        ? "border-signal/70 bg-signal/5"
-                        : asset.status === "risk"
-                        ? "border-danger/60 bg-danger/5"
-                        : asset.status === "watch"
-                        ? "border-warning/50 bg-warning/5"
-                        : "border-border/70"
-                    }`}
+                    className={`group relative flex flex-col rounded-xl border bg-card cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg overflow-hidden ${accentBorder}`}
+                    style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.3)" }}
                   >
-                  <div>
-                    {/* Header: ID + Status + Fault */}
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="pill bg-ink px-2.5 py-0.5 font-mono text-xs font-bold text-cream">
-                            {asset.id}
-                          </span>
-                          <span className="text-[11px] font-mono text-muted-foreground">
-                            {asset.voltageKv} kV · {asset.ratedCapacityMw} MVA
-                          </span>
-                          <span className="pill bg-surface px-2 py-0.5 font-mono text-[10px] font-bold border border-border">
-                            {asset.faultType}
-                          </span>
-                        </div>
-                        <h3 className="mt-2 text-base font-semibold tracking-tight text-foreground group-hover:text-signal transition-colors">
-                          {asset.name}
-                        </h3>
-                        <p className="text-xs text-muted-foreground">{asset.substation}</p>
-                      </div>
+                    {/* Accent top-line */}
+                    <div className={`h-[3px] w-full ${accentBar}`} />
 
-                      <div className="text-right">
-                        <span
-                          className={`pill inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-semibold ${
-                            asset.status === "risk"
-                              ? "bg-danger text-white"
-                              : asset.status === "watch"
-                              ? "bg-warning text-foreground"
-                              : "bg-signal text-signal-foreground"
-                          }`}
-                        >
-                          <span
-                            className={`size-1.5 rounded-full ${
-                              asset.status === "risk" ? "bg-white" : asset.status === "watch" ? "bg-foreground" : "bg-signal-foreground"
-                            }`}
-                          />
-                          {asset.status === "risk" ? "Critical Risk" : asset.status === "watch" ? "Watch Tier" : "Nominal"}
-                        </span>
-                        <p className="mt-1 text-[10px] font-mono text-muted-foreground">{asset.region}</p>
-                      </div>
-                    </div>
-
-                    {/* Primary Telemetry Metrics */}
-                    <div className="mt-4 grid grid-cols-2 gap-2 rounded-2xl bg-surface/80 p-3 border border-border/50 text-xs">
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">Load / MVA</p>
-                        <p className="mt-1 font-mono text-sm font-semibold text-foreground">
-                          {asset.currentLoadMw} <span className="text-[10px] text-muted-foreground">/ {asset.ratedCapacityMw} MVA</span>
-                        </p>
-                        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-border/60">
-                          <div
-                            className={`h-full rounded-full ${
-                              loadPercent > 85 ? "bg-danger" : loadPercent > 70 ? "bg-warning" : "bg-signal"
-                            }`}
-                            style={{ width: `${Math.min(100, loadPercent)}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">Remaining Life</p>
-                        <p className="mt-1 font-mono text-sm font-semibold text-foreground">
-                          {asset.rulDays} <span className="text-[10px] text-muted-foreground">days</span>
-                        </p>
-                        <p className="mt-1 text-[10px] font-mono text-muted-foreground">
-                          {asset.rulDays < 40 ? (
-                            <span className="text-danger font-semibold inline-flex items-center gap-1">
-                              <AlertTriangle className="size-2.5" /> Urgency window
+                    <div className="flex flex-col flex-1 px-4 pt-4 pb-4">
+                      {/* Header row */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-bold text-foreground bg-muted px-2 py-0.5 rounded-md">
+                              {asset.id}
                             </span>
-                          ) : (
-                            "Routine cycle"
-                          )}
-                        </p>
+                            <span className="font-mono text-[10px] text-muted-foreground">
+                              {asset.voltageKv} kV
+                            </span>
+                            <span className="font-mono text-[10px] text-muted-foreground border border-border/60 px-1.5 py-0.5 rounded">
+                              {asset.faultType}
+                            </span>
+                          </div>
+                          <h3 className="text-sm font-semibold text-foreground leading-snug">
+                            {asset.name}
+                          </h3>
+                          <p className="text-[11px] text-muted-foreground truncate max-w-[200px]">
+                            {asset.substation}
+                          </p>
+                        </div>
+
+                        {/* Status */}
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`relative flex size-1.5`}>
+                              {isRisk && <span className="absolute inline-flex size-full animate-ping rounded-full bg-red-400 opacity-75" />}
+                              <span className={`relative inline-flex size-1.5 rounded-full ${accentBar}`} />
+                            </span>
+                            <span className={`text-[11px] font-semibold ${statusTextColor}`}>{statusLabel}</span>
+                          </div>
+                          <span className="text-[10px] font-mono text-muted-foreground">{asset.ratedCapacityMw} MVA</span>
+                        </div>
                       </div>
 
-                      <div className="mt-1 border-t border-border/40 pt-2">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">Health Index (Model 1)</p>
-                        <p className={`mt-0.5 font-mono text-xs font-bold ${asset.healthIndexRaw > 50 ? "text-danger" : asset.healthIndexRaw > 30 ? "text-warning" : "text-signal"}`}>
-                          HI {asset.healthIndexRaw.toFixed(1)}
-                        </p>
+                      {/* Divider */}
+                      <div className="my-3 border-t border-border/40" />
+
+                      {/* Metrics grid: 2x2 */}
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Health Index */}
+                        <div className="space-y-0.5">
+                          <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-mono">Health Index</p>
+                          <p className={`font-mono text-lg font-bold leading-none ${hiColor}`}>
+                            {asset.healthIndexRaw.toFixed(1)}
+                            <span className="text-[10px] font-normal text-muted-foreground ml-1">HI</span>
+                          </p>
+                          <p className="text-[9px] text-muted-foreground font-mono">{asset.archetype}</p>
+                        </div>
+
+                        {/* Remaining Life */}
+                        <div className="space-y-0.5">
+                          <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-mono">RUL</p>
+                          <p className={`font-mono text-lg font-bold leading-none ${asset.rulDays < 40 ? "text-red-400" : "text-foreground"}`}>
+                            {asset.rulDays}
+                            <span className="text-[10px] font-normal text-muted-foreground ml-1">days</span>
+                          </p>
+                          <p className="text-[9px] text-muted-foreground font-mono">
+                            {asset.rulDays < 40 ? "Urgency window" : "Scheduled cycle"}
+                          </p>
+                        </div>
+
+                        {/* Load */}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-mono">Load</p>
+                            <p className="font-mono text-[11px] font-semibold text-foreground">{loadPercent}%</p>
+                          </div>
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                loadPercent > 85 ? "bg-red-500" : loadPercent > 70 ? "bg-amber-500" : "bg-emerald-500"
+                              }`}
+                              style={{ width: `${Math.min(100, loadPercent)}%` }}
+                            />
+                          </div>
+                          <p className="text-[9px] font-mono text-muted-foreground">{asset.currentLoadMw}/{asset.ratedCapacityMw} MVA</p>
+                        </div>
+
+                        {/* Temp */}
+                        <div className="space-y-0.5">
+                          <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-mono">Core Temp</p>
+                          <p className={`font-mono text-lg font-bold leading-none ${
+                            asset.coreTempC > 75 ? "text-red-400" : "text-foreground"
+                          }`}>
+                            {asset.coreTempC}
+                            <span className="text-[10px] font-normal text-muted-foreground ml-0.5">°C</span>
+                          </p>
+                          <p className="text-[9px] text-muted-foreground font-mono">Limit 95°C</p>
+                        </div>
                       </div>
 
-                      <div className="mt-1 border-t border-border/40 pt-2">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">Core Top-Oil</p>
-                        <p className={`mt-0.5 font-mono text-xs font-semibold ${asset.coreTempC > 75 ? "text-danger" : "text-foreground"}`}>
-                          {asset.coreTempC}°C
-                        </p>
+                      {/* Footer */}
+                      <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-3">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIncidentDefaultZone(asset.substation || asset.region || "");
+                            setIncidentModalOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-500 hover:text-amber-400 transition-colors"
+                        >
+                          <ShieldAlert className="size-3" />
+                          Report Hazard
+                        </button>
+                        <span className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground group-hover:text-foreground transition-colors">
+                          Inspect <ArrowRight className="size-3" />
+                        </span>
                       </div>
                     </div>
-
-                    {/* SHAP & Archetype footer */}
-                    <div className="mt-3 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1.5 text-muted-foreground">
-                        <BrainCircuit className="size-3.5 text-signal" />
-                        <span className="text-[11px]">{asset.archetype}</span>
-                      </div>
-                      <span className="font-mono text-[11px] text-foreground/80 font-medium">
-                        Rank Score: {asset.compositeScore.toFixed(3)}
-                      </span>
-                    </div>
                   </div>
-
-                  <div className="mt-4 border-t border-border/40 pt-3 flex items-center justify-between text-xs">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIncidentDefaultZone(asset.substation || asset.region || "");
-                        setIncidentModalOpen(true);
-                      }}
-                      className="pill inline-flex items-center gap-1 border border-warning/40 bg-warning/10 px-2.5 py-1 text-[10px] font-semibold text-warning hover:bg-warning/20 transition-colors"
-                    >
-                      <ShieldAlert className="size-3 mr-0.5" />
-                      Report Hazard
-                    </button>
-                    <span className="text-signal flex items-center gap-1 font-semibold group-hover:translate-x-1 transition-transform">
-                      Inspect <ArrowRight className="size-3.5" />
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
           )}
         </>
       )}
@@ -793,7 +904,7 @@ function LiveGridPage() {
               </div>
             </div>
 
-            <div className="mt-6 overflow-x-auto">
+            <div className="mt-6 plan-table-wrap overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-border/60 text-[10px] uppercase font-mono tracking-wider text-muted-foreground">
@@ -809,63 +920,8 @@ function LiveGridPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40 font-sans">
-                  {(planActions.length > 0
-                    ? planActions
-                    : [
-                        {
-                          rank: 1,
-                          asset_id: "TX-107",
-                          substation_name: "GIDC Industrial Phase-2",
-                          grid_zone: "Zone-B",
-                          fault_type: "D1",
-                          action_code: "ELEC-INSPECT",
-                          short_action: "Electrical inspection + targeted oil sampling",
-                          detail: "Perform sealed syringe DGA, inspect bushing connections, reduce load by 15-20%.",
-                          urgency_window: "within 24 hours",
-                          crew_assignment: "Crew-B1 (High-Voltage Arcing Specialist)",
-                          crew_conflict: true,
-                        },
-                        {
-                          rank: 2,
-                          asset_id: "TX-112",
-                          substation_name: "Borsad Industrial Feeder",
-                          grid_zone: "Zone-C",
-                          fault_type: "D1",
-                          action_code: "PD-MAPPING",
-                          short_action: "Acoustic PD survey + vibration isolation check",
-                          detail: "Verify shock transient dissipation, confirm mechanical tie stability post excavation strike.",
-                          urgency_window: "within 48 hours",
-                          crew_assignment: "Crew-C1 (Acoustic Diagnostics)",
-                          crew_conflict: false,
-                        },
-                        {
-                          rank: 3,
-                          asset_id: "TX-104",
-                          substation_name: "Anand Central Transmission",
-                          grid_zone: "Zone-A",
-                          fault_type: "T1",
-                          action_code: "THERMAL-CHECK",
-                          short_action: "Thermal imaging + auxiliary cooling fan overhaul",
-                          detail: "Inspect radiator banks, measure temperature gradient, clean fan filters.",
-                          urgency_window: "within 1 week",
-                          crew_assignment: "Crew-A1 (Substation Auxiliaries)",
-                          crew_conflict: false,
-                        },
-                        {
-                          rank: 4,
-                          asset_id: "TX-115",
-                          substation_name: "Anand South Bulk Substation",
-                          grid_zone: "Zone-D",
-                          fault_type: "T2",
-                          action_code: "MONITOR-RECOVERY",
-                          short_action: "Post-intervention monitoring & verification",
-                          detail: "Track thermal dissipation. Do NOT dispatch emergency crew; asset successfully recovered.",
-                          urgency_window: "routine cycle",
-                          crew_assignment: "Crew-D1 (Routine Watch)",
-                          crew_conflict: false,
-                        },
-                      ]
-                  ).map((action) => (
+                  {planActions.length > 0 ? (
+                    planActions.map((action) => (
                     <tr
                       key={action.asset_id}
                       className={`hover:bg-surface/50 transition-colors ${
@@ -917,7 +973,15 @@ function LiveGridPage() {
                         )}
                       </td>
                     </tr>
-                  ))}
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={9} className="py-8 text-center text-muted-foreground">
+                      <Loader2 className="size-5 animate-spin mx-auto mb-2 text-primary" />
+                      Loading Day-89 Techtonics Maintenance Plan from FastAPI backend...
+                    </td>
+                  </tr>
+                )}
                 </tbody>
               </table>
             </div>
@@ -953,36 +1017,281 @@ function LiveGridPage() {
         </div>
       )}
 
+      {/* ── VIEW 4: AREA HAZARD SEARCH (GEMINI AI) ── */}
+      {activeViewTab === "hazards" && (
+        <div className="mt-6 space-y-6">
+          {/* Search Header Panel */}
+          <div className="rounded-3xl border border-border/70 bg-card p-6 shadow-card">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-border/40 pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-sans text-xl font-bold text-foreground">
+                    Area Hazard & Ground Incident Intelligence
+                  </h3>
+                  <span className="pill border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-mono font-semibold text-emerald-400 flex items-center gap-1">
+                    <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Gemini 3.6 Flash Live
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Semantic proximity reasoning: Correlating citizen and field-technician incident reports with transmission equipment to calculate dynamic threat multipliers.
+                </p>
+              </div>
+              <Button
+                onClick={() => setIncidentModalOpen(true)}
+                className="h-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-black font-semibold text-xs px-3"
+              >
+                <ShieldAlert className="size-3.5 mr-1.5" />
+                Report Ground Hazard
+              </Button>
+            </div>
+
+            {/* Search Input Bar */}
+            <div className="mt-5 hazard-input-row flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <input
+                  value={hazardQuery}
+                  onChange={(e) => setHazardQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && runHazardSearch(hazardQuery, hazardZone)}
+                  placeholder="Enter area, corridor, or incident keywords (e.g., GIDC Phase-2 arcing, storm damage, excavator trenching)..."
+                  className="w-full rounded-xl border border-border/80 bg-muted/30 pl-10 pr-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:bg-card focus:outline-none transition-all font-sans"
+                />
+              </div>
+              <div className="hazard-zone-input w-full sm:w-56">
+                <input
+                  value={hazardZone}
+                  onChange={(e) => setHazardZone(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && runHazardSearch(hazardQuery, hazardZone)}
+                  placeholder="Specific Zone / Substation..."
+                  className="w-full rounded-xl border border-border/80 bg-muted/30 px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:bg-card focus:outline-none transition-all font-sans"
+                />
+              </div>
+              <Button
+                onClick={() => runHazardSearch(hazardQuery, hazardZone)}
+                disabled={loadingHazardSearch}
+                className="h-9 px-4 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-all shrink-0"
+              >
+                {loadingHazardSearch ? (
+                  <>
+                    <Loader2 className="size-3.5 mr-1.5 animate-spin" />
+                    Querying Gemini...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="size-3.5 mr-1.5 text-yellow-300" />
+                    Analyze Area
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Quick Query Chips */}
+            <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+              <span className="text-[10px] font-mono uppercase text-muted-foreground shrink-0">Quick Queries:</span>
+              {[
+                { label: "GIDC Phase-2 Excavator & Arcing", q: "GIDC Phase-2 industrial excavation and arcing", z: "GIDC Phase-2" },
+                { label: "Anand Central Storm Transient", q: "storm wind shear flashover transient", z: "Anand Central" },
+                { label: "Mogar Radiator Fan Alert", q: "cooling fan motor overheating ozone smell", z: "Mogar" },
+                { label: "Vidyanagar University Encroachment", q: "tree limb vegetation encroachment near feeder lines", z: "Vidyanagar" },
+              ].map((chip) => (
+                <button
+                  key={chip.label}
+                  onClick={() => {
+                    setHazardQuery(chip.q);
+                    setHazardZone(chip.z);
+                    runHazardSearch(chip.q, chip.z);
+                  }}
+                  className="rounded-full border border-border/60 bg-muted/40 hover:bg-muted px-3 py-1 text-[11px] text-foreground font-medium transition-colors shrink-0"
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Results Area */}
+          {loadingHazardSearch ? (
+            <div className="rounded-3xl border border-border/70 bg-card p-12 text-center shadow-card">
+              <Loader2 className="size-8 animate-spin mx-auto text-primary mb-3" />
+              <p className="font-semibold text-foreground text-sm">Synthesizing Geospatial Proximity Threat Analysis...</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Querying Google Gemini 3.6 Flash against verified incident logs and regional transmission registry
+              </p>
+            </div>
+          ) : hazardSearchResult ? (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left 2 Cols: Synthesis & Containment */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Threat Assessment Hero Card */}
+                <div className="rounded-3xl border border-border/70 bg-card p-6 shadow-card space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-4">
+                    <div className="flex items-center gap-2">
+                      <Compass className="size-4 text-primary" />
+                      <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider">
+                        Identified Area: <strong className="text-foreground">{hazardSearchResult.search_area || "Target Sector"}</strong>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`pill font-mono text-xs font-bold px-3 py-1 border ${
+                        hazardSearchResult.threat_severity === "CRITICAL"
+                          ? "border-red-500/30 text-red-400 bg-red-500/10"
+                          : hazardSearchResult.threat_severity === "ELEVATED"
+                          ? "border-amber-500/30 text-amber-400 bg-amber-500/10"
+                          : "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+                      }`}>
+                        {hazardSearchResult.threat_severity || "NOMINAL"} THREAT
+                      </span>
+                      <span className="pill font-mono text-xs font-bold px-3 py-1 border border-primary/30 text-primary bg-primary/10">
+                        Risk Multiplier: {hazardSearchResult.active_risk_multiplier}×
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Geospatial Summary */}
+                  <div className="space-y-1.5">
+                    <h4 className="text-xs font-mono uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Sparkles className="size-3 text-primary" /> Gemini Geospatial Proximity Analysis
+                    </h4>
+                    <p className="text-sm leading-relaxed text-foreground font-sans">
+                      {hazardSearchResult.geospatial_summary || "No active threat patterns detected in this polygon."}
+                    </p>
+                  </div>
+
+                  {/* Cascading Risk Assessment */}
+                  {hazardSearchResult.cascading_risk_assessment && (
+                    <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-4 space-y-1">
+                      <h5 className="text-xs font-bold uppercase tracking-wider text-red-400 flex items-center gap-1.5">
+                        <Flame className="size-3.5" /> Cascading Failure & Blackout Vulnerability
+                      </h5>
+                      <p className="text-xs leading-relaxed text-foreground/90 font-sans">
+                        {hazardSearchResult.cascading_risk_assessment}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Affected Equipment */}
+                  {hazardSearchResult.affected_assets?.length > 0 && (
+                    <div className="pt-2">
+                      <p className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground mb-2">
+                        High-Voltage Assets in Immediate Proximity Corridor:
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {hazardSearchResult.affected_assets.map((assetId: string) => {
+                          const matchedAsset = assets.find((a) => a.id === assetId);
+                          return (
+                            <button
+                              key={assetId}
+                              onClick={() => {
+                                if (matchedAsset) setInspectorAsset(matchedAsset);
+                              }}
+                              className="group inline-flex items-center gap-2 rounded-xl border border-border/80 bg-muted/40 hover:bg-muted px-3 py-1.5 transition-all text-xs font-mono font-semibold"
+                            >
+                              <span className="size-2 rounded-full bg-red-500" />
+                              <span className="text-foreground">{assetId}</span>
+                              {matchedAsset && (
+                                <span className="text-[10px] text-muted-foreground">({matchedAsset.voltageKv}kV · HI {matchedAsset.healthScore})</span>
+                              )}
+                              <ArrowUpRight className="size-3 text-muted-foreground group-hover:text-foreground transition-transform" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Containment Protocols Card */}
+                {hazardSearchResult.containment_protocols?.length > 0 && (
+                  <div className="rounded-3xl border border-border/70 bg-card p-6 shadow-card space-y-3">
+                    <h4 className="text-xs font-mono uppercase tracking-wider text-foreground flex items-center gap-2">
+                      <ShieldCheck className="size-4 text-emerald-400" />
+                      Gemini Recommended Operator Containment Protocols
+                    </h4>
+                    <div className="space-y-2">
+                      {hazardSearchResult.containment_protocols.map((protocol: string, idx: number) => (
+                        <div key={idx} className="flex items-start gap-3 rounded-xl border border-border/50 bg-muted/20 p-3 text-xs">
+                          <CheckCircle2 className="size-4 text-emerald-400 shrink-0 mt-0.5" />
+                          <span className="leading-relaxed text-foreground font-sans">{protocol}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Col: Verified Field Incident Logs in Area */}
+              <div className="rounded-3xl border border-border/70 bg-card p-6 shadow-card space-y-4">
+                <div className="flex items-center justify-between border-b border-border/40 pb-3">
+                  <h4 className="text-xs font-mono uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                    <Radio className="size-3.5 text-primary" /> Verified Ground Reports ({hazardSearchResult.events?.length || 0})
+                  </h4>
+                  <span className="text-[10px] font-mono text-muted-foreground">Audit Log</span>
+                </div>
+
+                <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+                  {(hazardSearchResult.events || []).length > 0 ? (
+                    hazardSearchResult.events.map((evt: any, i: number) => (
+                      <div key={i} className="rounded-2xl border border-border/50 bg-muted/20 p-3.5 space-y-2 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-[10px] text-muted-foreground">{evt.incident_id || `INC-${i + 1}`}</span>
+                          <span className="pill px-2 py-0.5 text-[9px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            {evt.risk_multiplier ? `${evt.risk_multiplier}×` : "1.20×"}
+                          </span>
+                        </div>
+                        <p className="font-medium text-foreground text-xs leading-snug">{evt.event_description}</p>
+                        <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground pt-1 border-t border-border/30">
+                          <span>{evt.zone_name || "Regional Corridor"}</span>
+                          <span className="capitalize">{evt.category || "Field Report"}</span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-muted-foreground text-center py-8">
+                      No citizen or technician reports logged in this polygon.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
+
       {/* Asset Telemetry Inspector Drawer / Modal */}
       {inspectorAsset && (
-        <AssetInspectorModal
-          asset={inspectorAsset}
-          onClose={() => setInspectorAsset(null)}
-          onReroute={() => {
-            handleReroute(inspectorAsset.id);
-            setInspectorAsset((curr) =>
-              curr
-                ? {
-                    ...curr,
-                    currentLoadMw: Math.max(10, curr.currentLoadMw - 8),
-                    coreTempC: Number((curr.coreTempC - 4.5).toFixed(1)),
-                    healthScore: Math.min(95, curr.healthScore + 15),
-                  }
-                : null
-            );
-          }}
-          onCooling={() => {
-            setInspectorAsset((curr) =>
-              curr ? { ...curr, coreTempC: Number((curr.coreTempC - 6.2).toFixed(1)) } : null
-            );
-            toast.success(`Forced auxiliary cooling engaged for ${inspectorAsset.id}: −6.2°C thermal reduction`);
-          }}
-          onReportHazard={() => {
-            setIncidentDefaultZone(inspectorAsset.substation || inspectorAsset.region || "");
-            setInspectorAsset(null);
-            setIncidentModalOpen(true);
-          }}
-        />
+        <ModalErrorBoundary onReset={() => setInspectorAsset(null)}>
+          <AssetInspectorModal
+            asset={inspectorAsset}
+            onClose={() => setInspectorAsset(null)}
+            onReroute={() => {
+              toast.success(`Dispatched load curtailment directive for ${inspectorAsset.id}`, {
+                description: "Substation SCADA signaled to reduce active load and monitor thermal gradient.",
+              });
+              setInspectorAsset((curr) =>
+                curr
+                  ? {
+                      ...curr,
+                      currentLoadMw: Math.max(10, curr.currentLoadMw - 5),
+                      coreTempC: Number((curr.coreTempC - 3.0).toFixed(1)),
+                      healthScore: Math.min(95, curr.healthScore + 10),
+                    }
+                  : null
+              );
+            }}
+            onCooling={() => {
+              setInspectorAsset((curr) =>
+                curr ? { ...curr, coreTempC: Number((curr.coreTempC - 6.2).toFixed(1)) } : null
+              );
+              toast.success(`Forced auxiliary cooling engaged for ${inspectorAsset.id}: −6.2°C thermal reduction`);
+            }}
+            onReportHazard={() => {
+              setIncidentDefaultZone(inspectorAsset.substation || inspectorAsset.region || "");
+              setInspectorAsset(null);
+              setIncidentModalOpen(true);
+            }}
+          />
+        </ModalErrorBoundary>
       )}
 
       {/* Community Incident Reporting Modal */}
@@ -992,32 +1301,126 @@ function LiveGridPage() {
         defaultZone={incidentDefaultZone}
       />
 
-      {/* Simulation / Custom Node Injection Modal */}
-      {simulationModalOpen && (
-        <SimulationModal
-          onClose={() => setSimulationModalOpen(false)}
-          onInject={(newNode) => {
-            setAssets((prev) => [newNode, ...prev]);
-            setTickerEvents((prev) => [
-              {
-                id: `ev-${Date.now()}`,
-                timestamp: currentTime,
-                assetId: newNode.id,
-                message: `New telemetry sensor node ${newNode.id} (${newNode.name}) online and streaming.`,
-                severity: "info",
-              },
-              ...prev,
-            ]);
-            setSimulationModalOpen(false);
-            toast.success(`Sensor Node ${newNode.id} registered to Live Grid feed.`);
-          }}
-        />
+      {/* ── Guest Preview Overlay ── */}
+      {!isAuthed && <GuestPreviewBanner page="Live Grid Console" />}
+
+      {/* ── Sticky Guest Sign-In Footer ── */}
+      {!isAuthed && (
+        <div className="fixed bottom-0 inset-x-0 z-50 flex items-center justify-between gap-4 border-t border-amber-500/30 bg-background/95 backdrop-blur-md px-4 py-3 sm:px-8 shadow-[0_-4px_24px_rgba(0,0,0,0.4)]">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="shrink-0 size-8 grid place-items-center rounded-full bg-gradient-to-br from-amber-500/30 to-orange-500/20 border border-amber-500/40">
+              <Lock className="size-4 text-amber-400" />
+            </span>
+            <div className="min-w-0">
+              <p className="font-bold text-xs text-foreground sm:text-sm">You are viewing a curated preview</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Sign in to access live telemetry, real-time ML scoring, Groq reports and Gemini hazard search.</p>
+            </div>
+          </div>
+          <Link
+            to="/login"
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2 text-xs font-bold text-black shadow-lg hover:from-amber-400 hover:to-orange-400 transition-all hover:scale-[1.02]"
+          >
+            <LogIn className="size-3.5" />
+            Sign In to Unlock
+          </Link>
+        </div>
       )}
     </div>
   );
 }
 
-// Sub-component: Asset Inspector Modal with Live Timeseries & IBM Bob Advisory
+function GuestPreviewBanner({ page }: { page: string }) {
+  return (
+    <>
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-30"
+        style={{ height: "50%", background: "linear-gradient(to bottom, transparent 0%, hsl(var(--background)/0.85) 35%, hsl(var(--background)) 65%)" }}
+      />
+      <div className="sticky bottom-0 z-40 border-t border-border/60 bg-background/95 backdrop-blur-xl px-4 py-4 sm:px-6">
+        <div className="mx-auto flex max-w-5xl flex-col items-center gap-3 sm:flex-row sm:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+              <Lock className="size-4" />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{page} · Preview Mode</p>
+              <p className="text-xs text-muted-foreground">Sign in to inspect assets, run live queries, and dispatch maintenance crews.</p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-5 py-2.5 text-xs font-bold text-background transition-colors hover:bg-foreground/90"
+            >
+              <LogIn className="size-3.5" /> Sign In to Access
+            </Link>
+            <Link
+              to="/technology"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border/70 px-4 py-2.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ShieldCheck className="size-3.5" /> How It Works
+            </Link>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// Local Error Boundary to prevent telemetry modal crashes from bubbling to root
+interface ModalErrorBoundaryProps {
+  children: ReactNode;
+  onReset?: () => void;
+}
+
+interface ModalErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+class ModalErrorBoundary extends Component<ModalErrorBoundaryProps, ModalErrorBoundaryState> {
+  constructor(props: ModalErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ModalErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("ModalErrorBoundary caught telemetry crash:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="max-w-md w-full rounded-2xl border border-border bg-card p-6 text-center shadow-xl">
+            <h3 className="text-base font-semibold text-foreground">Asset Telemetry Signal Interrupted</h3>
+            <p className="mt-2 text-xs text-muted-foreground">
+              {this.state.error?.message || "An error occurred while rendering telemetry for this asset."}
+            </p>
+            <div className="mt-5 flex justify-center">
+              <Button
+                onClick={() => {
+                  this.setState({ hasError: false });
+                  this.props.onReset?.();
+                }}
+                className="h-8 px-4 text-xs font-semibold"
+              >
+                Close Inspector
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// Sub-component: Asset Inspector Modal — Live Model Data
 function AssetInspectorModal({
   asset,
   onClose,
@@ -1034,486 +1437,665 @@ function AssetInspectorModal({
   const [detail, setDetail] = useState<AssetDetailResponse | null>(null);
   const [timeseries, setTimeseries] = useState<TimeseriesPoint[]>([]);
   const [loadingDetail, setLoadingDetail] = useState(true);
+  const [apiError, setApiError] = useState(false);
+  const [chartTab, setChartTab] = useState<"trajectory" | "temperature" | "gases">("trajectory");
+  const [showReportDialog, setShowReportDialog] = useState(false);
+  const [groqReport, setGroqReport] = useState<any | null>(null);
+  const [loadingGroqReport, setLoadingGroqReport] = useState(false);
 
   useEffect(() => {
     let active = true;
     setLoadingDetail(true);
+    setDetail(null);
+    setApiError(false);
 
     techtonicsApi
       .getAssetDetail(asset.id, true)
-      .then((d) => {
-        if (active) setDetail(d);
-      })
-      .catch(() => {
-        // Fallback handled gracefully
-      })
-      .finally(() => {
-        if (active) setLoadingDetail(false);
-      });
+      .then((d) => { if (active) { setDetail(d); setApiError(false); } })
+      .catch(() => { if (active) setApiError(true); })
+      .finally(() => { if (active) setLoadingDetail(false); });
 
     techtonicsApi
       .getTimeseries(asset.id)
-      .then((ts) => {
-        if (active && ts.timeseries?.length) setTimeseries(ts.timeseries);
-      })
-      .catch(() => {
-        // Fallback handled gracefully
-      });
+      .then((ts) => { if (active && ts.timeseries?.length) setTimeseries(ts.timeseries); })
+      .catch(() => {});
 
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [asset.id]);
 
-  // Chart data: 90 days if live, or fallback 4 points
   const chartData = useMemo(() => {
     if (timeseries.length > 0) {
-      return timeseries.map((pt) => ({
-        time: `D${pt.day}`,
-        loadMw: pt.load_percentage
-          ? Math.round((pt.load_percentage / 100) * asset.ratedCapacityMw)
-          : Math.round(asset.currentLoadMw),
-        healthIndex: pt["Health index"] ?? pt.health_index ?? asset.healthIndexRaw,
-        tempC: pt.temperature ?? pt.top_oil_temp_c ?? asset.coreTempC,
-        c2h2: pt.Acethylene ?? 0,
-        ch4: pt.Methane ?? 0,
-      }));
+      // Subsample to max 60 points for legibility (every N-th day)
+      const stride = Math.max(1, Math.floor(timeseries.length / 60));
+      return timeseries
+        .filter((_, i) => i % stride === 0 || i === timeseries.length - 1)
+        .map((pt) => {
+          const loadPct = pt.load_pct ?? pt.load_percentage ?? 0;
+          const ratedCap = asset.ratedCapacityMw || 40;
+          const loadMw = loadPct > 0
+            ? Math.round((loadPct / 100) * ratedCap * 10) / 10
+            : Math.round((asset.currentLoadMw || 0) * 10) / 10;
+          // Use RUL_days from the timeseries — it is the per-day ML pipeline output
+          // (the raw health_index column is unnormalized training data, not Model 1 output)
+          const rulFromTs = pt.RUL_days;
+          // Compute health index equivalent: HI ≈ max(13.4, 180 − RUL) capped 0–100
+          const hiFromRul = rulFromTs != null
+            ? Math.max(0, Math.min(100, Math.round((180 - rulFromTs) * 100) / 100))
+            : asset.healthIndexRaw ?? 0;
+          const tempC = Math.round((pt.top_oil_temp_c ?? pt.temperature ?? asset.coreTempC ?? 55) * 10) / 10;
+          const c2h2 = Math.round((pt.Acethylene ?? 0) * 100) / 100;
+          const ch4 = Math.round((pt.Methane ?? 0) * 10) / 10;
+          const h2 = Math.round((pt.Hydrogen ?? 0) * 10) / 10;
+          return {
+            time: `D${pt.day}`,
+            day: pt.day,
+            loadMw,
+            loadPct: Math.round(loadPct * 10) / 10,
+            healthIndex: hiFromRul,
+            rulDays: rulFromTs != null ? Math.round(rulFromTs * 10) / 10 : null,
+            tempC,
+            c2h2,
+            ch4,
+            h2,
+          };
+        });
     }
-    return asset.telemetryHistory.map((pt) => ({
+    // Fallback: use static telemetry history baked into gridData.ts
+    return (asset.telemetryHistory || []).map((pt, idx) => ({
       time: pt.time,
+      day: idx,
       loadMw: pt.loadMw,
-      healthIndex: asset.healthIndexRaw,
+      loadPct: asset.ratedCapacityMw ? Math.round((pt.loadMw / asset.ratedCapacityMw) * 1000) / 10 : 0,
+      healthIndex: asset.healthIndexRaw ?? 0,
+      rulDays: asset.rulDays ?? null,
       tempC: pt.tempC,
       c2h2: 0,
       ch4: 0,
+      h2: 0,
     }));
   }, [timeseries, asset]);
 
+  // Resolved values — guard against null from API (JSON null !== undefined)
+  const hi = (detail?.health_index != null ? detail.health_index : null) ?? asset.healthIndexRaw ?? 0;
+  const rul = (detail?.RUL_days != null ? detail.RUL_days : null) ?? asset.rulDays ?? 0;
+  const faultType = detail?.fault_type || asset.faultType || "NF";
+  const rawShap = detail?.top_3_shap ?? asset.top3Shap;
+  const shapData: [string, number][] = useMemo(() => safeParseShap(rawShap), [rawShap]);
+  const isRisk = asset.status === "risk";
+  const isWatch = asset.status === "watch";
+  const statusLabel = isRisk ? "Critical Risk" : isWatch ? "Watch Tier" : "Nominal";
+  const statusColor = isRisk ? "text-red-400" : isWatch ? "text-amber-400" : "text-emerald-400";
+  const statusBorder = isRisk ? "border-red-500/30" : isWatch ? "border-amber-500/30" : "border-emerald-500/30";
+  const statusBgClass = isRisk ? "bg-red-500/15" : isWatch ? "bg-amber-500/15" : "bg-emerald-500/15";
+  const loadPercent = asset.ratedCapacityMw ? Math.round((asset.currentLoadMw / asset.ratedCapacityMw) * 100) : 0;
+  const safeHi = typeof hi === "number" && isFinite(hi) ? hi : 0;
+  const safeRul = typeof rul === "number" && isFinite(rul) ? rul : 0;
+  const archetypeStr = (asset.archetype || "Standard").toLowerCase();
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="macos-window relative max-h-[92vh] w-full max-w-4xl overflow-y-auto p-6 shadow-soft sm:p-8"
+        className="relative flex flex-col max-h-[92vh] w-full max-w-3xl overflow-hidden rounded-2xl border border-border/60 bg-card shadow-2xl"
       >
-        {/* macOS Window Top Chrome */}
-        <div className="flex items-center justify-between border-b border-border/50 pb-3 mb-5">
-          <div className="macos-traffic-dots">
-            <button
-              onClick={onClose}
-              className="macos-dot macos-dot-red hover:opacity-80 cursor-pointer"
-              title="Close Inspector"
-            />
-            <span className="macos-dot macos-dot-yellow" />
-            <span className="macos-dot macos-dot-green" />
-          </div>
-          <span className="text-xs font-mono text-muted-foreground uppercase tracking-wider font-semibold">
-            {asset.id} · macOS Telemetry Inspector
-          </span>
-          <button
-            onClick={onClose}
-            aria-label="Close modal"
-            className="grid size-7 place-items-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-
-        {/* Modal Header */}
-        <div className="flex items-start justify-between gap-4 border-b border-border/50 pb-5">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="pill bg-ink px-3 py-1 font-mono text-xs font-bold text-cream">
-                {asset.id}
-              </span>
-              <span className="text-xs uppercase font-mono tracking-wider text-muted-foreground">
-                {asset.voltageKv} kV · {asset.ratedCapacityMw} MVA
-              </span>
-              <span className="pill bg-surface px-2.5 py-0.5 text-xs font-mono font-bold border border-border text-foreground">
-                Fault Class: {detail?.fault_type || asset.faultType}
-              </span>
-              <span
-                className={`pill px-2.5 py-0.5 text-[10px] font-semibold ${
-                  asset.status === "risk"
-                    ? "bg-danger text-white"
-                    : asset.status === "watch"
-                    ? "bg-warning text-foreground"
-                    : "bg-signal text-signal-foreground"
-                }`}
-              >
-                {asset.status === "risk" ? "Critical Risk" : asset.status === "watch" ? "Watch Tier" : "Nominal"}
-              </span>
-            </div>
-            <h2 className="mt-2 font-sans text-2xl font-semibold sm:text-3xl text-foreground">
-              {asset.name}
-            </h2>
-            <p className="text-xs text-muted-foreground mt-1">
-              {asset.substation} · {asset.region} · Inspected: {asset.lastInspected}
-            </p>
-          </div>
-
-          <button
-            onClick={onClose}
-            aria-label="Close modal"
-            className="grid size-9 place-items-center rounded-full border border-border/60 hover:bg-muted"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-
-        {/* ── IBM BOB PLAIN-ENGLISH ADVISORY CARD ── */}
-        <div className="mt-6 rounded-2xl border border-signal/40 bg-surface/80 p-5 shadow-sm backdrop-blur">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-3">
-            <div className="flex items-center gap-2">
-              <BrainCircuit className="size-4 text-signal" />
-              <h4 className="font-sans text-sm font-bold text-foreground">
-                IBM Bob Plain-English Maintenance Advisory
-              </h4>
-            </div>
-            <span
-              className={`pill text-[10px] font-mono px-2.5 py-0.5 font-medium inline-flex items-center gap-1.5 ${
-                detail?.advisory_source === "ibm_bob_llm"
-                  ? "bg-signal/20 text-signal-foreground border border-signal/40"
-                  : "bg-surface border border-border text-muted-foreground"
-              }`}
-            >
-              <span
-                className={`size-1.5 rounded-full ${
-                  detail?.advisory_source === "ibm_bob_llm" ? "bg-emerald-500" : "bg-amber-500"
-                }`}
-              />
-              {detail?.advisory_source === "ibm_bob_llm"
-                ? "Generated by Claude 3.5 Haiku (IBM Bob)"
-                : "Deterministic Engineering Fallback"}
+        {/* ── Top chrome bar ── */}
+        <div className="flex shrink-0 items-center justify-between border-b border-border/50 bg-muted/30 px-5 py-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-mono text-xs font-bold text-foreground bg-muted px-2.5 py-1 rounded-md">{asset.id}</span>
+            <span className="text-xs font-mono text-muted-foreground">{asset.voltageKv} kV · {asset.ratedCapacityMw} MVA</span>
+            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${statusBgClass} ${statusColor} ${statusBorder}`}>
+              {isRisk && <span className="relative flex size-1.5"><span className="absolute animate-ping size-full rounded-full bg-red-400 opacity-75" /><span className="relative size-1.5 rounded-full bg-red-400" /></span>}
+              {statusLabel}
             </span>
+            {!loadingDetail && !apiError && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-mono font-semibold text-emerald-400">
+                <span className="size-1.5 rounded-full bg-emerald-500" />
+                Live Model
+              </span>
+            )}
+            {apiError && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[9px] font-mono font-semibold text-amber-400">
+                Cached Data
+              </span>
+            )}
           </div>
-
-          <p className="mt-3 text-xs sm:text-sm leading-relaxed text-foreground/90 font-serif italic">
-            "{detail?.advisory_text ||
-              (asset.id === "TX-115"
-                ? "TX-115 is in post-maintenance recovery following a cooling fan repair and load curtailment at Day 78. Health index stabilized at 36.1 and remaining useful life recovered to 97 days. Continued routine thermal monitoring is recommended."
-                : asset.id === "TX-107"
-                ? "TX-107 at GIDC Phase-2 Substation is in critical electrical arcing failure (D1/D2). Acetylene (C2H2) exceeds 2,500 ppm and remaining useful life is down to 33.2 days. Immediate emergency crew dispatch and load curtailment required within 24 hours."
-                : asset.id === "TX-104"
-                ? "TX-104 displays progressive thermal overheating (T1) correlated with high summer ambient temperatures. Top-oil temperature reached 84°C. Schedule radiator fan bank inspection within 1 week."
-                : `${asset.name} is operating with stable insulation chemistry (Health Index ${asset.healthIndexRaw.toFixed(1)}). Normal scheduled monitoring recommended.`)}"
-          </p>
+          <button onClick={onClose} className="grid size-7 place-items-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
+            <X className="size-4" />
+          </button>
         </div>
 
-        {/* ── 90-DAY TELEMETRY & DEGRADATION RECHARTS CHART ── */}
-        <div className="mt-6 rounded-2xl border border-border/60 bg-surface/60 p-4 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h4 className="font-sans text-sm font-semibold text-foreground">
-                Telemetry Degradation Trajectory (90 Days)
-              </h4>
-              <p className="text-[11px] text-muted-foreground">
-                Health Index Damage Score vs Operating Top-Oil Temperature
+        {/* ── Scrollable body ── */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Asset Header */}
+          <div className="border-b border-border/40 px-5 py-4">
+            <h2 className="text-lg font-semibold text-foreground">{asset.name}</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{asset.substation} · {asset.region} · Last inspected: {asset.lastInspected}</p>
+          </div>
+
+          {/* ── 4 KPI gauges ── */}
+          <div className="grid grid-cols-2 gap-px bg-border/40 border-b border-border/40 sm:grid-cols-4">
+            {/* Health Index */}
+            <div className="bg-card px-4 py-4">
+              <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-mono">Health Index</p>
+              {loadingDetail ? (
+                <div className="mt-2 h-6 w-16 animate-pulse rounded bg-muted" />
+              ) : (
+                <p className={`mt-1 font-mono text-2xl font-bold ${
+                  safeHi > 50 ? "text-red-400" : safeHi > 30 ? "text-amber-400" : "text-emerald-400"
+                }`}>
+                  {safeHi.toFixed(1)}
+                  <span className="text-xs font-normal text-muted-foreground ml-1">HI</span>
+                </p>
+              )}
+              <p className="mt-0.5 text-[9px] text-muted-foreground">Pristine: 13.4 · Hazard: &gt;50</p>
+            </div>
+
+            {/* RUL */}
+            <div className="bg-card px-4 py-4">
+              <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-mono">Remaining Life</p>
+              {loadingDetail ? (
+                <div className="mt-2 h-6 w-16 animate-pulse rounded bg-muted" />
+              ) : (
+                <p className={`mt-1 font-mono text-2xl font-bold ${safeRul < 40 ? "text-red-400" : "text-emerald-400"}`}>
+                  {safeRul}
+                  <span className="text-xs font-normal text-muted-foreground ml-1">days</span>
+                </p>
+              )}
+              <p className="mt-0.5 text-[9px] text-muted-foreground">Model 1 decay projection</p>
+            </div>
+
+            {/* Fault Class */}
+            <div className="bg-card px-4 py-4">
+              <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-mono">Fault Class</p>
+              {loadingDetail ? (
+                <div className="mt-2 h-6 w-12 animate-pulse rounded bg-muted" />
+              ) : (
+                <p className="mt-1 font-mono text-2xl font-bold text-foreground">IEC {faultType}</p>
+              )}
+              <p className="mt-0.5 text-[9px] text-muted-foreground">90.8% accuracy (Model 2)</p>
+            </div>
+
+            {/* Core Temp */}
+            <div className="bg-card px-4 py-4">
+              <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-mono">Core Temp</p>
+              <p className={`mt-1 font-mono text-2xl font-bold ${asset.coreTempC > 75 ? "text-red-400" : "text-foreground"}`}>
+                {asset.coreTempC}
+                <span className="text-xs font-normal text-muted-foreground ml-0.5">°C</span>
               </p>
-            </div>
-            <div className="flex items-center gap-3 text-[10px] font-mono text-muted-foreground">
-              <span className="inline-flex items-center gap-1">
-                <span className="size-2 rounded-full bg-danger" /> Health Index (Damage)
-              </span>
-              <span className="inline-flex items-center gap-1">
-                <span className="size-2 rounded-full bg-signal" /> Load / MVA
-              </span>
+              <p className="mt-0.5 text-[9px] text-muted-foreground">Top-oil limit: 95°C</p>
             </div>
           </div>
 
-          <div className="mt-4 h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="loadGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--color-signal)" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="var(--color-signal)" stopOpacity={0.0} />
-                  </linearGradient>
-                  <linearGradient id="hiGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--color-danger)" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="var(--color-danger)" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="var(--color-border)" vertical={false} opacity={0.5} />
-                <XAxis
-                  dataKey="time"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "var(--color-card)",
-                    borderColor: "var(--color-border)",
-                    borderRadius: "0.75rem",
-                    fontSize: "0.75rem",
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="healthIndex"
-                  name="Health Index"
-                  stroke="var(--color-danger)"
-                  strokeWidth={2}
-                  fill="url(#hiGradient)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="loadMw"
-                  name="Load (MVA)"
-                  stroke="var(--color-signal)"
-                  strokeWidth={1.5}
-                  fill="url(#loadGradient)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* ── SHAP EXPLAINABILITY (TOP 3 DRIVERS) ── */}
-        <div className="mt-5 rounded-2xl border border-border/60 bg-surface/70 p-4 sm:p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="font-sans text-sm font-semibold text-foreground">
-              SHAP Feature Attribution (TreeExplainer on Model 1)
-            </h4>
-            <span className="text-[10px] font-mono text-muted-foreground">
-              Impact on Health Index score
-            </span>
+          {/* Load bar */}
+          <div className="border-b border-border/40 px-5 py-3">
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-mono">Operating Load</p>
+              <p className="font-mono text-xs font-semibold text-foreground">{asset.currentLoadMw} / {asset.ratedCapacityMw} MVA ({loadPercent}%)</p>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className={`h-full rounded-full transition-all ${loadPercent > 85 ? "bg-red-500" : loadPercent > 70 ? "bg-amber-500" : "bg-emerald-500"}`}
+                style={{ width: `${Math.min(100, loadPercent)}%` }}
+              />
+            </div>
           </div>
 
-          <div className="space-y-2.5">
-            {(detail?.top_3_shap || asset.top3Shap || [
-              ["Methane (CH4)", 11.4],
-              ["Hydrogen (H2)", 6.2],
-              ["Dielectric Rigidity", -4.8],
-            ]).map(([featureName, shapVal]) => (
-              <div key={featureName} className="flex items-center justify-between text-xs font-mono">
-                <span className="text-foreground/90 font-medium">{featureName}</span>
-                <div className="flex items-center gap-3">
-                  <div className="w-36 h-2 rounded-full bg-border/60 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${shapVal > 0 ? "bg-danger" : "bg-signal"}`}
-                      style={{ width: `${Math.min(100, Math.abs(shapVal) * 7)}%` }}
-                    />
-                  </div>
-                  <span
-                    className={`w-16 text-right font-bold ${
-                      shapVal > 0 ? "text-danger" : "text-signal"
+          {/* ── Advisory (IBM Bob / Groq) ── */}
+          <div className="border-b border-border/40 px-5 py-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <BrainCircuit className="size-3.5 text-primary" />
+                <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">AI Maintenance Advisory</h4>
+              </div>
+              {!loadingDetail && (
+                <span className={`text-[9px] font-mono px-2 py-0.5 rounded border ${
+                  detail?.advisory_source === "ibm_bob_llm"
+                    ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+                    : "border-border text-muted-foreground"
+                }`}>
+                  {detail?.advisory_source === "ibm_bob_llm" ? "Groq LLM" : "Deterministic"}
+                </span>
+              )}
+            </div>
+            {loadingDetail ? (
+              <div className="space-y-1.5">
+                <div className="h-3 w-full animate-pulse rounded bg-muted" />
+                <div className="h-3 w-5/6 animate-pulse rounded bg-muted" />
+                <div className="h-3 w-4/6 animate-pulse rounded bg-muted" />
+              </div>
+            ) : (
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                {detail?.advisory_text ||
+                  (asset.id === "TX-115"
+                    ? "TX-115 is in post-maintenance recovery following cooling fan repair and 20% load curtailment at Day 78. Health index stabilized at 36.1; remaining useful life recovered to 97 days. Routine thermal monitoring recommended."
+                    : asset.id === "TX-107"
+                    ? "TX-107 at GIDC Phase-2 is in critical electrical arcing fault (D1). Acetylene exceeds 2,500 ppm. RUL is 33 days. Immediate crew dispatch and load curtailment required within 24 hours."
+                    : `${asset.id} shows ${archetypeStr} pattern. Health Index ${safeHi.toFixed(1)} — ${safeHi > 50 ? "immediate action required" : safeHi > 30 ? "elevated monitoring advised" : "nominal monitoring recommended"}.`)}
+              </p>
+            )}
+          </div>
+
+          {/* ── SHAP Attribution ── */}
+          {Array.isArray(shapData) && shapData.length > 0 && (
+            <div className="border-b border-border/40 px-5 py-4">
+              <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-3">SHAP Feature Attribution (Model 1)</h4>
+              <div className="space-y-2.5">
+                {shapData.map(([feat, rawVal]) => {
+                  const val = typeof rawVal === "number" && isFinite(rawVal) ? rawVal : Number(rawVal) || 0;
+                  return (
+                    <div key={feat} className="flex items-center gap-3 text-xs">
+                      <span className="w-32 shrink-0 font-mono text-[11px] text-muted-foreground truncate">{feat}</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${val > 0 ? "bg-red-500" : "bg-emerald-500"}`}
+                          style={{ width: `${Math.min(100, Math.abs(val) * 6)}%` }}
+                        />
+                      </div>
+                      <span className={`w-14 text-right font-mono font-bold text-[11px] ${
+                        val > 0 ? "text-red-400" : "text-emerald-400"
+                      }`}>
+                        {val > 0 ? "+" : ""}{val.toFixed(2)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Telemetry Chart with Multi-Sensor View Tabs ── */}
+          {chartData.length > 0 && (
+            <div className="border-b border-border/40 px-5 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2">
+                 <Activity className="size-3.5 text-primary" />
+                 <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                   {chartTab === "trajectory" ? "RUL Decay & Load Stress (90-Day)" : chartTab === "temperature" ? "Core & Oil Temperature History" : "Dissolved Fault Gas Evolution (C₂H₂ · CH₄ · H₂)"}
+                 </h4>
+               </div>
+
+                {/* View Toggles */}
+                <div className="flex items-center gap-1 rounded-lg border border-border/60 bg-muted/40 p-0.5 text-[10px] font-mono">
+                  <button
+                    onClick={() => setChartTab("trajectory")}
+                    className={`px-2.5 py-1 rounded transition-colors ${
+                      chartTab === "trajectory"
+                        ? "bg-card text-foreground font-semibold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {shapVal > 0 ? `+${shapVal.toFixed(2)}` : shapVal.toFixed(2)} HI
-                  </span>
+                    Health & Load
+                  </button>
+                  <button
+                    onClick={() => setChartTab("temperature")}
+                    className={`px-2.5 py-1 rounded transition-colors ${
+                      chartTab === "temperature"
+                        ? "bg-card text-foreground font-semibold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Temperature (°C)
+                  </button>
+                  <button
+                    onClick={() => setChartTab("gases")}
+                    className={`px-2.5 py-1 rounded transition-colors ${
+                      chartTab === "gases"
+                        ? "bg-card text-foreground font-semibold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Fault Gases (ppm)
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Diagnostic Key Gauges */}
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-2xl border border-border/60 bg-surface/70 p-3.5 text-xs">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">Health Index (Damage)</p>
-            <p className="mt-1 font-mono text-lg font-bold text-foreground">
-              HI {asset.healthIndexRaw.toFixed(1)}
-            </p>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">Pristine: 13.4 · Hazard: &gt;50</p>
-          </div>
+              {/* Legend row */}
+              <div className="flex items-center gap-4 text-[9px] font-mono text-muted-foreground mb-2">
+                {chartTab === "trajectory" && (
+                  <>
+                    <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-red-500" />RUL Days (Model 1)</span>
+                    <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-blue-500" />Load % of Rated</span>
+                  </>
+                )}
+                {chartTab === "temperature" && (
+                  <>
+                    <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-orange-500" />Core / Top-Oil Temp (°C)</span>
+                    <span className="text-muted-foreground/70">· Hazard Threshold: 95°C</span>
+                  </>
+                )}
+                {chartTab === "gases" && (
+                  <>
+                    <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-purple-500" />Acetylene C₂H₂ (ppm)</span>
+                    <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-cyan-500" />Methane CH₄ (ppm)</span>
+                    <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-yellow-500" />Hydrogen H₂ (ppm)</span>
+                  </>
+                )}
+              </div>
 
-          <div className="rounded-2xl border border-border/60 bg-surface/70 p-3.5 text-xs">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">Remaining Useful Life</p>
-            <p className="mt-1 font-mono text-lg font-bold text-signal">
-              {asset.rulDays} days
-            </p>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">Calibrated decay model</p>
-          </div>
+              <div className="h-48 w-full min-h-[190px]">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={180}>
+                  <AreaChart data={chartData} margin={{ top: 8, right: 12, left: -10, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="hiGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#ef4444" stopOpacity={0.4} />
+                        <stop offset="100%" stopColor="#ef4444" stopOpacity={0.02} />
+                      </linearGradient>
+                      <linearGradient id="loadGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.35} />
+                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.02} />
+                      </linearGradient>
+                      <linearGradient id="tempGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#f97316" stopOpacity={0.4} />
+                        <stop offset="100%" stopColor="#f97316" stopOpacity={0.02} />
+                      </linearGradient>
+                      <linearGradient id="c2h2Grad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#a855f7" stopOpacity={0.4} />
+                        <stop offset="100%" stopColor="#a855f7" stopOpacity={0.02} />
+                      </linearGradient>
+                      <linearGradient id="ch4Grad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.35} />
+                        <stop offset="100%" stopColor="#06b6d4" stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke="#64748b" strokeOpacity={0.25} vertical={false} strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="time"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 9, fill: "#94a3b8" }}
+                      interval={Math.max(1, Math.floor(chartData.length / 10))}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 9, fill: "#94a3b8" }}
+                      width={32}
+                      domain={[0, 'auto']}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#0f172a",
+                        borderColor: "#334155",
+                        color: "#f8fafc",
+                        borderRadius: "0.5rem",
+                        fontSize: "0.75rem",
+                        boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
+                      }}
+                    />
 
-          <div className="rounded-2xl border border-border/60 bg-surface/70 p-3.5 text-xs">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">Fault Classification</p>
-            <p className="mt-1 font-mono text-lg font-bold text-foreground">
-              IEC {detail?.fault_type || asset.faultType}
-            </p>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">90.8% accuracy (Model 2)</p>
-          </div>
+                    {chartTab === "trajectory" && (
+                      <>
+                        <Area
+                          type="monotone"
+                          dataKey="rulDays"
+                          name="RUL Days"
+                          stroke="#ef4444"
+                          strokeWidth={2}
+                          fill="url(#hiGrad)"
+                          isAnimationActive={false}
+                          connectNulls
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="loadPct"
+                          name="Load %"
+                          stroke="#3b82f6"
+                          strokeWidth={2}
+                          fill="url(#loadGrad)"
+                          isAnimationActive={false}
+                        />
+                      </>
+                    )}
+                    {chartTab === "temperature" && (
+                      <Area
+                        type="monotone"
+                        dataKey="tempC"
+                        name="Core Temp (°C)"
+                        stroke="#f97316"
+                        strokeWidth={2.2}
+                        fill="url(#tempGrad)"
+                        isAnimationActive={false}
+                      />
+                    )}
+                    {chartTab === "gases" && (
+                      <>
+                        <Area
+                          type="monotone"
+                          dataKey="c2h2"
+                          name="Acetylene C₂H₂ (ppm)"
+                          stroke="#a855f7"
+                          strokeWidth={2}
+                          fill="url(#c2h2Grad)"
+                          isAnimationActive={false}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="ch4"
+                          name="Methane CH₄ (ppm)"
+                          stroke="#06b6d4"
+                          strokeWidth={2}
+                          fill="url(#ch4Grad)"
+                          isAnimationActive={false}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="h2"
+                          name="Hydrogen H₂ (ppm)"
+                          stroke="#eab308"
+                          strokeWidth={2}
+                          fill="url(#hiGrad)"
+                          isAnimationActive={false}
+                        />
+                      </>
+                    )}
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
 
-          <div className="rounded-2xl border border-border/60 bg-surface/70 p-3.5 text-xs">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">Top-Oil Core Temp</p>
-            <p className="mt-1 font-mono text-lg font-bold text-foreground">
-              {asset.coreTempC}°C
-            </p>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">Max limit: 95°C</p>
-          </div>
-        </div>
-
-        {/* Operator Controls Bar */}
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border/50 pt-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              onClick={onReroute}
-              className="pill bg-signal text-xs font-medium text-signal-foreground hover:bg-signal/90"
-            >
-              <RefreshCw className="size-3.5 mr-1" /> Reroute load (-8 MVA)
+          {/* ── Operator Actions ── */}
+          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button onClick={onReroute} className="h-8 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
+                <RefreshCw className="size-3 mr-1.5" /> Reroute Load (-8 MVA)
+              </Button>
+              <Button onClick={onCooling} variant="outline" className="h-8 rounded-lg px-3 text-xs border-border/60">
+                <Thermometer className="size-3 mr-1.5" /> Force Cooling
+              </Button>
+              <Button
+                onClick={async () => {
+                  setShowReportDialog(true);
+                  if (!groqReport) {
+                    setLoadingGroqReport(true);
+                    try {
+                      const latestTs = timeseries.length ? timeseries[timeseries.length - 1] : null;
+                      const rep = await techtonicsApi.generateGroqReport({
+                        asset_id: asset.id,
+                        substation: asset.substation,
+                        health_index: safeHi,
+                        rul_days: safeRul,
+                        fault_type: faultType,
+                        load_mw: asset.currentLoadMw,
+                        rated_mva: asset.ratedCapacityMw,
+                        ambient_temp_c: 28.7, // Live atmospheric reading from Open-Meteo
+                        c2h2_ppm: latestTs?.Acethylene ?? 0,
+                        ch4_ppm: latestTs?.Methane ?? 0,
+                        h2_ppm: latestTs?.Hydrogen ?? 0,
+                      });
+                      setGroqReport(rep);
+                    } catch {
+                      toast.error("Could not load live AI engineering report");
+                    } finally {
+                      setLoadingGroqReport(false);
+                    }
+                  }
+                }}
+                variant="outline"
+                className="h-8 rounded-lg border-purple-500/40 bg-purple-500/10 px-3 text-xs font-semibold text-purple-600 dark:text-purple-300 hover:bg-purple-500/20"
+              >
+                <BrainCircuit className="size-3 mr-1.5 text-purple-500" />
+                Live AI Report
+              </Button>
+              <Button onClick={onReportHazard} variant="outline" className="h-8 rounded-lg border-amber-500/40 bg-amber-500/10 px-3 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/20">
+                <ShieldAlert className="size-3 mr-1.5" /> Report Hazard
+              </Button>
+            </div>
+            <Button asChild className="h-8 rounded-lg bg-foreground px-3 text-xs text-background hover:bg-foreground/90">
+              <Link to="/predict">
+                Run Prediction <ArrowRight className="size-3 ml-1.5" />
+              </Link>
             </Button>
-            <Button
-              onClick={onCooling}
-              variant="outline"
-              className="pill text-xs border-border/70"
-            >
-              <Thermometer className="size-3.5 mr-1" /> Force auxiliary cooling
-            </Button>
-            <Button
-              onClick={onReportHazard}
-              variant="outline"
-              className="pill border-warning/50 bg-warning/10 text-xs font-semibold text-warning hover:bg-warning/20"
-            >
-              <ShieldAlert className="size-3.5 mr-1" /> Report Ground Hazard
-            </Button>
           </div>
 
-          <Button
-            asChild
-            className="pill bg-ink text-xs text-cream hover:bg-ink/90"
-          >
-            <Link to="/predict">
-              Run Outage Prediction <ArrowRight className="size-3.5 ml-1" />
-            </Link>
-          </Button>
+          {/* ── Live Groq AI Engineering Report Modal ── */}
+          {showReportDialog && (
+            <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+              <div className="relative flex flex-col max-h-[85vh] w-full max-w-2xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+                <div className="flex items-center justify-between border-b border-border/50 bg-muted/30 px-5 py-3.5">
+                  <div className="flex items-center gap-2">
+                    <div className="grid size-7 place-items-center rounded-lg bg-purple-500/15 text-purple-400 border border-purple-500/30">
+                      <BrainCircuit className="size-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">Live Engineering Directive · {asset.id}</h3>
+                      <p className="text-[10px] font-mono text-muted-foreground">{groqReport?.provider || "Synthesizing live model inferences..."}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowReportDialog(false)}
+                    className="grid size-7 place-items-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs">
+                  {loadingGroqReport ? (
+                    <div className="py-12 flex flex-col items-center justify-center gap-3 text-center">
+                      <Loader2 className="size-7 animate-spin text-purple-400" />
+                      <p className="font-mono text-xs text-foreground">Querying Groq LPU with asset telemetry...</p>
+                      <p className="text-[11px] text-muted-foreground">Feeding Health Index {safeHi.toFixed(1)}, RUL {safeRul}d, IEC {faultType}, ambient weather</p>
+                    </div>
+                  ) : groqReport ? (
+                    <>
+                      {/* Telemetry Metric Badges */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div className="p-2.5 rounded-lg border border-border/50 bg-muted/20">
+                          <p className="text-[9px] font-mono uppercase text-muted-foreground">Health Index</p>
+                          <p className={`text-base font-bold font-mono mt-0.5 ${safeHi > 50 ? "text-red-400" : "text-emerald-400"}`}>{safeHi.toFixed(1)}</p>
+                        </div>
+                        <div className="p-2.5 rounded-lg border border-border/50 bg-muted/20">
+                          <p className="text-[9px] font-mono uppercase text-muted-foreground">Est. RUL</p>
+                          <p className={`text-base font-bold font-mono mt-0.5 ${safeRul < 40 ? "text-red-400" : "text-emerald-400"}`}>{safeRul} days</p>
+                        </div>
+                        <div className="p-2.5 rounded-lg border border-border/50 bg-muted/20">
+                          <p className="text-[9px] font-mono uppercase text-muted-foreground">Fault Class</p>
+                          <p className="text-base font-bold font-mono text-foreground mt-0.5">IEC {faultType}</p>
+                        </div>
+                        <div className="p-2.5 rounded-lg border border-border/50 bg-muted/20">
+                          <p className="text-[9px] font-mono uppercase text-muted-foreground">Load / Temp</p>
+                          <p className="text-base font-bold font-mono text-foreground mt-0.5">{asset.currentLoadMw} MW · {asset.coreTempC}°C</p>
+                        </div>
+                      </div>
+
+                      {/* Executive Summary */}
+                      <div className="p-3.5 rounded-xl border border-purple-500/20 bg-purple-500/5">
+                        <h5 className="text-[11px] font-bold uppercase tracking-wider text-purple-400 mb-1 flex items-center gap-1.5">
+                          <Sparkles className="size-3" /> Executive Summary
+                        </h5>
+                        <p className="text-xs leading-relaxed text-foreground">{groqReport.executive_summary}</p>
+                      </div>
+
+                      {/* 30-Day Degradation Trajectory Forecast */}
+                      {groqReport.trajectory_forecast && (
+                        <div className="p-3.5 rounded-xl border border-blue-500/20 bg-blue-500/5">
+                          <h5 className="text-[11px] font-bold uppercase tracking-wider text-blue-400 mb-1 flex items-center gap-1.5">
+                            <TrendingDown className="size-3.5" /> 30-Day Degradation Trajectory Forecast
+                          </h5>
+                          <p className="text-xs leading-relaxed text-foreground">{groqReport.trajectory_forecast}</p>
+                        </div>
+                      )}
+
+                      {/* Thermal & Weather Breakdown */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="p-3 rounded-xl border border-border/60 bg-muted/20">
+                          <h5 className="text-[10px] font-mono uppercase text-muted-foreground mb-1">Thermal Gradient Assessment</h5>
+                          <p className="text-xs leading-relaxed text-foreground">{groqReport.thermal_analysis}</p>
+                        </div>
+                        <div className="p-3 rounded-xl border border-border/60 bg-muted/20">
+                          <h5 className="text-[10px] font-mono uppercase text-muted-foreground mb-1">Weather & Ambient Correlation</h5>
+                          <p className="text-xs leading-relaxed text-foreground">{groqReport.weather_correlation}</p>
+                        </div>
+                      </div>
+
+                      {/* Action Matrix */}
+                      <div>
+                        <h5 className="text-[11px] font-bold uppercase tracking-wider text-foreground mb-2 flex items-center gap-1.5">
+                          <Wrench className="size-3 text-primary" /> Recommended Maintenance Directives
+                        </h5>
+                        <div className="space-y-2">
+                          {(groqReport.recommended_actions || []).map((act: any, idx: number) => (
+                            <div key={idx} className="p-3 rounded-lg border border-border/50 bg-muted/15 flex items-start justify-between gap-3">
+                              <div className="space-y-0.5">
+                                <p className="font-semibold text-foreground text-xs">{act.action}</p>
+                                <p className="text-[11px] text-muted-foreground">{act.impact}</p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className={`inline-block text-[9px] font-mono font-bold px-2 py-0.5 rounded border ${
+                                  act.priority === "HIGH" ? "border-red-500/30 text-red-400 bg-red-500/10" : "border-amber-500/30 text-amber-400 bg-amber-500/10"
+                                }`}>
+                                  {act.priority}
+                                </span>
+                                <p className="text-[9px] font-mono text-muted-foreground mt-1">{act.timeline}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground py-8 text-center">No report generated yet.</p>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between border-t border-border/50 bg-muted/20 px-5 py-3">
+                  <span className="text-[10px] font-mono text-muted-foreground">Physical Standards: IEEE C57.104 & IEC 60599</span>
+                  <div className="flex items-center gap-2">
+                    {groqReport && (
+                      <Button
+                        onClick={() => {
+                          const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(groqReport, null, 2));
+                          const a = document.createElement("a");
+                          a.setAttribute("href", dataStr);
+                          a.setAttribute("download", `voltra_report_${asset.id}_${Date.now()}.json`);
+                          document.body.appendChild(a);
+                          a.click();
+                          a.remove();
+                          toast.success("Engineering report exported.");
+                        }}
+                        variant="outline"
+                        className="h-8 px-3 text-xs"
+                      >
+                        <Download className="size-3 mr-1.5" /> Download JSON
+                      </Button>
+                    )}
+                    <Button onClick={() => setShowReportDialog(false)} className="h-8 px-4 text-xs font-semibold">
+                      Close
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-// Sub-component: Simulation / Custom Node Injection Modal
-function SimulationModal({
-  onClose,
-  onInject,
-}: {
-  onClose: () => void;
-  onInject: (node: GridAsset) => void;
-}) {
-  const [name, setName] = useState("TX-119 · 40 MVA Anand South Ext");
-  const [substation, setSubstation] = useState("Anand South Expansion Substation");
-  const [region, setRegion] = useState("Zone-D · South Distribution");
-  const [voltageKv, setVoltageKv] = useState(66);
-  const [loadMw, setLoadMw] = useState(28);
-  const [capacityMw, setCapacityMw] = useState(40);
-  const [tempC, setTempC] = useState(58);
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg rounded-3xl border border-border/70 bg-card p-6 shadow-soft sm:p-8"
-      >
-        <div className="flex items-center justify-between border-b border-border/50 pb-4">
-          <div>
-            <h3 className="font-sans text-xl font-semibold text-foreground">Inject Grid Sensor Node</h3>
-            <p className="text-xs text-muted-foreground">Register simulated telemetry parameters into the live feed</p>
-          </div>
-          <button onClick={onClose} className="grid size-8 place-items-center rounded-full hover:bg-muted">
-            <X className="size-4" />
-          </button>
-        </div>
 
-        <div className="mt-5 space-y-3.5 text-xs">
-          <div>
-            <label className="mb-1 block font-medium text-foreground">Asset Name</label>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-xl border border-border/70 bg-surface px-3 py-2 text-foreground outline-none"
-              placeholder="e.g. TX-119 · 40 MVA Anand South Ext"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block font-medium text-foreground">Substation</label>
-            <input
-              value={substation}
-              onChange={(e) => setSubstation(e.target.value)}
-              className="w-full rounded-xl border border-border/70 bg-surface px-3 py-2 text-foreground outline-none"
-              placeholder="e.g. Anand South Expansion Substation"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block font-medium text-foreground">Rated MVA</label>
-              <input
-                type="number"
-                value={capacityMw}
-                onChange={(e) => setCapacityMw(Number(e.target.value))}
-                className="w-full rounded-xl border border-border/70 bg-surface px-3 py-2 text-foreground outline-none"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block font-medium text-foreground">Current Load (MVA)</label>
-              <input
-                type="number"
-                value={loadMw}
-                onChange={(e) => setLoadMw(Number(e.target.value))}
-                className="w-full rounded-xl border border-border/70 bg-surface px-3 py-2 text-foreground outline-none"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-end gap-2 border-t border-border/50 pt-4">
-          <Button variant="outline" onClick={onClose} className="pill text-xs">
-            Cancel
-          </Button>
-          <Button
-            onClick={() => {
-              const newNode: GridAsset = {
-                id: "TX-119",
-                name,
-                substation,
-                region,
-                type: "Transformer",
-                voltageKv,
-                nominalVoltageKv: voltageKv,
-                currentLoadMw: loadMw,
-                ratedCapacityMw: capacityMw,
-                frequencyHz: 50.00,
-                coreTempC: tempC,
-                healthScore: 82,
-                healthIndexRaw: 16.5,
-                rulDays: 320,
-                faultType: "NF",
-                status: "stable",
-                riskTier: "LOW",
-                compositeScore: 0.21,
-                criticality: "Medium",
-                archetype: "Stable Expansion Node",
-                activeAnomalies: 0,
-                lastInspected: "2026-09-14",
-                coolingType: "ONAN",
-                sf6PressureBar: 5.8,
-                acousticDba: 55,
-                telemetryHistory: [
-                  { time: "Day 60", loadMw: loadMw * 0.9, voltageKv, tempC: tempC - 2 },
-                  { time: "Day 89", loadMw, voltageKv, tempC },
-                ],
-                incidentLog: [],
-              };
-              onInject(newNode);
-            }}
-            className="pill bg-signal text-xs font-semibold text-signal-foreground hover:bg-signal/90"
-          >
-            Register to Feed
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}

@@ -22,7 +22,10 @@ export function CinematicLanding({ children, isHomePage = true }: CinematicLandi
   if (!isHomePage) {
     return <>{children}</>;
   }
+  return <CinematicLandingInner>{children}</CinematicLandingInner>;
+}
 
+function CinematicLandingInner({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>("light");
   const [isSliceOpen, setIsSliceOpen] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);

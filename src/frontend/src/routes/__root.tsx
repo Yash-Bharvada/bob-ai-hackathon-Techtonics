@@ -108,7 +108,19 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const { location } = useRouterState();
-  const isHome = location.pathname === "/";
+  const path = location.pathname;
+  const isHome = path === "/";
+  const isLogin = path === "/login";
+
+  // Login page: no SiteNav, SiteFooter, or cinematic wrapper
+  if (isLogin) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <Outlet />
+        <Toaster />
+      </QueryClientProvider>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>

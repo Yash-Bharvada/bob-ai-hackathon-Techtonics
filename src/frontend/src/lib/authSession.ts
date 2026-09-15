@@ -1,7 +1,20 @@
 /**
  * authSession.ts
- * Manages user operator sessions, location state, and localStorage persistence.
+ * ==============
+ * Manages authenticated operator sessions.
+ *
+ * Auth flow:
+ *   Email/Password  →  POST /api/auth/register or /api/auth/login
+ *                       ← { token, profile }  stored in localStorage
+ *   Google OAuth    →  browser redirected to /api/auth/google
+ *                       ← callback lands on /login?token=…&name=…&email=…
+ *                          LoginPage picks up query params and calls authSession.loginWithToken()
+ *
+ * Every protected API call attaches the token as:
+ *   Authorization: Bearer <token>
  */
+
+import { API_BASE } from "@/lib/techtonicsApi";
 
 export interface OperatorProfile {
   name: string;
@@ -9,6 +22,19 @@ export interface OperatorProfile {
   role: string;
   zone: string;
   substation: string;
+  /** User's DB _id — populated after real auth */
+  id?: string;
+  image?: string | null;
+  designation?: string;
+  provider?: "credentials" | "google";
+}
+
+export interface OperatorSession {
+  profile: OperatorProfile;
+  /** JWT returned by /api/auth/login or /api/auth/register */
+  sessionToken: string | null;
+  /** ISO timestamp of last sign-in */
+  signedInAt: string;
 }
 
 export interface UserLocationState {
@@ -20,16 +46,36 @@ export interface UserLocationState {
   timestamp: string;
 }
 
-const STORAGE_KEY_USER = "voltra_operator_profile";
-const STORAGE_KEY_LOC = "voltra_user_location";
+// ─── Auth API request / response types ────────────────────────────────────────
 
-const DEFAULT_PROFILE: OperatorProfile = {
-  name: "Operator Dev",
-  email: "operator@anand-grid.gov.in",
-  role: "Regional Dispatch Engineer",
-  zone: "Zone-B · Industrial",
-  substation: "GIDC Industrial Phase-2",
-};
+export interface RegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+  zone?: string;
+  role?: string;
+  designation?: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  profile: OperatorProfile & {
+    id: string;
+    substation?: string;
+    createdAt?: string;
+    lastLoginAt?: string;
+  };
+}
+
+// ─── Storage keys ──────────────────────────────────────────────────────────────
+
+const STORAGE_KEY_SESSION = "voltra_operator_session";
+const STORAGE_KEY_LOC     = "voltra_user_location";
 
 const DEFAULT_LOCATION: UserLocationState = {
   latitude: 22.5645,
@@ -40,31 +86,233 @@ const DEFAULT_LOCATION: UserLocationState = {
   timestamp: new Date().toISOString(),
 };
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function _zoneToSubstation(zone: string): string {
+  if (zone.includes("Zone-B")) return "GIDC Industrial Phase-2 Substation";
+  if (zone.includes("Zone-A")) return "Anand Central Transmission Substation";
+  if (zone.includes("Zone-D")) return "Anand South Bulk Substation";
+  return "Borsad Rural Interconnect";
+}
+
+function _apiProfileToOperatorProfile(p: AuthResponse["profile"]): OperatorProfile {
+  return {
+    id:          p.id,
+    name:        p.name,
+    email:       p.email,
+    role:        p.role ?? "Regional Dispatch Engineer",
+    zone:        p.zone ?? "Zone-B · Heavy Manufacturing Corridor",
+    substation:  p.substation ?? _zoneToSubstation(p.zone ?? ""),
+    image:       p.image ?? null,
+    designation: p.designation ?? "",
+    provider:    p.provider ?? "credentials",
+  };
+}
+
+// ─── authSession singleton ────────────────────────────────────────────────────
+
 export const authSession = {
-  getProfile(): OperatorProfile {
-    if (typeof window === "undefined") return DEFAULT_PROFILE;
+
+  // ── Session ──────────────────────────────────────────────────────────────────
+
+  isAuthenticated(): boolean {
+    if (typeof window === "undefined") return false;
     try {
-      const stored = localStorage.getItem(STORAGE_KEY_USER);
-      return stored ? JSON.parse(stored) : DEFAULT_PROFILE;
+      const raw = localStorage.getItem(STORAGE_KEY_SESSION);
+      if (!raw) return false;
+      const session: OperatorSession = JSON.parse(raw);
+      return !!session?.profile?.email;
     } catch {
-      return DEFAULT_PROFILE;
+      return false;
     }
   },
 
-  saveProfile(profile: OperatorProfile): void {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(profile));
+  getSession(): OperatorSession | null {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_SESSION);
+      if (!raw) return null;
+      return JSON.parse(raw) as OperatorSession;
+    } catch {
+      return null;
+    }
   },
 
-  isLoggedIn(): boolean {
-    if (typeof window === "undefined") return false;
-    return !!localStorage.getItem(STORAGE_KEY_USER);
+  getProfile(): OperatorProfile | null {
+    return this.getSession()?.profile ?? null;
+  },
+
+  getToken(): string | null {
+    return this.getSession()?.sessionToken ?? null;
+  },
+
+  /**
+   * Persist a session after receiving a JWT + profile from the backend.
+   */
+  loginWithToken(token: string, profile: OperatorProfile): void {
+    if (typeof window === "undefined") return;
+    const session: OperatorSession = {
+      profile,
+      sessionToken: token,
+      signedInAt: new Date().toISOString(),
+    };
+    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session));
+  },
+
+  /**
+   * Legacy method kept for AuthModal compatibility — stores profile without a token.
+   * Will be replaced once AuthModal is wired to the API.
+   */
+  login(profile: OperatorProfile): void {
+    if (typeof window === "undefined") return;
+    const session: OperatorSession = {
+      profile,
+      sessionToken: null,
+      signedInAt: new Date().toISOString(),
+    };
+    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session));
   },
 
   logout(): void {
     if (typeof window === "undefined") return;
-    localStorage.removeItem(STORAGE_KEY_USER);
+    // Fire-and-forget server-side logout notification
+    const token = this.getToken();
+    if (token) {
+      fetch(`${API_BASE}/api/auth/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {/* ignore — token is already stateless */});
+    }
+    localStorage.removeItem(STORAGE_KEY_SESSION);
   },
+
+  // ── Remote API calls ─────────────────────────────────────────────────────────
+
+  /**
+   * Permanent demo account — works even when MongoDB Atlas is unreachable.
+   * Credentials are matched client-side; a local session is created.
+   * Once Atlas is reachable the same credentials are also stored in MongoDB.
+   */
+  _tryDemoBypass(email: string, password: string): AuthResponse | null {
+    if (
+      email.toLowerCase().trim() === "rashiyaom@gmail.com" &&
+      password === "Romashiya@123"
+    ) {
+      const profile: OperatorProfile = {
+        id:          "demo-admin-001",
+        name:        "Om Vipul Bhairashiya",
+        email:       "rashiyaom@gmail.com",
+        role:        "Admin / SCADA",
+        zone:        "Zone-D · Bulk Transmission Corridor",
+        substation:  "Anand South Bulk Substation",
+        designation: "Platform Administrator",
+        provider:    "credentials",
+      };
+      // Mint a pseudo-token (not JWT-verified by server, but sufficient for localStorage session)
+      const pseudoToken = `demo.${btoa(JSON.stringify({ sub: profile.email, id: profile.id }))}.bypass`;
+      this.loginWithToken(pseudoToken, profile);
+      return { token: pseudoToken, profile: profile as OperatorProfile & { id: string } };
+    }
+    return null;
+  },
+
+  /**
+   * Register a new operator account.
+   * Throws on validation / duplicate email errors.
+   */
+  async register(req: RegisterRequest): Promise<AuthResponse> {
+    const res = await fetch(`${API_BASE}/api/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.detail ?? "Registration failed.");
+    const profile = _apiProfileToOperatorProfile(data.profile);
+    this.loginWithToken(data.token, profile);
+    return { token: data.token, profile: data.profile };
+  },
+
+  /**
+   * Sign in with email + password.
+   * Falls back to demo bypass if MongoDB Atlas is unreachable.
+   */
+  async loginWithCredentials(req: LoginRequest): Promise<AuthResponse> {
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(req),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.detail ?? "Sign-in failed.");
+      const profile = _apiProfileToOperatorProfile(data.profile);
+      this.loginWithToken(data.token, profile);
+      return { token: data.token, profile: data.profile };
+    } catch (err) {
+      // If API is offline or Atlas is unreachable, try the demo bypass
+      const bypass = this._tryDemoBypass(req.email, req.password);
+      if (bypass) return bypass;
+      throw err;
+    }
+  },
+
+  /**
+   * Initiate Google OAuth — redirects the browser to the FastAPI handler.
+   */
+  startGoogleOAuth(): void {
+    window.location.href = `${API_BASE}/api/auth/google`;
+  },
+
+  /**
+   * Called by LoginPage after the Google OAuth callback redirects back
+   * with ?token=…&name=…&email=… in the URL.
+   * Returns true if a token was found and consumed.
+   */
+  consumeGoogleCallbackParams(searchParams: URLSearchParams): boolean {
+    const token = searchParams.get("token");
+    const name  = searchParams.get("name");
+    const email = searchParams.get("email");
+    if (!token || !email) return false;
+
+    const profile: OperatorProfile = {
+      name:       name ?? email.split("@")[0],
+      email,
+      role:       "Regional Dispatch Engineer",
+      zone:       "Zone-B · Heavy Manufacturing Corridor",
+      substation: "GIDC Industrial Phase-2 Substation",
+      provider:   "google",
+    };
+    this.loginWithToken(token, profile);
+
+    // Strip the token from the URL bar without a page reload
+    if (typeof window !== "undefined") {
+      const clean = window.location.pathname;
+      window.history.replaceState({}, "", clean);
+    }
+    return true;
+  },
+
+  /**
+   * Fetch the current user's profile from the server using the stored JWT.
+   * Returns null if not authenticated or if the token is expired.
+   */
+  async fetchMe(): Promise<OperatorProfile | null> {
+    const token = this.getToken();
+    if (!token) return null;
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return _apiProfileToOperatorProfile(data);
+    } catch {
+      return null;
+    }
+  },
+
+  // ── Location ──────────────────────────────────────────────────────────────────
 
   getLocation(): UserLocationState {
     if (typeof window === "undefined") return DEFAULT_LOCATION;
@@ -87,7 +335,6 @@ export const authSession = {
         reject(new Error("Geolocation is not supported by your browser"));
         return;
       }
-
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const loc: UserLocationState = {
@@ -101,9 +348,7 @@ export const authSession = {
           this.saveLocation(loc);
           resolve(loc);
         },
-        (err) => {
-          reject(err);
-        },
+        (err) => reject(err),
         { timeout: 10000, enableHighAccuracy: true }
       );
     });

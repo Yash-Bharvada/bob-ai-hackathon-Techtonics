@@ -1,0 +1,9 @@
+.git
+.venv
+__pycache__
+*.pyc
+.DS_Store
+node_modules
+src/frontend/node_modules
+src/frontend/.output
+signup page/

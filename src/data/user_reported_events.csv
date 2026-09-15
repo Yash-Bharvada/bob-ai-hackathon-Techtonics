@@ -1,0 +1,4 @@
+incident_id,received_at,zone_name,event_description,reporter_note,reporter_type,category,risk_multiplier,disclaimer
+INC-2026-0881,2026-09-08T14:32:00Z,GIDC Industrial Phase-2 Substation,Excavation trenching for fiber conduit within 15 meters of TX-107 66kV underground feed corridor.,Substation line clearance notified,field_technician,excavation,1.20,Verified field incident
+INC-2026-0742,2026-08-24T09:15:00Z,Anand Central Transmission Substation,Lightning flashover recorded on 132kV terminal tower surge arrestor during summer squall.,SCADA transient cross-referenced,field_technician,storm_damage,1.10,SCADA transient cross-referenced
+INC-2026-0699,2026-08-11T18:40:00Z,Anand South Bulk Substation,Radiator fan motor bearing failure on TX-115 bank-B; prompted emergency fan replacement.,Fan replacement completed within 48 hours,field_technician,grid_incident,1.18,Maintenance intervention logged

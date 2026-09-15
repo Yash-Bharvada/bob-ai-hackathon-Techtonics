@@ -1016,3 +1016,133 @@ html:not(.dark) .theme-toggle-btn:hover {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
+
+/* ==========================================================================
+   VOLTRA — GLOBAL MOBILE RESPONSIVENESS LAYER
+   Targets xs (<480px), sm (<640px), md (<768px)
+   ========================================================================== */
+
+/* ── Prevent horizontal overflow on all pages ── */
+html, body { overflow-x: hidden; }
+* { min-width: 0; }
+
+/* ── macos-segmented: wrap + shrink on mobile ── */
+@media (max-width: 768px) {
+  .macos-segmented {
+    flex-wrap: wrap;
+    border-radius: 1rem;
+    gap: 2px;
+    padding: 4px;
+  }
+  .macos-segmented-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+    border-radius: 0.75rem;
+  }
+}
+
+/* ── Dashboard route: make KPI grid 2-col on xs ── */
+@media (max-width: 480px) {
+  /* RUL distribution histogram: 2 columns on tiny screens */
+  .rul-histogram-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ── power-line animation — hide on mobile (layout risk) ── */
+@media (max-width: 640px) {
+  .power-line { display: none; }
+}
+
+/* ── Grid page: asset cards always 1-col on xs ── */
+@media (max-width: 480px) {
+  /* asset card grid → single column */
+  .asset-card-grid { grid-template-columns: 1fr !important; }
+
+  /* Maintenance plan table — enable horizontal scroll */
+  .plan-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Inspector modal: full width */
+  .inspector-modal-inner { width: 100% !important; max-width: 100% !important; border-radius: 1rem !important; }
+}
+
+/* ── Predict page: studio workspace → stack on mobile ── */
+@media (max-width: 1024px) {
+  .predict-workspace { display: flex !important; flex-direction: column !important; }
+}
+
+/* ── Login page: panel stacks on mobile ── */
+@media (max-width: 1024px) {
+  .login-left-panel { display: none !important; }
+}
+
+/* ── Ticker feed: hide on xs, show short version ── */
+@media (max-width: 480px) {
+  .ticker-full-message { display: none !important; }
+  .ticker-short-message { display: inline !important; }
+}
+
+/* ── Home hero: reduce min-height ── */
+@media (max-width: 480px) {
+  .hero-min-height { min-height: 480px !important; }
+}
+
+/* ── SiteNav: reduce horizontal padding on xs ── */
+@media (max-width: 480px) {
+  .site-nav-inner { padding-left: 12px !important; padding-right: 12px !important; }
+}
+
+/* ── Table cells: truncate long text on small viewports ── */
+@media (max-width: 640px) {
+  td { max-width: 120px; }
+  th { white-space: nowrap; }
+}
+
+/* ── AuthModal: full-screen on xs ── */
+@media (max-width: 480px) {
+  .auth-modal-card {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    margin: 8px !important;
+    padding: 20px !important;
+    border-radius: 1.25rem !important;
+  }
+}
+
+/* ── Hazard search inputs: stack on xs ── */
+@media (max-width: 480px) {
+  .hazard-input-row { flex-direction: column !important; }
+  .hazard-zone-input { width: 100% !important; }
+}
+
+/* ── Dashboard chart: reduce height on mobile ── */
+@media (max-width: 640px) {
+  .dashboard-bar-chart { height: 160px !important; }
+}
+
+/* ── Scrollbar-none utility ── */
+.scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
+/* ── Shadow-card utility (used in grid.tsx plan/hazard panels) ── */
+@utility shadow-card {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 16px -4px rgba(0,0,0,0.08);
+}
+
+/* ── Touch-friendly tap targets on mobile ── */
+@media (max-width: 768px) {
+  button, a, [role="button"] {
+    min-height: 36px;
+  }
+  /* Remove tap highlight on mobile */
+  * { -webkit-tap-highlight-color: transparent; }
+}
+
+/* ── Prevent font size inflation on iOS ── */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+
+/* ── Fix recharts ResponsiveContainer on narrow screens ── */
+@media (max-width: 480px) {
+  .recharts-wrapper { font-size: 9px !important; }
+  .recharts-cartesian-axis-tick-value { font-size: 8px !important; }
+}

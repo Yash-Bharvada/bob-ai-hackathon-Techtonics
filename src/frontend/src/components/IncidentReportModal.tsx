@@ -131,11 +131,12 @@ export function IncidentReportModal({ open, onClose, defaultZone = "" }: Inciden
   return (
     /* Backdrop */
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[100] flex min-h-screen items-center justify-center overflow-y-auto bg-black/65 backdrop-blur-md p-4 sm:p-6"
       onClick={(e) => e.target === e.currentTarget && resetAndClose()}
     >
       {/* Panel */}
-      <div className="relative w-full max-w-lg rounded-[2rem] border border-border/70 bg-card shadow-lg">
+      <div className="relative my-auto w-full max-w-lg rounded-[2rem] border border-border/70 bg-card shadow-2xl">
+
         {/* Close button */}
         <button
           type="button"
