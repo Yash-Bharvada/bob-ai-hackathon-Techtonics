@@ -44,7 +44,8 @@ import httpx
 import pandas as pd
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 
@@ -580,6 +581,28 @@ async def score_csv_upload(file: UploadFile = File(...)):
         "error_details": errors,
         "results": results,
     }
+
+
+# ---------------------------------------------------------------------------
+# Production Single-Container SPA Serving (Railway / Docker deployment)
+# ---------------------------------------------------------------------------
+FRONTEND_DIST = SRC_DIR / "frontend" / ".output" / "public"
+if FRONTEND_DIST.exists():
+    assets_dir = FRONTEND_DIST / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_spa(full_path: str):
+        if full_path.startswith("api/") or full_path.startswith("events/"):
+            raise HTTPException(status_code=404, detail="API endpoint not found")
+        target = FRONTEND_DIST / full_path
+        if target.is_file():
+            return FileResponse(target)
+        index_file = FRONTEND_DIST / "index.html"
+        if index_file.exists():
+            return FileResponse(index_file)
+        raise HTTPException(status_code=404, detail="Page not found")
 
 
 # ---------------------------------------------------------------------------
