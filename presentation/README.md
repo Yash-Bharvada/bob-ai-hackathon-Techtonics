@@ -1,6 +1,10 @@
 # Presentation
 
-Place your slide deck in this folder.
+The slide deck for **Grid Risk Advisor (Team Techtonics)** is available in this folder:
+
+- **Local File**: [`slides.pdf`](slides.pdf)
+- **Public Google Drive Link**: [View on Google Drive](https://drive.google.com/file/d/1ofH9Uwx8e3LzIzHkyNeI7fxrSgX1BslL/view?usp=sharing)
+- **Link Reference Files**: [`slides-link.txt`](slides-link.txt) | [`presentation-link.txt`](presentation-link.txt)
 
 ## Accepted Formats
 
@@ -8,7 +12,7 @@ Place your slide deck in this folder.
   slides.pptx     ← Acceptable
   slides.key      ← Acceptable (macOS Keynote)
 
-Rename your file to `slides.pdf` (or `slides.pptx`) so the evaluation
+The slide deck is saved as `slides.pdf` in this directory so the evaluation
 pipeline can locate it reliably.
 
 ## Recommended Slide Structure (5–8 slides)
