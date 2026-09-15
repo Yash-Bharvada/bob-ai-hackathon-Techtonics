@@ -614,3 +614,63 @@ export function mergeRankedIntoAssets(
     };
   });
 }
+
+/**
+ * Convert user-uploaded or external RankedAsset records directly into rich GridAssets
+ */
+export function rankedToGridAssets(rankedList: RankedAsset[]): GridAsset[] {
+  return rankedList.map((r, i) => {
+    const hiRaw = r.health_index;
+    const isCritical = r.risk_tier === "CRITICAL";
+    const isHigh = r.risk_tier === "HIGH";
+    const isMedium = r.risk_tier === "MEDIUM";
+    const parsedShap = safeParseShap(r.top_3_shap);
+    const mva = typeof r.mva_rating === "number" ? r.mva_rating : parseFloat(r.mva_rating as any) || 25;
+    const loadMw = r.current_load_mw != null && isFinite(r.current_load_mw) ? Number(r.current_load_mw.toFixed(1)) : Math.round(mva * 0.72 * 10) / 10;
+    const tempC = r.core_temp_c != null && isFinite(r.core_temp_c) ? Number(r.core_temp_c.toFixed(1)) : 65.0;
+    const volt = parseInt(r.voltage_kv || "66", 10) || 66;
+
+    return {
+      id: r.asset_id || `TX-CUSTOM-${i + 1}`,
+      name: `${r.asset_id} · ${mva} MVA Custom Asset`,
+      substation: r.substation_name || "Custom Substation",
+      region: r.grid_zone || "Custom Operator Zone",
+      type: "Transformer" as const,
+      voltageKv: volt,
+      nominalVoltageKv: volt,
+      currentLoadMw: loadMw,
+      ratedCapacityMw: mva,
+      frequencyHz: 50.0,
+      coreTempC: tempC,
+      healthScore: Math.max(5, Math.min(99, Math.round(100 - hiRaw))),
+      healthIndexRaw: hiRaw,
+      rulDays: r.RUL_days,
+      faultType: r.fault_type || "Normal",
+      status: (isCritical || isHigh) ? "risk" : isMedium ? "watch" : "stable",
+      riskTier: r.risk_tier,
+      compositeScore: r.composite_score,
+      criticality: (isCritical || isHigh) ? "Critical" : isMedium ? "Standard" : "Non-Critical",
+      archetype: r.archetype || "Custom Telemetry Ingested",
+      activeAnomalies: (isCritical || isHigh) ? 2 : isMedium ? 1 : 0,
+      lastInspected: "Live Ingested",
+      coolingType: "ONAN / ONAF",
+      sf6PressureBar: 5.4,
+      acousticDba: 60.0,
+      top3Shap: parsedShap.length > 0 ? parsedShap : [["CO", 4.1], ["H2", 2.2], ["CH4", 1.8]],
+      telemetryHistory: [
+        { time: "T-30m", loadMw: Math.round(loadMw * 0.95 * 10) / 10, voltageKv: volt, tempC: Math.round(tempC * 0.98 * 10) / 10 },
+        { time: "T-15m", loadMw: Math.round(loadMw * 0.98 * 10) / 10, voltageKv: volt, tempC: Math.round(tempC * 0.99 * 10) / 10 },
+        { time: "Current", loadMw: loadMw, voltageKv: volt, tempC: tempC },
+      ],
+      incidentLog: [
+        {
+          id: `INC-LIVE-${i + 1}`,
+          timestamp: new Date().toISOString().split("T")[0],
+          message: `Custom CSV scored: ${r.fault_type || "Normal"} detected with HI=${hiRaw.toFixed(1)}, RUL=${r.RUL_days.toFixed(0)}d.`,
+          severity: (isCritical || isHigh) ? "critical" : isMedium ? "warning" : "info",
+        },
+      ],
+    };
+  });
+}
+

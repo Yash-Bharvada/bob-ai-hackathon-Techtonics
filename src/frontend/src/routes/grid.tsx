@@ -6,6 +6,7 @@ import {
   initialGridAssets,
   initialGridTicker,
   mergeRankedIntoAssets,
+  rankedToGridAssets,
   safeParseShap,
   type GridAsset,
   type GridAssetType,
@@ -21,6 +22,9 @@ import {
 import { GridDiagram, anandDistrictGridNodes } from "@/components/GridDiagram";
 import { TX115InterventionBanner } from "@/components/TX115InterventionBanner";
 import { IncidentReportModal } from "@/components/IncidentReportModal";
+import { EmptyWorkspaceChoice } from "@/components/EmptyWorkspaceChoice";
+import { DataSourceBadge } from "@/components/DataSourceBadge";
+import { gridDataSource, type DataSourceType } from "@/lib/gridDataSource";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -83,7 +87,21 @@ const STATUS_FILTERS: ("All" | AssetStatus)[] = ["All", "risk", "watch", "stable
 const VOLTAGE_FILTERS = ["All", "132 kV", "66 kV", "33 kV", "11 kV"] as const;
 
 function LiveGridPage() {
-  const [assets, setAssets] = useState<GridAsset[]>(initialGridAssets);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  const isAuthed = mounted && authSession.isAuthenticated();
+  const [dataSource, setDataSource] = useState<DataSourceType>(() => gridDataSource.getDataSource(authSession.isAuthenticated()));
+
+  const [assets, setAssets] = useState<GridAsset[]>(() => {
+    if (typeof window !== "undefined" && authSession.isAuthenticated()) {
+      const src = gridDataSource.getDataSource(true);
+      if (src === "anand") return initialGridAssets;
+      if (src === "custom") return rankedToGridAssets(gridDataSource.getCustomAssets());
+      return [];
+    }
+    return initialGridAssets;
+  });
+
   const [tickerEvents, setTickerEvents] = useState<GridTickerEvent[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState<"All" | GridAssetType>("All");
@@ -104,12 +122,26 @@ function LiveGridPage() {
   const [activeViewTab, setActiveViewTab] = useState<"assets" | "plan" | "topology" | "hazards">("assets");
   const [displayMode, setDisplayMode] = useState<"grid" | "table">("grid");
   const [apiConnected, setApiConnected] = useState<boolean>(false);
-
-  // Auth state — declared at top so useEffect guards work correctly
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-  const isAuthed = mounted && authSession.isAuthenticated();
   const [guestBannerDismissed, setGuestBannerDismissed] = useState(false);
+
+  // Listen for data source changes across the app
+  useEffect(() => {
+    const handleSourceChange = (e: any) => {
+      const src = e.detail || gridDataSource.getDataSource(authSession.isAuthenticated());
+      setDataSource(src);
+      if (!authSession.isAuthenticated()) {
+        setAssets(initialGridAssets);
+      } else if (src === "anand") {
+        setAssets(initialGridAssets);
+      } else if (src === "custom") {
+        setAssets(rankedToGridAssets(gridDataSource.getCustomAssets()));
+      } else {
+        setAssets([]);
+      }
+    };
+    window.addEventListener("voltra-datasource-changed", handleSourceChange);
+    return () => window.removeEventListener("voltra-datasource-changed", handleSourceChange);
+  }, []);
 
   // Gemini Area Hazard Search State
   const [hazardQuery, setHazardQuery] = useState(() => {
@@ -161,7 +193,7 @@ function LiveGridPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch live ranked assets and maintenance plan from FastAPI backend — ONLY when authenticated
+  // Fetch live ranked assets and maintenance plan from FastAPI backend — ONLY when authenticated and data source selected
   useEffect(() => {
     if (!mounted) return; // wait for auth check
     if (!isAuthed) {
@@ -171,13 +203,28 @@ function LiveGridPage() {
       return;
     }
 
+    if (dataSource === "none") {
+      setAssets([]);
+      setPlanActions([]);
+      setApiConnected(false);
+      return;
+    }
+
+    if (dataSource === "custom") {
+      const custom = gridDataSource.getCustomAssets();
+      setAssets(rankedToGridAssets(custom));
+      setApiConnected(true);
+      setPlanActions([]);
+      return;
+    }
+
     let active = true;
 
     async function loadLiveData() {
       try {
         const rankedRes = await techtonicsApi.getRanked();
         if (active && rankedRes.ranked_assets) {
-          setAssets((prev) => mergeRankedIntoAssets(prev, rankedRes.ranked_assets));
+          setAssets((prev) => mergeRankedIntoAssets(initialGridAssets, rankedRes.ranked_assets));
           setApiConnected(true);
 
           const liveTickerItems: GridTickerEvent[] = rankedRes.ranked_assets
@@ -227,7 +274,7 @@ function LiveGridPage() {
       active = false;
       clearInterval(interval);
     };
-  }, [mounted, isAuthed]);
+  }, [mounted, isAuthed, dataSource]);
 
   const filteredAssets = useMemo(() => {
     return assets.filter((asset) => {
@@ -254,11 +301,20 @@ function LiveGridPage() {
   const criticalCount = assets.filter((a) => a.status === "risk").length;
   const watchCount = assets.filter((a) => a.status === "watch").length;
   const stableCount = assets.filter((a) => a.status === "stable").length;
-  const avgHealth = Math.round(assets.reduce((sum, a) => sum + a.healthScore, 0) / totalAssets);
+  const avgHealth = totalAssets > 0 ? Math.round(assets.reduce((sum, a) => sum + a.healthScore, 0) / totalAssets) : 0;
   const totalCurrentLoadMw = Math.round(assets.reduce((sum, a) => sum + a.currentLoadMw, 0));
 
   // Live Sync Grid Telemetry
   const handleSyncTelemetry = async () => {
+    if (dataSource === "custom") {
+      setAssets(rankedToGridAssets(gridDataSource.getCustomAssets()));
+      toast.success("Custom telemetry refreshed");
+      return;
+    }
+    if (dataSource === "none") {
+      toast.info("Workspace is empty. Please select Anand corridor or upload custom CSV.");
+      return;
+    }
     setSyncing(true);
     try {
       const [rankedRes, planRes, evtRes] = await Promise.allSettled([
@@ -360,6 +416,7 @@ function LiveGridPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          <DataSourceBadge />
           <div className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 shadow-sm">
             <span className="relative flex size-2">
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-75" />
@@ -407,6 +464,13 @@ function LiveGridPage() {
           </Button>
         </div>
       </div>
+
+      {/* ── Empty Workspace Selector for Authenticated Operator ── */}
+      {isAuthed && (dataSource === "none" || assets.length === 0) && (
+        <div className="mt-6">
+          <EmptyWorkspaceChoice />
+        </div>
+      )}
 
       {/* Hero KPI Metrics */}
       <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -623,7 +687,15 @@ function LiveGridPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40 font-sans">
-                    {filteredAssets.map((asset) => {
+                    {filteredAssets.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="py-12 text-center text-muted-foreground">
+                          <p className="text-xs font-semibold text-foreground">Workspace Is Blank</p>
+                          <p className="text-[11px] text-muted-foreground mt-1">Load Anand corridor data or upload your custom CSV using the panel above.</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredAssets.map((asset) => {
                       const loadPercent = Math.round((asset.currentLoadMw / asset.ratedCapacityMw) * 100);
                       return (
                         <tr
@@ -723,10 +795,20 @@ function LiveGridPage() {
                           </td>
                         </tr>
                       );
-                    })}
+                    }))}
                   </tbody>
                 </table>
               </div>
+            </div>
+          ) : filteredAssets.length === 0 ? (
+            <div className="mt-6 rounded-2xl border border-dashed border-border/70 p-12 text-center text-muted-foreground bg-muted/10">
+              <Zap className="size-8 mx-auto mb-2 text-muted-foreground/40" />
+              <p className="text-sm font-semibold text-foreground">Workspace Is Blank</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                {dataSource === "none"
+                  ? "Telemetry starts blank for your session. Choose pre-loaded Anand Corridor sample data or upload a custom CSV above."
+                  : "No assets match your search filters."}
+              </p>
             </div>
           ) : (
           /* Cards Grid */

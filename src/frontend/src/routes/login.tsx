@@ -133,15 +133,15 @@ function LoginPage() {
           setPendingProfile(profile);
           setShowOnboarding(true);
         } else {
-          navigate({ to: "/" });
+          navigate({ to: "/dashboard" });
         }
         return;
       }
     }
 
-    // Already authenticated — go home (skip onboarding since location is already saved)
+    // Already authenticated — navigate to dashboard
     if (authSession.isAuthenticated()) {
-      navigate({ to: "/" });
+      navigate({ to: "/dashboard" });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
