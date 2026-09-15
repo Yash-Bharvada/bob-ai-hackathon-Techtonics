@@ -23,9 +23,7 @@ export function TX115InterventionBanner({ onSelectTx115 }: Props) {
             <span className="pill inline-flex items-center gap-1 bg-ink text-cream px-2.5 py-0.5 text-[11px] font-mono">
               TX-115 · 100 MVA Bulk
             </span>
-            <span className="text-xs text-muted-foreground">
-              +89 Days Remaining Life Recovered
-            </span>
+            <span className="text-xs text-muted-foreground">+89 Days Remaining Life Recovered</span>
           </div>
 
           <h3 className="mt-3 text-xl font-bold tracking-tight sm:text-2xl text-foreground">
@@ -33,7 +31,12 @@ export function TX115InterventionBanner({ onSelectTx115 }: Props) {
           </h3>
 
           <p className="mt-2 text-xs leading-relaxed text-muted-foreground sm:text-sm">
-            At Day 78, TX-115 reached a critical health index of <strong className="text-danger">71.3</strong> with remaining useful life collapsing to <strong className="text-danger">7.7 days</strong>. A timely cooling fan motor replacement and 20% load curtailment halted the thermal cascade — returning RUL to <strong className="text-signal">97 days</strong>. VOLTRA explicitly tracks and communicates this recovery, distinguishing stabilized assets from active hazards.
+            At Day 78, TX-115 reached a critical health index of{" "}
+            <strong className="text-danger">71.3</strong> with remaining useful life collapsing to{" "}
+            <strong className="text-danger">7.7 days</strong>. A timely cooling fan motor
+            replacement and 20% load curtailment halted the thermal cascade — returning RUL to{" "}
+            <strong className="text-signal">97 days</strong>. VOLTRA explicitly tracks and
+            communicates this recovery, distinguishing stabilized assets from active hazards.
           </p>
         </div>
 
@@ -85,9 +88,7 @@ export function TX115InterventionBanner({ onSelectTx115 }: Props) {
             <Wrench className="size-3.5 text-accent-blue" />
           </div>
           <p className="mt-1.5 text-xs font-semibold text-foreground">Targeted Intervention</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            Fan repair + 20% load shed
-          </p>
+          <p className="mt-1 text-[11px] text-muted-foreground">Fan repair + 20% load shed</p>
         </div>
 
         {/* Step 4 - Recovery */}
@@ -99,7 +100,9 @@ export function TX115InterventionBanner({ onSelectTx115 }: Props) {
           <p className="mt-1.5 text-xs font-semibold text-foreground">Stabilized & Monitored</p>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="font-mono text-base font-bold text-signal">HI 36.1</span>
-            <span className="font-mono text-xs font-bold text-signal font-semibold">RUL 97d (+89d)</span>
+            <span className="font-mono text-xs font-bold text-signal font-semibold">
+              RUL 97d (+89d)
+            </span>
           </div>
         </div>
       </div>

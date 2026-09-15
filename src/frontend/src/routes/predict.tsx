@@ -55,9 +55,17 @@ export const Route = createFileRoute("/predict")({
   head: () => ({
     meta: [
       { title: "Outage Prediction Studio · VOLTRA" },
-      { name: "description", content: "Interactive dual ML prediction studio. Simulate DGA fault gas surges and ambient stress against real Random Forest models." },
+      {
+        name: "description",
+        content:
+          "Interactive dual ML prediction studio. Simulate DGA fault gas surges and ambient stress against real Random Forest models.",
+      },
       { property: "og:title", content: "Outage Prediction Studio · VOLTRA" },
-      { property: "og:description", content: "Run dual-model predictions (Health Index regression + DGA classification) across the Anand District grid." },
+      {
+        property: "og:description",
+        content:
+          "Run dual-model predictions (Health Index regression + DGA classification) across the Anand District grid.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -118,7 +126,7 @@ function PredictionStudioPage() {
       methanePpm,
       hydrogenPpm,
       dielectricRigidity,
-    ]
+    ],
   );
 
   const prediction: PredictionResult = useMemo(() => {
@@ -144,7 +152,8 @@ function PredictionStudioPage() {
     if (found.inputs.acethylenePpm !== undefined) setAcethylenePpm(found.inputs.acethylenePpm);
     if (found.inputs.methanePpm !== undefined) setMethanePpm(found.inputs.methanePpm);
     if (found.inputs.hydrogenPpm !== undefined) setHydrogenPpm(found.inputs.hydrogenPpm);
-    if (found.inputs.dielectricRigidityKv !== undefined) setDielectricRigidity(found.inputs.dielectricRigidityKv);
+    if (found.inputs.dielectricRigidityKv !== undefined)
+      setDielectricRigidity(found.inputs.dielectricRigidityKv);
 
     if (presetId.includes("arcing")) setWaveformType("transient");
     else if (presetId.includes("thermal")) setWaveformType("harmonic");
@@ -194,7 +203,8 @@ function PredictionStudioPage() {
         advisory: liveResult?.advisory_text || prediction.summary,
       },
     };
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(report, null, 2));
+    const dataStr =
+      "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(report, null, 2));
     const a = document.createElement("a");
     a.setAttribute("href", dataStr);
     a.setAttribute("download", `prediction_report_${selectedAssetId}_${Date.now()}.json`);
@@ -207,7 +217,9 @@ function PredictionStudioPage() {
   const displayedHI = liveResult ? liveResult.health_index : prediction.healthIndexScore;
   const displayedRUL = liveResult ? liveResult.RUL_days : prediction.rulDays;
   const displayedFault = liveResult ? liveResult.fault_type : prediction.faultType;
-  const displayedRiskTier = liveResult ? liveResult.risk_tier : prediction.statusSeverity.toUpperCase();
+  const displayedRiskTier = liveResult
+    ? liveResult.risk_tier
+    : prediction.statusSeverity.toUpperCase();
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
@@ -223,7 +235,8 @@ function PredictionStudioPage() {
             Predictive Failure & Risk Simulation
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
-            Evaluate equipment wear, ambient temperature, and DGA gas concentrations against Model 1 (Health Index) and Model 2 (DGA Fault Classifier).
+            Evaluate equipment wear, ambient temperature, and DGA gas concentrations against Model 1
+            (Health Index) and Model 2 (DGA Fault Classifier).
           </p>
         </div>
 
@@ -261,7 +274,9 @@ function PredictionStudioPage() {
           <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
             4 Real Degradation Archetypes (Kaggle Dataset Ground Truth)
           </p>
-          <span className="text-[11px] text-muted-foreground">Select an archetype to populate sensor parameters</span>
+          <span className="text-[11px] text-muted-foreground">
+            Select an archetype to populate sensor parameters
+          </span>
         </div>
 
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -318,8 +333,12 @@ function PredictionStudioPage() {
           {/* Target Asset Selector Card */}
           <div className="rounded-3xl border border-border/60 bg-card p-5 sm:p-6 shadow-sm">
             <div className="flex items-center justify-between">
-              <h3 className="font-sans text-base font-semibold text-foreground">Target Grid Transformer</h3>
-              <span className="font-mono text-xs text-muted-foreground">{targetAsset.voltageKv} kV</span>
+              <h3 className="font-sans text-base font-semibold text-foreground">
+                Target Grid Transformer
+              </h3>
+              <span className="font-mono text-xs text-muted-foreground">
+                {targetAsset.voltageKv} kV
+              </span>
             </div>
 
             <div className="mt-3">
@@ -337,15 +356,22 @@ function PredictionStudioPage() {
             </div>
 
             <div className="mt-3 flex items-center justify-between rounded-xl bg-surface/80 p-2.5 text-xs font-mono text-muted-foreground border border-border/40">
-              <span>Substation: <strong className="text-foreground">{targetAsset.substation}</strong></span>
-              <span>Capacity: <strong className="text-foreground">{targetAsset.ratedCapacityMw} MVA</strong></span>
+              <span>
+                Substation: <strong className="text-foreground">{targetAsset.substation}</strong>
+              </span>
+              <span>
+                Capacity:{" "}
+                <strong className="text-foreground">{targetAsset.ratedCapacityMw} MVA</strong>
+              </span>
             </div>
           </div>
 
           {/* Interactive Sliders Console */}
           <div className="rounded-3xl border border-border/60 bg-card p-5 sm:p-6 shadow-sm">
             <div className="flex items-center justify-between">
-              <h3 className="font-sans text-base font-semibold text-foreground">Stress & Gas Parameters</h3>
+              <h3 className="font-sans text-base font-semibold text-foreground">
+                Stress & Gas Parameters
+              </h3>
               <Sliders className="size-4 text-muted-foreground" />
             </div>
 
@@ -355,7 +381,8 @@ function PredictionStudioPage() {
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-foreground">Operational Load Saturation</span>
                   <span className="font-mono text-sm font-bold text-signal">
-                    {loadFactor}% ({Math.round((targetAsset.ratedCapacityMw * loadFactor) / 100)} MVA)
+                    {loadFactor}% ({Math.round((targetAsset.ratedCapacityMw * loadFactor) / 100)}{" "}
+                    MVA)
                   </span>
                 </div>
                 <input
@@ -372,7 +399,9 @@ function PredictionStudioPage() {
               <div>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-foreground">Ambient Temperature</span>
-                  <span className={`font-mono text-sm font-bold ${ambientTemp > 38 ? "text-danger" : "text-foreground"}`}>
+                  <span
+                    className={`font-mono text-sm font-bold ${ambientTemp > 38 ? "text-danger" : "text-foreground"}`}
+                  >
                     {ambientTemp}°C
                   </span>
                 </div>
@@ -389,8 +418,12 @@ function PredictionStudioPage() {
               {/* Acetylene Gas (C2H2) */}
               <div className="border-t border-border/40 pt-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-foreground">Dissolved Acetylene (C2H2) — Arcing Gas</span>
-                  <span className={`font-mono text-sm font-bold ${acethylenePpm > 100 ? "text-danger" : "text-foreground"}`}>
+                  <span className="font-medium text-foreground">
+                    Dissolved Acetylene (C2H2) — Arcing Gas
+                  </span>
+                  <span
+                    className={`font-mono text-sm font-bold ${acethylenePpm > 100 ? "text-danger" : "text-foreground"}`}
+                  >
                     {acethylenePpm} ppm
                   </span>
                 </div>
@@ -412,8 +445,12 @@ function PredictionStudioPage() {
               {/* Methane Gas (CH4) */}
               <div>
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-foreground">Dissolved Methane (CH4) — Thermal Gas</span>
-                  <span className={`font-mono text-sm font-bold ${methanePpm > 400 ? "text-warning" : "text-foreground"}`}>
+                  <span className="font-medium text-foreground">
+                    Dissolved Methane (CH4) — Thermal Gas
+                  </span>
+                  <span
+                    className={`font-mono text-sm font-bold ${methanePpm > 400 ? "text-warning" : "text-foreground"}`}
+                  >
                     {methanePpm} ppm
                   </span>
                 </div>
@@ -431,7 +468,9 @@ function PredictionStudioPage() {
               <div>
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-foreground">Oil Dielectric Rigidity</span>
-                  <span className={`font-mono text-sm font-bold ${dielectricRigidity < 35 ? "text-danger" : "text-signal"}`}>
+                  <span
+                    className={`font-mono text-sm font-bold ${dielectricRigidity < 35 ? "text-danger" : "text-signal"}`}
+                  >
                     {dielectricRigidity} kV
                   </span>
                 </div>
@@ -453,7 +492,8 @@ function PredictionStudioPage() {
             >
               {calculating ? (
                 <>
-                  <Loader2 className="size-3.5 animate-spin mr-1.5" /> Executing Dual-Model ML Inference...
+                  <Loader2 className="size-3.5 animate-spin mr-1.5" /> Executing Dual-Model ML
+                  Inference...
                 </>
               ) : (
                 <>
@@ -472,8 +512,8 @@ function PredictionStudioPage() {
               displayedHI >= 50
                 ? "border-danger/50 bg-danger/5 ring-1 ring-danger/20"
                 : displayedHI >= 30
-                ? "border-warning/50 bg-warning/5"
-                : "border-signal/40 bg-signal/5"
+                  ? "border-warning/50 bg-warning/5"
+                  : "border-signal/40 bg-signal/5"
             }`}
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -483,12 +523,16 @@ function PredictionStudioPage() {
                     displayedHI >= 50
                       ? "bg-danger text-white animate-pulse"
                       : displayedHI >= 30
-                      ? "bg-warning text-foreground"
-                      : "bg-signal text-signal-foreground"
+                        ? "bg-warning text-foreground"
+                        : "bg-signal text-signal-foreground"
                   }`}
                 >
                   <AlertTriangle className="size-3.5" />
-                  {displayedHI >= 50 ? "CRITICAL RISK · TIER 1" : displayedHI >= 30 ? "WATCH TIER" : "NOMINAL CONDITION"}
+                  {displayedHI >= 50
+                    ? "CRITICAL RISK · TIER 1"
+                    : displayedHI >= 30
+                      ? "WATCH TIER"
+                      : "NOMINAL CONDITION"}
                 </span>
                 <span className="pill bg-ink text-cream px-2.5 py-1 text-xs font-mono font-bold">
                   {selectedAssetId}
@@ -506,23 +550,35 @@ function PredictionStudioPage() {
             {/* Big Headline Output */}
             <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
               <div className="rounded-2xl bg-surface/80 p-3.5 border border-border/60">
-                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">Health Index</p>
-                <p className={`mt-1 font-mono text-2xl font-bold ${displayedHI >= 50 ? "text-danger" : displayedHI >= 30 ? "text-warning" : "text-signal"}`}>
+                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">
+                  Health Index
+                </p>
+                <p
+                  className={`mt-1 font-mono text-2xl font-bold ${displayedHI >= 50 ? "text-danger" : displayedHI >= 30 ? "text-warning" : "text-signal"}`}
+                >
                   {displayedHI.toFixed(1)}
                 </p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">Model 1 (R²=0.72)</p>
               </div>
 
               <div className="rounded-2xl bg-surface/80 p-3.5 border border-border/60">
-                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">Remaining Life</p>
-                <p className={`mt-1 font-mono text-2xl font-bold ${displayedRUL < 40 ? "text-danger" : "text-signal"}`}>
+                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">
+                  Remaining Life
+                </p>
+                <p
+                  className={`mt-1 font-mono text-2xl font-bold ${displayedRUL < 40 ? "text-danger" : "text-signal"}`}
+                >
                   {displayedRUL.toFixed(1)}d
                 </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">{Math.round(displayedRUL * 24)}h to failure</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  {Math.round(displayedRUL * 24)}h to failure
+                </p>
               </div>
 
               <div className="rounded-2xl bg-surface/80 p-3.5 border border-border/60">
-                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">Fault Class</p>
+                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">
+                  Fault Class
+                </p>
                 <p className="mt-1 font-mono text-2xl font-bold text-foreground">
                   {displayedFault}
                 </p>
@@ -530,11 +586,15 @@ function PredictionStudioPage() {
               </div>
 
               <div className="rounded-2xl bg-surface/80 p-3.5 border border-border/60">
-                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">Protected Load</p>
+                <p className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">
+                  Protected Load
+                </p>
                 <p className="mt-1 font-mono text-2xl font-bold text-foreground">
                   {targetAsset.ratedCapacityMw} MVA
                 </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">{targetAsset.region.split("·")[0]}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  {targetAsset.region.split("·")[0]}
+                </p>
               </div>
             </div>
 
@@ -573,12 +633,16 @@ function PredictionStudioPage() {
                     <linearGradient id="riskGlow" x1="0" y1="0" x2="0" y2="1">
                       <stop
                         offset="0%"
-                        stopColor={displayedHI >= 50 ? "var(--color-danger)" : "var(--color-signal)"}
+                        stopColor={
+                          displayedHI >= 50 ? "var(--color-danger)" : "var(--color-signal)"
+                        }
                         stopOpacity={0.4}
                       />
                       <stop
                         offset="100%"
-                        stopColor={displayedHI >= 50 ? "var(--color-danger)" : "var(--color-signal)"}
+                        stopColor={
+                          displayedHI >= 50 ? "var(--color-danger)" : "var(--color-signal)"
+                        }
                         stopOpacity={0}
                       />
                     </linearGradient>
@@ -634,8 +698,8 @@ function PredictionStudioPage() {
                         action.priority === "high"
                           ? "bg-danger"
                           : action.priority === "medium"
-                          ? "bg-warning"
-                          : "bg-signal"
+                            ? "bg-warning"
+                            : "bg-signal"
                       }`}
                     />
                     <span className="font-medium text-foreground">{action.action}</span>

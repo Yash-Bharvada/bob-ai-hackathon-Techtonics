@@ -68,7 +68,7 @@ export interface AssetDetailResponse {
   fault_probabilities?: Record<string, number>;
   /** Renamed from top3_shap_features in pipeline */
   top_3_shap: [string, number][];
-  sensor_readings?: Record<string, any>;
+  sensor_readings?: Record<string, unknown>;
   advisory_text: string;
   /** "ibm_bob_llm" when Anthropic key present, "deterministic_fallback" otherwise */
   advisory_source: "ibm_bob_llm" | "deterministic_fallback";
@@ -85,7 +85,7 @@ export interface AssetDetailResponse {
     criticality_tier?: string;
     critical_infrastructure_nearby?: string;
     degradation_profile?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   composite_score?: number;
   rank?: number;
@@ -139,7 +139,7 @@ export interface MaintenancePlanResponse {
   generated_date?: string;
   total_actions?: number;
   top_10_actions: MaintenanceAction[];
-  crew_schedule: Record<string, any>;
+  crew_schedule: Record<string, unknown>;
   tx115_narrative: {
     asset_id: string;
     story: string;
@@ -204,11 +204,17 @@ export const techtonicsApi = {
       const res = await requestWithTimeout(`${API_BASE}/health`, {}, 2000);
       if (res.ok) {
         const data = await res.json();
-        return { live: true, message: `FastAPI online · Models loaded: ${data.models_loaded ?? true}` };
+        return {
+          live: true,
+          message: `FastAPI online · Models loaded: ${data.models_loaded ?? true}`,
+        };
       }
       return { live: false, message: `FastAPI returned HTTP ${res.status}` };
     } catch {
-      return { live: false, message: "FastAPI offline (run: uvicorn src.backend.main:app --port 8000)" };
+      return {
+        live: false,
+        message: "FastAPI offline (run: uvicorn src.backend.main:app --port 8000)",
+      };
     }
   },
 
@@ -222,14 +228,16 @@ export const techtonicsApi = {
     const res = await requestWithTimeout(
       `${API_BASE}/api/asset/${encodeURIComponent(assetId)}?generate_advisory=${generateAdvisory}`,
       {},
-      8000
+      8000,
     );
     if (!res.ok) throw new Error(`HTTP ${res.status} from /api/asset/${assetId}`);
     return res.json();
   },
 
   async getTimeseries(assetId: string): Promise<TimeseriesResponse> {
-    const res = await requestWithTimeout(`${API_BASE}/api/timeseries/${encodeURIComponent(assetId)}`);
+    const res = await requestWithTimeout(
+      `${API_BASE}/api/timeseries/${encodeURIComponent(assetId)}`,
+    );
     if (!res.ok) throw new Error(`HTTP ${res.status} from /api/timeseries/${assetId}`);
     return res.json();
   },
@@ -241,11 +249,15 @@ export const techtonicsApi = {
   },
 
   async scoreAdhoc(reading: AdhocScoreRequest): Promise<AdhocScoreResponse> {
-    const res = await requestWithTimeout(`${API_BASE}/api/score`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(reading),
-    }, 10000);
+    const res = await requestWithTimeout(
+      `${API_BASE}/api/score`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reading),
+      },
+      10000,
+    );
     if (!res.ok) throw new Error(`HTTP ${res.status} from /api/score`);
     return res.json();
   },
@@ -257,11 +269,15 @@ export const techtonicsApi = {
    * to user_reported_events.csv and rejected attempts to rejected_submissions_log.csv.
    */
   async reportEvent(report: EventReportRequest): Promise<EventReportResponse> {
-    const res = await requestWithTimeout(`${API_BASE}/events/report`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(report),
-    }, 6000);
+    const res = await requestWithTimeout(
+      `${API_BASE}/events/report`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(report),
+      },
+      6000,
+    );
     if (!res.ok) throw new Error(`HTTP ${res.status} from /events/report`);
     return res.json();
   },

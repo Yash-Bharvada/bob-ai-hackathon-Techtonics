@@ -15,11 +15,7 @@ export const DEFAULT_CINEMATIC_METADATA: CinematicMetadata = {
 
 export const DEFAULT_BASE_PATH = "/assets/cinematic";
 
-export function formatFrameUrl(
-  basePath: string,
-  pattern: string,
-  index: number
-): string {
+export function formatFrameUrl(basePath: string, pattern: string, index: number): string {
   const paddedIndex = String(index).padStart(4, "0");
   const relativePath = pattern.replace("%04d", paddedIndex);
   return `${basePath.replace(/\/$/, "")}/${relativePath}`;
@@ -28,7 +24,7 @@ export function formatFrameUrl(
 export function getStaticFrameUrl(
   basePath: string,
   type: "first" | "last",
-  metadata: CinematicMetadata = DEFAULT_CINEMATIC_METADATA
+  metadata: CinematicMetadata = DEFAULT_CINEMATIC_METADATA,
 ): string {
   const fileName = type === "first" ? metadata.firstFrame : metadata.lastFrame;
   return `${basePath.replace(/\/$/, "")}/${fileName}`;

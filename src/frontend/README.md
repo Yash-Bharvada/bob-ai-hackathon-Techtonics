@@ -9,30 +9,30 @@ _Techtonics · Bobathon AI Hackathon Submission_
 
 VOLTRA is an enterprise-grade AI-powered grid risk advisory system built for the **Anand District Transmission Network**. It combines two trained ML models with IBM Bob plain-English advisories to forecast transformer failures before they happen.
 
-> *"The lights have not gone out yet. VOLTRA sees that they are going to."*
+> _"The lights have not gone out yet. VOLTRA sees that they are going to."_
 
 ---
 
 ## Architecture
 
-| Layer | Stack |
-|---|---|
-| **Frontend** | React 19 + TanStack Router + TailwindCSS v4 |
-| **Backend API** | FastAPI (Python) on `:8000` |
-| **ML Models** | Random Forest Health Index Regression (R²=0.72) + DGA Fault Classifier (90.8% acc) |
-| **AI Advisory** | IBM Bob (Claude 3.5 Haiku via Anthropic SDK) |
-| **Security** | Prompt-injection regex filter + bounded risk multiplier |
+| Layer           | Stack                                                                              |
+| --------------- | ---------------------------------------------------------------------------------- |
+| **Frontend**    | React 19 + TanStack Router + TailwindCSS v4                                        |
+| **Backend API** | FastAPI (Python) on `:8000`                                                        |
+| **ML Models**   | Random Forest Health Index Regression (R²=0.72) + DGA Fault Classifier (90.8% acc) |
+| **AI Advisory** | IBM Bob (Claude 3.5 Haiku via Anthropic SDK)                                       |
+| **Security**    | Prompt-injection regex filter + bounded risk multiplier                            |
 
 ---
 
 ## Routes
 
-| URL | Page | Description |
-|---|---|---|
-| `/` | Home | Product narrative, TX-115 intervention story |
-| `/grid` | Live Grid | Real-time operator console — 18 transformers, live telemetry, asset inspector |
-| `/predict` | Prediction Studio | Dual ML simulation: DGA sliders, health index, RUL, fault classification |
-| `/technology` | Technology | 4 sensing pillars, 5-stage ML pipeline, NERC CIP compliance |
+| URL           | Page              | Description                                                                   |
+| ------------- | ----------------- | ----------------------------------------------------------------------------- |
+| `/`           | Home              | Product narrative, TX-115 intervention story                                  |
+| `/grid`       | Live Grid         | Real-time operator console — 18 transformers, live telemetry, asset inspector |
+| `/predict`    | Prediction Studio | Dual ML simulation: DGA sliders, health index, RUL, fault classification      |
+| `/technology` | Technology        | 4 sensing pillars, 5-stage ML pipeline, NERC CIP compliance                   |
 
 ---
 
@@ -50,6 +50,7 @@ VOLTRA is an enterprise-grade AI-powered grid risk advisory system built for the
 ## Local Development
 
 ### Prerequisites
+
 - Node.js ≥ 18 + [Bun](https://bun.sh)
 - Python ≥ 3.10
 
@@ -100,9 +101,9 @@ python src/backend/test_endpoints.py
 
 ## Machine Learning Models
 
-| Model File | Type | Key Metric |
-|---|---|---|
-| `risk_model.pkl` | Health Index regression (0–100 damage score) | R² = 0.72 |
+| Model File            | Type                                            | Key Metric     |
+| --------------------- | ----------------------------------------------- | -------------- |
+| `risk_model.pkl`      | Health Index regression (0–100 damage score)    | R² = 0.72      |
 | `dga_fault_model.pkl` | DGA Fault Classification (NF/D1/D2/T1/T2/T3/PD) | 90.8% accuracy |
 
 Trained on: Kaggle transformer DGA dataset (4,151 rows) + Anand District synthetic time-series (18 assets × 90 days).
@@ -145,6 +146,32 @@ src/
     ranked_assets.csv         → Pre-built composite rankings
     maintenance_plan.json     → Cached maintenance plan
     transformer_timeseries.csv→ 90-day DGA time-series
+```
+
+---
+
+## Cinematic Landing Layer
+
+The full-screen cinematic intro (frame-sequence + depth text + slice-and-dice overlay) lives entirely inside this project:
+
+| Path                                 | Contents                                                                                                                                     |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/cinematic/`                     | TypeScript classes: `CinematicThemeTransition`, `CinematicFrameSequence`, `VoltraDepthText`, `VoltraSliceSlide`, `ThemeTransitionController` |
+| `src/cinematic/CinematicLanding.tsx` | React component — mounts cinematic layer client-side via dynamic import                                                                      |
+| `public/assets/cinematic/`           | 169 WebP frames + first/last frame + house mask + metadata                                                                                   |
+| `scripts/`                           | Utility scripts for frame extraction and upscaling                                                                                           |
+
+### Cinematic scripts
+
+```bash
+# Extract frames from source video (requires ffmpeg)
+node scripts/extract-frames.mjs
+
+# Upscale frames (requires Python + Real-ESRGAN)
+python scripts/upscale-frames.py
+
+# Trace house silhouette mask
+python scripts/trace_house_mask.py
 ```
 
 ---

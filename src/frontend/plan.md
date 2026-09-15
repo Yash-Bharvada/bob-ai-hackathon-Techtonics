@@ -3,9 +3,11 @@
 ## 1. Executive Summary & Vision
 
 ### 1.1 Transformation Goal
-Rebrand and architect the complete public website from **Farmora** (an agricultural produce marketplace and leaf disease scanner) to **VOLTRA** (an enterprise-grade predictive power-grid intelligence platform). 
+
+Rebrand and architect the complete public website from **Farmora** (an agricultural produce marketplace and leaf disease scanner) to **VOLTRA** (an enterprise-grade predictive power-grid intelligence platform).
 
 The transformation preserves and elevates the design language established on the First Page (`src/routes/index.tsx`):
+
 - Soft cream background (`--color-background`, `--cream`)
 - Deep ink typography and structural surfaces (`--color-ink`)
 - Electric lime/signal accents (`--color-signal`, `--color-lime`)
@@ -14,9 +16,10 @@ The transformation preserves and elevates the design language established on the
 - Real-time animated telemetry indicators (`power-line` gradient motion, `node-risk` anomaly pulses)
 
 ### 1.2 Core Philosophy
-> *"The lights have not gone out yet. VOLTRA sees that they are going to."*
 
-Traditional power utility tools respond *after* failure occurs (fault occurs → power drops → alert triggers → crews scramble). VOLTRA continuously monitors electrical waveforms, asset degradation, and environmental conditions to forecast outages **2.8+ hours in advance**, giving operators the window needed to reroute power, shed load, or dispatch preventive maintenance.
+> _"The lights have not gone out yet. VOLTRA sees that they are going to."_
+
+Traditional power utility tools respond _after_ failure occurs (fault occurs → power drops → alert triggers → crews scramble). VOLTRA continuously monitors electrical waveforms, asset degradation, and environmental conditions to forecast outages **2.8+ hours in advance**, giving operators the window needed to reroute power, shed load, or dispatch preventive maintenance.
 
 ---
 
@@ -47,14 +50,14 @@ The first page (`src/routes/index.tsx`) defines the target aesthetic, brand voic
 
 ## 3. Discrepancy Audit: Legacy Pages vs. VOLTRA Target
 
-| Route / Asset | Current Legacy State (Farmora) | Required Target State (VOLTRA) | Discrepancy Severity |
-|---|---|---|---|
-| **`/` (Home)** | Already transformed to VOLTRA Home story with Hero, Problem, Pipeline, Cinematic Grid, Dashboard, Fault Analysis, and Analytics. | Preserved as the master reference model for typography, colors, and components. | Nominal (Reference) |
-| **`/market` (Live Grid)** | **Farmer's Market**: Produce cards (tomatoes, honey, milk), shopping cart, checkout toast, and "List produce" dialog. | **Live Grid Operator Console**: Interactive regional network topology, searchable asset directory (substations, lines, transformers), live load/voltage metrics, asset inspector drawer with Recharts telemetry, and telemetry simulation modal. | **Critical (Complete overhaul)** |
-| **`/scan` (Prediction)** | **AI Crop Scan**: Leaf photo uploader, crop hint, plant pathology AI prompt (`gemini-3.5-flash`), disease diagnosis card with symptoms & treatment. | **Outage Prediction Studio**: Multi-signal grid stress simulator, preset crisis scenarios (Heatwave, Lightning Surge, Transformer Aging, Baseload), parameter tuning (load factor, temperature, voltage deviation), oscillogram waveform visualizer, outage probability gauge, time-to-failure window, and preventive action dispatch. | **Critical (Complete overhaul)** |
-| **`/about` (Technology)** | **Farmora About**: Cooperative story, 10+ years farming innovation, 85% farmer satisfaction, farm & produce photography. | **VOLTRA Technology**: The 4 pillars of grid sensing, 5-stage ML pipeline architecture (Edge filtering → FFT/Wavelets → GNN → Transformers → XAI), empirical utility benchmarks (-38% downtime, 14.2 GW monitored), and NERC CIP/IEC 61850 compliance. | **Critical (Complete overhaul)** |
-| **Data Layer** | `marketData.ts` (produce items, farmers, prices in €) & `scan.functions.ts` (plant pathology prompt). | `gridData.ts` (substations, transmission corridors, transformers, live telemetry metrics, event logs) & `prediction.ts` (physics-informed ML simulation engine). | **High (Replace data model)** |
-| **Visual Assets** | `hero-farm.jpg`, `produce.jpg`, `leaf.jpg` | Grid diagrams, transmission photography (`voltra-home.jpg`, `voltra-grid.jpg`), waveform traces, and technical schematics. | **Medium (Asset alignment)** |
+| Route / Asset             | Current Legacy State (Farmora)                                                                                                                      | Required Target State (VOLTRA)                                                                                                                                                                                                                                                                                                         | Discrepancy Severity             |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| **`/` (Home)**            | Already transformed to VOLTRA Home story with Hero, Problem, Pipeline, Cinematic Grid, Dashboard, Fault Analysis, and Analytics.                    | Preserved as the master reference model for typography, colors, and components.                                                                                                                                                                                                                                                        | Nominal (Reference)              |
+| **`/market` (Live Grid)** | **Farmer's Market**: Produce cards (tomatoes, honey, milk), shopping cart, checkout toast, and "List produce" dialog.                               | **Live Grid Operator Console**: Interactive regional network topology, searchable asset directory (substations, lines, transformers), live load/voltage metrics, asset inspector drawer with Recharts telemetry, and telemetry simulation modal.                                                                                       | **Critical (Complete overhaul)** |
+| **`/scan` (Prediction)**  | **AI Crop Scan**: Leaf photo uploader, crop hint, plant pathology AI prompt (`gemini-3.5-flash`), disease diagnosis card with symptoms & treatment. | **Outage Prediction Studio**: Multi-signal grid stress simulator, preset crisis scenarios (Heatwave, Lightning Surge, Transformer Aging, Baseload), parameter tuning (load factor, temperature, voltage deviation), oscillogram waveform visualizer, outage probability gauge, time-to-failure window, and preventive action dispatch. | **Critical (Complete overhaul)** |
+| **`/about` (Technology)** | **Farmora About**: Cooperative story, 10+ years farming innovation, 85% farmer satisfaction, farm & produce photography.                            | **VOLTRA Technology**: The 4 pillars of grid sensing, 5-stage ML pipeline architecture (Edge filtering → FFT/Wavelets → GNN → Transformers → XAI), empirical utility benchmarks (-38% downtime, 14.2 GW monitored), and NERC CIP/IEC 61850 compliance.                                                                                 | **Critical (Complete overhaul)** |
+| **Data Layer**            | `marketData.ts` (produce items, farmers, prices in €) & `scan.functions.ts` (plant pathology prompt).                                               | `gridData.ts` (substations, transmission corridors, transformers, live telemetry metrics, event logs) & `prediction.ts` (physics-informed ML simulation engine).                                                                                                                                                                       | **High (Replace data model)**    |
+| **Visual Assets**         | `hero-farm.jpg`, `produce.jpg`, `leaf.jpg`                                                                                                          | Grid diagrams, transmission photography (`voltra-home.jpg`, `voltra-grid.jpg`), waveform traces, and technical schematics.                                                                                                                                                                                                             | **Medium (Asset alignment)**     |
 
 ---
 
@@ -63,14 +66,16 @@ The first page (`src/routes/index.tsx`) defines the target aesthetic, brand voic
 ### 4.1 Route `/market` — Live Grid Operator Console
 
 #### Purpose
+
 A real-time operator workspace displaying the health, electrical load, voltage stability, and active anomalies across the entire distribution network. Operates without authentication to deliver an immediate, high-impact operator experience.
 
 #### Layout & Components
+
 1. **Console Header**:
    - Status badge: `LIVE TELEMETRY · SYNCHRONIZED` with pulsing signal beacon.
    - Live UTC timestamp display.
-   - Headline: *"Real-time state of the distribution network."*
-   - Subtitle: *"Continuous health monitoring, voltage stability, and thermal tracking across regional transmission lines, substations, and distribution feeders."*
+   - Headline: _"Real-time state of the distribution network."_
+   - Subtitle: _"Continuous health monitoring, voltage stability, and thermal tracking across regional transmission lines, substations, and distribution feeders."_
    - Action buttons: "Simulate Surge", "Export Telemetry (CSV)", and "Register Grid Asset".
 2. **Network Topology Map View**:
    - Embedded interactive `GridDiagram` component.
@@ -105,8 +110,8 @@ A real-time operator workspace displaying the health, electrical load, voltage s
      - Incident timeline / event log for that asset.
      - Operator intervention controls: "Shed Load (-15 MW)", "Activate Forced Cooling", "Trigger Diagnostic Ping".
 6. **Live Telemetry Event Ticker**:
-   - Scrolling feed of real-time events (e.g., *"13:41 UTC: Harmonic distortion on Bus S03 normalized"*, *"13:38 UTC: Phase imbalance detected on Segment S04 (+4.2%)"*).
-7. **Grid Simulation / Asset Registration Modal** *(replaces legacy SellDialog)*:
+   - Scrolling feed of real-time events (e.g., _"13:41 UTC: Harmonic distortion on Bus S03 normalized"_, _"13:38 UTC: Phase imbalance detected on Segment S04 (+4.2%)"_).
+7. **Grid Simulation / Asset Registration Modal** _(replaces legacy SellDialog)_:
    - Allows operators to inject a virtual telemetry disturbance or register a new grid sensor node with custom parameters.
 
 ---
@@ -114,32 +119,34 @@ A real-time operator workspace displaying the health, electrical load, voltage s
 ### 4.2 Route `/scan` — Outage Prediction Studio
 
 #### Purpose
+
 A predictive intelligence workspace allowing operators, power engineers, and grid planners to stress-test grid segments under simulated or real-time conditions and receive explainable failure forecasts before power is lost.
 
 #### Layout & Components
+
 1. **Studio Header**:
    - Badge: `OUTAGE PREDICTION STUDIO · ML ENGINE v4.2`
-   - Headline: *"Simulate grid stress. Forecast the failure window."*
-   - Subtitle: *"Run multi-signal predictive models across high-voltage corridors. VOLTRA evaluates electrical transients, load saturation, and meteorological stress to project outage probability hours ahead."*
+   - Headline: _"Simulate grid stress. Forecast the failure window."_
+   - Subtitle: _"Run multi-signal predictive models across high-voltage corridors. VOLTRA evaluates electrical transients, load saturation, and meteorological stress to project outage probability hours ahead."_
 2. **Split-Screen Studio Architecture**:
    - **Left Column: Simulation Controls & Telemetry Input**:
      - **Target Asset Selector**: Choose from monitored assets (Transmission Segment 04, Central Bus S03, Substation Alpha Transformer, etc.).
      - **Preset Scenario Quick-Picks**:
-       - ⚡ *Severe Summer Heatwave & Peak Demand* (Load: 94%, Ambient: 42°C, Conductor Sag: Elevated).
-       - 🌩️ *Extreme Thunderstorm & Lightning Transient* (Voltage spikes: ±14%, Wind: 65 knots, Surge Risk: High).
-       - ⚙️ *Aging Transformer & Harmonic Resonance* (Core Temp: 92°C, Dissolved Gas: Warning, Wear: 85%).
-       - 🍃 *Nominal Baseload Grid Balance* (Load: 48%, Temp: 21°C, Nominal 50.0 Hz).
+       - ⚡ _Severe Summer Heatwave & Peak Demand_ (Load: 94%, Ambient: 42°C, Conductor Sag: Elevated).
+       - 🌩️ _Extreme Thunderstorm & Lightning Transient_ (Voltage spikes: ±14%, Wind: 65 knots, Surge Risk: High).
+       - ⚙️ _Aging Transformer & Harmonic Resonance_ (Core Temp: 92°C, Dissolved Gas: Warning, Wear: 85%).
+       - 🍃 _Nominal Baseload Grid Balance_ (Load: 48%, Temp: 21°C, Nominal 50.0 Hz).
      - **Live Parameter Tuning Sliders**:
-       - *Load Capacity*: 20% to 150% (color shifts from lime to amber to red as capacity exceeds 85%).
-       - *Ambient Temperature*: -10°C to +50°C.
-       - *Voltage Fluctuation*: -15% to +15% deviation.
-       - *Severe Weather Condition*: Clear, Heavy Gale, Ice Storm, Severe Lightning.
-       - *Asset Operating Age / Wear*: 0% (New) to 100% (End-of-life).
+       - _Load Capacity_: 20% to 150% (color shifts from lime to amber to red as capacity exceeds 85%).
+       - _Ambient Temperature_: -10°C to +50°C.
+       - _Voltage Fluctuation_: -15% to +15% deviation.
+       - _Severe Weather Condition_: Clear, Heavy Gale, Ice Storm, Severe Lightning.
+       - _Asset Operating Age / Wear_: 0% (New) to 100% (End-of-life).
      - **Waveform / SCADA Trace Selector**:
        - Interactive oscillogram waveform preview.
        - Operator toggle: "Use Live SCADA Stream" or "Load Anomaly Waveform Sample".
      - **Action Button**:
-       - *"Run Outage Prediction"* button with animated computing state (calculating multi-variate correlations, transient stability, thermal degradation curve).
+       - _"Run Outage Prediction"_ button with animated computing state (calculating multi-variate correlations, transient stability, thermal degradation curve).
    - **Right Column: Predictive Intelligence & XAI Output**:
      - **Outage Probability Gauge**:
        - Large high-contrast risk meter (e.g., **87%** with elevated risk badge).
@@ -151,18 +158,18 @@ A predictive intelligence workspace allowing operators, power engineers, and gri
        - Dependent industrial facilities & estimated consumer accounts (e.g., ~38,400 customers).
      - **Explainable AI (XAI) Factor Decomposition**:
        - Horizontal bar breakdown of weighted risk contributors:
-         - *Voltage Instability*: 82%
-         - *Peak Load Saturation*: 76%
-         - *Historical Failure Correlation*: 67%
-         - *Ambient Thermal Dissipation*: 58%
-         - *Harmonic Distortion*: 41%
+         - _Voltage Instability_: 82%
+         - _Peak Load Saturation_: 76%
+         - _Historical Failure Correlation_: 67%
+         - _Ambient Thermal Dissipation_: 58%
+         - _Harmonic Distortion_: 41%
      - **12-Hour Projected Fault Trajectory Chart**:
        - Recharts area/line chart showing the projected degradation trajectory over the next 12 hours against the critical tripping threshold.
      - **Recommended Preventive Dispatch Protocols**:
        - Ranked mitigation actions:
-         1. *Divert 35 MW load through Western Corridor B* (Lowers failure risk by 64%).
-         2. *Force-start Substation Auxiliary Cooling Fans* (Lowers thermal gradient by 16°C).
-         3. *Pre-dispatch emergency repair crew to Segment 04 junction box*.
+         1. _Divert 35 MW load through Western Corridor B_ (Lowers failure risk by 64%).
+         2. _Force-start Substation Auxiliary Cooling Fans_ (Lowers thermal gradient by 16°C).
+         3. _Pre-dispatch emergency repair crew to Segment 04 junction box_.
      - **Export & Action Bar**:
        - "Export Incident Briefing (PDF/JSON)", "Trigger Automated Rebalancing", "Send Control Room Alert".
 
@@ -171,13 +178,15 @@ A predictive intelligence workspace allowing operators, power engineers, and gri
 ### 4.3 Route `/about` — Technology & Methodology
 
 #### Purpose
+
 A technical authority page explaining the physics, sensor telemetry, and machine learning architecture that powers VOLTRA's predictive capability, designed to build trust with utility executives and grid operators.
 
 #### Layout & Components
+
 1. **Hero Header**:
    - Navigation pill tabs: `Architecture`, `Sensor Pillars`, `ML Pipeline`, `Reliability Metrics`, `Compliance`.
-   - Headline: *"The science of outage prevention."*
-   - Subtitle: *"How VOLTRA converts raw electromagnetic waveforms, physical asset diagnostics, and atmospheric telemetry into actionable failure forecasts before physical damage occurs."*
+   - Headline: _"The science of outage prevention."_
+   - Subtitle: _"How VOLTRA converts raw electromagnetic waveforms, physical asset diagnostics, and atmospheric telemetry into actionable failure forecasts before physical damage occurs."_
 2. **The 4 Pillars of Grid Sensing**:
    - **Pillar 01 — Synchronized Electrical Telemetry**:
      - Phasor Measurement Units (PMU) sampling at 50/60 Hz, micro-transients, sub-cycle voltage sag, phase angle deviation, and total harmonic distortion (THD).
@@ -189,11 +198,11 @@ A technical authority page explaining the physics, sensor telemetry, and machine
      - 15+ years of cascading blackout post-mortems, failure signature libraries, and component-specific degradation curves.
 3. **The 5-Stage Machine Learning Pipeline**:
    - Visual sequential pipeline diagram:
-     1. *Ingestion & Edge Filtering*: 50,000 samples/sec filtered at substation edge gateways to eliminate sensor noise.
-     2. *Feature Extraction*: Continuous Wavelet Transform (CWT) and Fast Fourier Transform (FFT) isolating transient fault signatures.
-     3. *Graph Neural Network (GNN)*: Spatial topology modeling capturing interconnected bus and feeder interdependencies to detect cascading risks.
-     4. *Temporal Transformer Model*: Multi-horizon attention architecture forecasting failure probabilities from 15 minutes to 48 hours.
-     5. *Explainable AI (XAI) Attribution*: SHAP-based feature weighting giving dispatchers the exact physical reason for elevated risk.
+     1. _Ingestion & Edge Filtering_: 50,000 samples/sec filtered at substation edge gateways to eliminate sensor noise.
+     2. _Feature Extraction_: Continuous Wavelet Transform (CWT) and Fast Fourier Transform (FFT) isolating transient fault signatures.
+     3. _Graph Neural Network (GNN)_: Spatial topology modeling capturing interconnected bus and feeder interdependencies to detect cascading risks.
+     4. _Temporal Transformer Model_: Multi-horizon attention architecture forecasting failure probabilities from 15 minutes to 48 hours.
+     5. _Explainable AI (XAI) Attribution_: SHAP-based feature weighting giving dispatchers the exact physical reason for elevated risk.
 4. **Empirical Reliability & Impact Benchmarks**:
    - High-impact stat callouts:
      - **99.98%** Predictive forecast accuracy across transmission-level assets.
@@ -214,17 +223,18 @@ A technical authority page explaining the physics, sensor telemetry, and machine
 All pages strictly follow the design tokens established in `src/styles.css`:
 
 ```css
---background: oklch(0.985 0.005 90);    /* Soft neutral canvas */
---foreground: oklch(0.15 0.02 150);      /* Deep ink text */
---cream: oklch(0.98 0.008 90);           /* Editorial cream surface */
---ink: oklch(0.14 0.015 150);            /* Deep obsidian ink */
---signal: oklch(0.88 0.21 125);          /* Electric lime accent */
+--background: oklch(0.985 0.005 90); /* Soft neutral canvas */
+--foreground: oklch(0.15 0.02 150); /* Deep ink text */
+--cream: oklch(0.98 0.008 90); /* Editorial cream surface */
+--ink: oklch(0.14 0.015 150); /* Deep obsidian ink */
+--signal: oklch(0.88 0.21 125); /* Electric lime accent */
 --signal-foreground: oklch(0.15 0.025 150);
---warning: oklch(0.76 0.16 75);          /* Amber watch indicator */
---danger: oklch(0.62 0.2 28);            /* Red critical risk indicator */
+--warning: oklch(0.76 0.16 75); /* Amber watch indicator */
+--danger: oklch(0.62 0.2 28); /* Red critical risk indicator */
 ```
 
 ### Key Utilities & Motion
+
 - `glass`: Translucent white card with blur and subtle border for daytime/primary surfaces.
 - `glass-dark`: Obsidian ink surface with blur and light specular border for high-contrast telemetry panels.
 - `pill`: Fully rounded pill buttons and badges (`border-radius: 999px`).
@@ -237,29 +247,30 @@ All pages strictly follow the design tokens established in `src/styles.css`:
 ## 6. Data Architecture & State Models
 
 ### 6.1 Grid Asset Model (`src/lib/gridData.ts`)
+
 ```typescript
-export type GridAssetType = 
-  | "Transmission Corridor" 
-  | "Substation" 
-  | "Transformer" 
-  | "Distribution Feeder" 
+export type GridAssetType =
+  | "Transmission Corridor"
+  | "Substation"
+  | "Transformer"
+  | "Distribution Feeder"
   | "Generation Intake";
 
 export type AssetStatus = "stable" | "watch" | "risk";
 
 export interface GridAsset {
-  id: string;                      // e.g. "S04"
-  name: string;                    // e.g. "Transmission Segment 04"
-  substation: string;              // e.g. "Northern Intertie"
-  region: string;                  // e.g. "Sector 7 - West Grid"
+  id: string; // e.g. "S04"
+  name: string; // e.g. "Transmission Segment 04"
+  substation: string; // e.g. "Northern Intertie"
+  region: string; // e.g. "Sector 7 - West Grid"
   type: GridAssetType;
-  voltageKv: number;               // e.g. 132
-  nominalVoltageKv: number;        // e.g. 132
-  currentLoadMw: number;           // e.g. 182
-  ratedCapacityMw: number;         // e.g. 200
-  frequencyHz: number;             // e.g. 49.88
-  coreTempC: number;               // e.g. 74.2
-  healthScore: number;             // e.g. 46 (0-100)
+  voltageKv: number; // e.g. 132
+  nominalVoltageKv: number; // e.g. 132
+  currentLoadMw: number; // e.g. 182
+  ratedCapacityMw: number; // e.g. 200
+  frequencyHz: number; // e.g. 49.88
+  coreTempC: number; // e.g. 74.2
+  healthScore: number; // e.g. 46 (0-100)
   status: AssetStatus;
   activeAnomalies: number;
   lastInspected: string;
@@ -269,26 +280,31 @@ export interface GridAsset {
 ```
 
 ### 6.2 Prediction Engine Model (`src/lib/prediction.ts`)
+
 ```typescript
 export interface ScenarioInput {
   assetId: string;
-  loadFactorPercent: number;       // 20 - 150%
-  ambientTempC: number;            // -10 to +50°C
+  loadFactorPercent: number; // 20 - 150%
+  ambientTempC: number; // -10 to +50°C
   voltageDeviationPercent: number; // -15 to +15%
   weatherCondition: "clear" | "gale" | "ice" | "lightning";
-  equipmentWearPercent: number;    // 0 - 100%
+  equipmentWearPercent: number; // 0 - 100%
 }
 
 export interface PredictionResult {
   assetId: string;
-  outageRiskPercent: number;       // 0 - 100%
-  predictedFailureHours: number;   // e.g. 2.8
+  outageRiskPercent: number; // 0 - 100%
+  predictedFailureHours: number; // e.g. 2.8
   confidenceIntervalHours: number; // e.g. 0.4
-  affectedFeedersCount: number;    // e.g. 4
-  affectedCustomersEst: number;    // e.g. 38400
+  affectedFeedersCount: number; // e.g. 4
+  affectedCustomersEst: number; // e.g. 38400
   riskFactors: { name: string; weightPercent: number }[];
   trajectory: { hour: number; projectedRisk: number; safeThreshold: number }[];
-  recommendedActions: { action: string; impactReductionPercent: number; priority: "high" | "medium" | "low" }[];
+  recommendedActions: {
+    action: string;
+    impactReductionPercent: number;
+    priority: "high" | "medium" | "low";
+  }[];
 }
 ```
 

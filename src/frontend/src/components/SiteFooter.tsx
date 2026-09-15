@@ -14,9 +14,21 @@ export function SiteFooter() {
         <div>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Platform</p>
           <ul className="mt-4 space-y-2 text-sm">
-            <li><Link to="/grid" className="hover:underline">Live Grid</Link></li>
-            <li><Link to="/predict" className="hover:underline">Prediction</Link></li>
-            <li><Link to="/technology" className="hover:underline">Technology</Link></li>
+            <li>
+              <Link to="/grid" className="hover:underline">
+                Live Grid
+              </Link>
+            </li>
+            <li>
+              <Link to="/predict" className="hover:underline">
+                Prediction
+              </Link>
+            </li>
+            <li>
+              <Link to="/technology" className="hover:underline">
+                Technology
+              </Link>
+            </li>
           </ul>
         </div>
         <div>
