@@ -420,7 +420,14 @@ function LiveGridPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <DataSourceBadge />
+          <DataSourceBadge
+            dataSource={dataSource}
+            assetCount={assets.length}
+            onReset={() => {
+              gridDataSource.clearDataSource();
+              setDataSource("none");
+            }}
+          />
           <div className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 shadow-sm">
             <span className="relative flex size-2">
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-75" />
@@ -473,8 +480,8 @@ function LiveGridPage() {
       {isAuthed && (dataSource === "none" || assets.length === 0) && (
         <div className="mt-6">
           <EmptyWorkspaceChoice
-            userName={profile?.name ? profile.name.split(" ")[0] : "Operator"}
-            userCity={userLocation.city}
+            userName={authSession.getProfile()?.name ? authSession.getProfile()!.name.split(" ")[0] : "Operator"}
+            userCity={authSession.getLocation().city}
             onSelectAnand={() => {
               gridDataSource.setAnandData();
               setDataSource("anand");

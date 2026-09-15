@@ -46,10 +46,18 @@ export const gridDataSource = {
     window.dispatchEvent(new CustomEvent("voltra-datasource-changed", { detail: "custom" }));
   },
 
+  setAnandData() {
+    this.setDataSource("anand");
+  },
+
   clearData() {
     if (typeof window === "undefined") return;
     localStorage.removeItem(STORAGE_KEY_SOURCE);
     localStorage.removeItem(STORAGE_KEY_CUSTOM_ASSETS);
     window.dispatchEvent(new CustomEvent("voltra-datasource-changed", { detail: "none" }));
+  },
+
+  clearDataSource() {
+    this.clearData();
   },
 };

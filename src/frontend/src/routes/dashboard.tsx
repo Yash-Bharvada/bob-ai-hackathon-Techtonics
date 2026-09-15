@@ -264,13 +264,14 @@ function DashboardPage() {
       });
     }
     if (displayAssets[1]) {
+      const loadPct = Math.round(((displayAssets[1].currentLoadMw || 20) / (displayAssets[1].ratedCapacityMw || 25)) * 100);
       recs.push({
         rank: "02",
         asset: displayAssets[1].id,
         action: "Monitor thermal gradient; verify forced-air cooling relay circuit.",
         confidence: 82,
         priority: (displayAssets[1].riskScore > 70 ? "HIGH" : "MEDIUM") as "HIGH" | "MEDIUM" | "LOW",
-        detail: `Operating at ${displayAssets[1].loadPercentage ?? 70}% loading capacity with RUL ${displayAssets[1].rul.toFixed(0)} days.`,
+        detail: `Operating at ${loadPct}% loading capacity with RUL ${displayAssets[1].rul.toFixed(0)} days.`,
       });
     }
     recs.push({
