@@ -5,21 +5,16 @@ import {
   createRootRouteWithContext,
   useRouter,
   useRouterState,
-  useNavigate,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Toaster } from "@/components/ui/sonner";
 import { CinematicLanding } from "@/cinematic/CinematicLanding.tsx";
-import { authSession } from "@/lib/authSession";
-
-// Protected routes that redirect to /login when unauthenticated
-const PROTECTED_ROUTES = ["/dashboard", "/grid", "/predict", "/technology"];
 
 function NotFoundComponent() {
   return (
@@ -113,18 +108,9 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const { location } = useRouterState();
-  const navigate = useNavigate();
   const path = location.pathname;
   const isHome = path === "/";
   const isLogin = path === "/login";
-
-  // Client-side auth guard — redirect unauthenticated users away from protected routes
-  useEffect(() => {
-    const isProtected = PROTECTED_ROUTES.some((p) => path.startsWith(p));
-    if (isProtected && !authSession.isAuthenticated()) {
-      navigate({ to: "/login", replace: true });
-    }
-  }, [path, navigate]);
 
   // Login page: no SiteNav, SiteFooter, or cinematic wrapper
   if (isLogin) {

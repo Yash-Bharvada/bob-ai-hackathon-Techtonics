@@ -10,8 +10,11 @@ import {
   ChevronRight,
   Clock,
   Compass,
+  Lock,
+  LogIn,
   MapPin,
   ShieldAlert,
+  ShieldCheck,
   TrendingUp,
   User,
   Zap,
@@ -222,10 +225,12 @@ function DashboardPage() {
     ].filter(Boolean) as { rank: string; asset: string; action: string; confidence: number; priority: "HIGH" | "MEDIUM" | "LOW" }[];
   }, [planActions, topCriticalAsset, displayAssets, liveWeather.temperature_c]);
 
+  const isAuthed = mounted && authSession.isAuthenticated();
+
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-background px-4 py-6 sm:px-6 lg:px-8">
+    <div className="relative min-h-screen bg-background px-4 py-6 sm:px-6 lg:px-8">
 
       {/* ── Header ── */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -617,6 +622,49 @@ function DashboardPage() {
 
       <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} onSuccess={(p) => setProfile(p)} />
       <LocationPromptModal open={locationModalOpen} onClose={() => setLocationModalOpen(false)} onLocationSelected={(loc) => setLocation(loc)} />
+
+      {/* ── Guest Preview Overlay ── */}
+      {!isAuthed && <GuestPreviewBanner page="Command Dashboard" />}
     </div>
+  );
+}
+
+function GuestPreviewBanner({ page }: { page: string }) {
+  return (
+    <>
+      {/* Gradient fade over bottom content */}
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-30"
+        style={{ height: "55%", background: "linear-gradient(to bottom, transparent 0%, hsl(var(--background)/0.85) 35%, hsl(var(--background)) 65%)" }}
+      />
+      {/* Sticky sign-in bar */}
+      <div className="sticky bottom-0 z-40 border-t border-border/60 bg-background/95 backdrop-blur-xl px-4 py-4 sm:px-6">
+        <div className="mx-auto flex max-w-4xl flex-col items-center gap-3 sm:flex-row sm:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+              <Lock className="size-4" />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{page} · Preview Mode</p>
+              <p className="text-xs text-muted-foreground">Sign in to access live model data, real-time alerts, and AI advisories.</p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-5 py-2.5 text-xs font-bold text-background transition-colors hover:bg-foreground/90"
+            >
+              <LogIn className="size-3.5" /> Sign In to Access
+            </Link>
+            <Link
+              to="/technology"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border/70 px-4 py-2.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ShieldCheck className="size-3.5" /> How It Works
+            </Link>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

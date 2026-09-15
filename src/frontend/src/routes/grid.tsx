@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState, useEffect, Component, type ReactNode, type ErrorInfo } from "react";
+import { authSession } from "@/lib/authSession";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   initialGridAssets,
@@ -34,6 +35,8 @@ import {
   Flame,
   Gauge,
   Layers,
+  Lock,
+  LogIn,
   Plus,
   Radio,
   RefreshCw,
@@ -276,8 +279,12 @@ function LiveGridPage() {
     }
   };
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  const isAuthed = mounted && authSession.isAuthenticated();
+
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+    <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6">
       {/* macOS Window Breadcrumb & Realtime Header */}
       <div className="flex flex-col gap-5 border-b border-border/60 pb-6 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -1230,7 +1237,48 @@ function LiveGridPage() {
         onClose={() => setIncidentModalOpen(false)}
         defaultZone={incidentDefaultZone}
       />
+
+      {/* ── Guest Preview Overlay ── */}
+      {!isAuthed && <GuestPreviewBanner page="Live Grid Console" />}
     </div>
+  );
+}
+
+function GuestPreviewBanner({ page }: { page: string }) {
+  return (
+    <>
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-30"
+        style={{ height: "50%", background: "linear-gradient(to bottom, transparent 0%, hsl(var(--background)/0.85) 35%, hsl(var(--background)) 65%)" }}
+      />
+      <div className="sticky bottom-0 z-40 border-t border-border/60 bg-background/95 backdrop-blur-xl px-4 py-4 sm:px-6">
+        <div className="mx-auto flex max-w-5xl flex-col items-center gap-3 sm:flex-row sm:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+              <Lock className="size-4" />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-foreground">{page} · Preview Mode</p>
+              <p className="text-xs text-muted-foreground">Sign in to inspect assets, run live queries, and dispatch maintenance crews.</p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-5 py-2.5 text-xs font-bold text-background transition-colors hover:bg-foreground/90"
+            >
+              <LogIn className="size-3.5" /> Sign In to Access
+            </Link>
+            <Link
+              to="/technology"
+              className="inline-flex items-center gap-1.5 rounded-full border border-border/70 px-4 py-2.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ShieldCheck className="size-3.5" /> How It Works
+            </Link>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
