@@ -321,7 +321,9 @@ export class CinematicFrameSequence {
     this.pause();
 
     const reachedTheme: Theme = this._currentFrame === 0 ? "light" : "dark";
-    this.log(`[Cinematic] Reached ${reachedTheme.toUpperCase()} frame (${this._currentFrame}). Loop stopped.`);
+    this.log(
+      `[Cinematic] Reached ${reachedTheme.toUpperCase()} frame (${this._currentFrame}). Loop stopped.`,
+    );
     this.onTransitionComplete?.(reachedTheme);
   }
 

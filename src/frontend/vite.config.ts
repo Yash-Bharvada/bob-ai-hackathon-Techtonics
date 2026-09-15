@@ -15,4 +15,8 @@ export default defineConfig({
     tsconfigPaths({ projects: ["./tsconfig.json"] }),
     nitro(),
   ],
+  server: {
+    port: 3000,
+    host: true,
+  },
 });

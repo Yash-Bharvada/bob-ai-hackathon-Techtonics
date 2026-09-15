@@ -82,8 +82,8 @@ export const LETTER_LAYOUT: { char: string; x: number; y: number }[] = [
   // Aligns harmoniously with the centered architectural house (center=1245.5px).
   // Baseline y=615 ensures the house roofline, chimney, and apex naturally occlude
   // the letters for authentic architectural depth while keeping glyphs bold and legible.
-  { char: "V", x: 185,  y: 615 },
-  { char: "O", x: 600,  y: 615 },
+  { char: "V", x: 185, y: 615 },
+  { char: "O", x: 600, y: 615 },
   { char: "L", x: 1005, y: 615 },
   { char: "T", x: 1250, y: 615 },
   { char: "R", x: 1580, y: 615 },
@@ -168,15 +168,15 @@ export class VoltraDepthText {
 
     // Left Subtitle (Aligned with 'V' at x=185)
     subtitlesGroup.appendChild(
-      this.createSubtitleElement(svgNS, 185, 208, this.config.subtitles.left, "start")
+      this.createSubtitleElement(svgNS, 185, 208, this.config.subtitles.left, "start"),
     );
     // Center Subtitle (Symmetrically centered at x=1250 across house apex and viewport)
     subtitlesGroup.appendChild(
-      this.createSubtitleElement(svgNS, 1250, 208, this.config.subtitles.center, "middle")
+      this.createSubtitleElement(svgNS, 1250, 208, this.config.subtitles.center, "middle"),
     );
     // Right Subtitle (Aligned with 'A' right edge at x=2310)
     subtitlesGroup.appendChild(
-      this.createSubtitleElement(svgNS, 2310, 208, this.config.subtitles.right, "end")
+      this.createSubtitleElement(svgNS, 2310, 208, this.config.subtitles.right, "end"),
     );
 
     svg.appendChild(subtitlesGroup);
@@ -209,7 +209,7 @@ export class VoltraDepthText {
     x: number,
     y: number,
     lines: string[],
-    textAnchor: "start" | "middle" | "end"
+    textAnchor: "start" | "middle" | "end",
   ): SVGTextElement {
     const text = document.createElementNS(ns, "text") as SVGTextElement;
     text.setAttribute("x", x.toString());

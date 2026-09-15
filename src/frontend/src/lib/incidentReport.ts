@@ -30,9 +30,9 @@ export interface IncidentReportPayload {
 
 export interface AcceptedIncidentRecord extends IncidentReportPayload {
   incident_id: string;
-  received_at: string;         // ISO-8601
+  received_at: string; // ISO-8601
   category: HazardCategory;
-  risk_multiplier: number;     // 1.00 – 1.25
+  risk_multiplier: number; // 1.00 – 1.25
   disclaimer: "Unverified — user reported";
 }
 
@@ -45,9 +45,7 @@ export interface RejectedSubmissionRecord {
   reporter_type: string;
 }
 
-export type FilterResult =
-  | { blocked: true; matched_pattern: string }
-  | { blocked: false };
+export type FilterResult = { blocked: true; matched_pattern: string } | { blocked: false };
 
 export type ReportResult =
   | { status: "accepted"; record: AcceptedIncidentRecord }
@@ -62,29 +60,42 @@ export type ReportResult =
  */
 const INJECTION_PATTERNS: { label: string; re: RegExp }[] = [
   { label: "ignore_previous_instructions", re: /ignore\s+previous\s+instructions?/i },
-  { label: "system_prompt_override",       re: /system\s+prompt\s*(override|:)/i },
-  { label: "you_are_now",                  re: /you\s+are\s+now\b/i },
-  { label: "disregard_all",                re: /disregard\s+all\b/i },
-  { label: "override_keyword",             re: /\boverride\b.*\b(safe|healthy|pristine|alert|alarm)\b/i },
-  { label: "jailbreak",                    re: /\bjailbreak\b/i },
-  { label: "dan_mode",                     re: /\bDAN\s+mode\b/i },
-  { label: "mark_as_safe",                 re: /mark\s+(all\s+)?transformers?\s+(as\s+)?(safe|healthy|pristine)/i },
-  { label: "suppress_alerts",              re: /suppress\s+(all\s+)?(alerts?|alarms?|warnings?)/i },
-  { label: "disregard_arcing",             re: /disregard\s+(all\s+)?arc(ing)?\s+alerts?/i },
-  { label: "act_as",                       re: /\bact\s+as\b/i },
-  { label: "new_instructions",             re: /new\s+(instructions?|directive)/i },
-  { label: "forget_previous",              re: /forget\s+(all\s+)?(previous|prior|earlier)/i },
+  { label: "system_prompt_override", re: /system\s+prompt\s*(override|:)/i },
+  { label: "you_are_now", re: /you\s+are\s+now\b/i },
+  { label: "disregard_all", re: /disregard\s+all\b/i },
+  { label: "override_keyword", re: /\boverride\b.*\b(safe|healthy|pristine|alert|alarm)\b/i },
+  { label: "jailbreak", re: /\bjailbreak\b/i },
+  { label: "dan_mode", re: /\bDAN\s+mode\b/i },
+  { label: "mark_as_safe", re: /mark\s+(all\s+)?transformers?\s+(as\s+)?(safe|healthy|pristine)/i },
+  { label: "suppress_alerts", re: /suppress\s+(all\s+)?(alerts?|alarms?|warnings?)/i },
+  { label: "disregard_arcing", re: /disregard\s+(all\s+)?arc(ing)?\s+alerts?/i },
+  { label: "act_as", re: /\bact\s+as\b/i },
+  { label: "new_instructions", re: /new\s+(instructions?|directive)/i },
+  { label: "forget_previous", re: /forget\s+(all\s+)?(previous|prior|earlier)/i },
 ];
 
 // ─── Closed-Category Classifier ──────────────────────────────────────────────
 
 const CATEGORY_RULES: { category: HazardCategory; keywords: RegExp }[] = [
-  { category: "excavation",    keywords: /\b(excavat|backhoe|dig(ger|ging)?|trench|drill(ing)?|bore)\b/i },
-  { category: "wildfire",      keywords: /\b(fire|wildfire|grass\s+fire|blaze|burn(ing)?|flame|smoke)\b/i },
-  { category: "storm_damage",  keywords: /\b(storm|lightning|thunder|flood|wind|tree|fallen|debris|hail)\b/i },
-  { category: "explosion",     keywords: /\b(explos(ion|ive)?|blast|boom|bang)\b/i },
-  { category: "collision",     keywords: /\b(collision|crash|vehicle|truck|car|hit|struck)\b/i },
-  { category: "grid_incident", keywords: /\b(spark(ing|s)?|humm(ing)?|arc(ing)?|flash|bushing|transformers?|cable|conductor|wire)\b/i },
+  {
+    category: "excavation",
+    keywords: /\b(excavat|backhoe|dig(ger|ging)?|trench|drill(ing)?|bore)\b/i,
+  },
+  {
+    category: "wildfire",
+    keywords: /\b(fire|wildfire|grass\s+fire|blaze|burn(ing)?|flame|smoke)\b/i,
+  },
+  {
+    category: "storm_damage",
+    keywords: /\b(storm|lightning|thunder|flood|wind|tree|fallen|debris|hail)\b/i,
+  },
+  { category: "explosion", keywords: /\b(explos(ion|ive)?|blast|boom|bang)\b/i },
+  { category: "collision", keywords: /\b(collision|crash|vehicle|truck|car|hit|struck)\b/i },
+  {
+    category: "grid_incident",
+    keywords:
+      /\b(spark(ing|s)?|humm(ing)?|arc(ing)?|flash|bushing|transformers?|cable|conductor|wire)\b/i,
+  },
 ];
 
 function classifyCategory(text: string): HazardCategory {
@@ -97,13 +108,13 @@ function classifyCategory(text: string): HazardCategory {
 // ─── Risk Multiplier (Bounded, Fail-Safe) ────────────────────────────────────
 
 const CATEGORY_MULTIPLIERS: Record<HazardCategory, number> = {
-  excavation:    1.20,
-  wildfire:      1.25, // max allowed
-  explosion:     1.25,
-  collision:     1.15,
-  storm_damage:  1.10,
+  excavation: 1.2,
+  wildfire: 1.25, // max allowed
+  explosion: 1.25,
+  collision: 1.15,
+  storm_damage: 1.1,
   grid_incident: 1.18,
-  other:         1.05,
+  other: 1.05,
 };
 
 /**
@@ -121,9 +132,7 @@ export function getBoundedRiskMultiplier(category: HazardCategory): number {
  * Synchronous prompt-injection filter.
  * Returns { blocked: false } if clean, or { blocked: true, matched_pattern } if malicious.
  */
-export function runInjectionFilter(
-  payload: IncidentReportPayload
-): FilterResult {
+export function runInjectionFilter(payload: IncidentReportPayload): FilterResult {
   const textToScan = [
     payload.zone_name,
     payload.event_description,
@@ -157,9 +166,7 @@ function generateIncidentId(): string {
  *  • If blocked → quarantine record goes to rejected_submissions_log.csv (via backend)
  *  • If clean   → bounded multiplier applied, saved to user_reported_events.csv
  */
-export function processIncidentReport(
-  payload: IncidentReportPayload
-): ReportResult {
+export function processIncidentReport(payload: IncidentReportPayload): ReportResult {
   const filterResult = runInjectionFilter(payload);
 
   if (filterResult.blocked) {

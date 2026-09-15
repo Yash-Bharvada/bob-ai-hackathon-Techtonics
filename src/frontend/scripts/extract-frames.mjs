@@ -17,12 +17,9 @@ function getArg(flag, defaultValue) {
 
 const sourceVideo = getArg(
   "--video",
-  process.env.SOURCE_VIDEO || path.join(projectRoot, "Untitled.mp4")
+  process.env.SOURCE_VIDEO || path.join(projectRoot, "Untitled.mp4"),
 );
-const outputDir = getArg(
-  "--out",
-  path.join(projectRoot, "public", "assets", "cinematic")
-);
+const outputDir = getArg("--out", path.join(projectRoot, "public", "assets", "cinematic"));
 const framesDir = path.join(outputDir, "frames");
 const fps = parseInt(getArg("--fps", "24"), 10);
 const quality = parseInt(getArg("--quality", "82"), 10);
@@ -100,14 +97,21 @@ const pattern = path.join(framesDir, "frame_%04d.webp");
 // We can also generate zero-indexed or standard 0000-based frames.
 const ffmpegArgs = [
   "-y",
-  "-i", sourceVideo,
-  "-vf", `fps=${fps}`,
-  "-c:v", "libwebp",
-  "-quality", quality.toString(),
-  "-compression_level", "4",
-  "-fps_mode", "vfr",
-  "-start_number", "0",
-  pattern
+  "-i",
+  sourceVideo,
+  "-vf",
+  `fps=${fps}`,
+  "-c:v",
+  "libwebp",
+  "-quality",
+  quality.toString(),
+  "-compression_level",
+  "4",
+  "-fps_mode",
+  "vfr",
+  "-start_number",
+  "0",
+  pattern,
 ];
 
 const res = spawnSync(ffmpegPath, ffmpegArgs, { stdio: "inherit" });
@@ -156,7 +160,7 @@ const metadata = {
   framesPattern: "frames/frame_%04d.webp",
   firstIndex: 0,
   lastIndex: totalFrames - 1,
-  generatedAt: new Date().toISOString()
+  generatedAt: new Date().toISOString(),
 };
 
 const metadataPath = path.join(outputDir, "metadata.json");
@@ -167,7 +171,9 @@ console.log(`[Metadata] Generated ${metadataPath}`);
 const pythonScript = path.join(__dirname, "remove_watermark_all_frames.py");
 if (fs.existsSync(pythonScript)) {
   console.log("\n[Post-Processing] Removing watermark from all extracted frames...");
-  const pyRes = spawnSync("C:\\ProgramData\\anaconda3\\python.exe", [pythonScript], { stdio: "inherit" });
+  const pyRes = spawnSync("C:\\ProgramData\\anaconda3\\python.exe", [pythonScript], {
+    stdio: "inherit",
+  });
   if (pyRes.status !== 0) {
     console.warn(`[Warning] Watermark removal script exited with code ${pyRes.status}`);
   }

@@ -1,8 +1,12 @@
 import { CinematicFrameSequence } from "./CinematicFrameSequence.ts";
-import { ThemeTransitionController, type ThemeTransitionOptions } from "./ThemeTransitionController.ts";
+import {
+  ThemeTransitionController,
+  type ThemeTransitionOptions,
+} from "./ThemeTransitionController.ts";
 import type { CinematicPlayerOptions, PlaybackState, Theme } from "./types.ts";
 
-export interface CinematicThemeTransitionProps extends CinematicPlayerOptions, ThemeTransitionOptions {
+export interface CinematicThemeTransitionProps
+  extends CinematicPlayerOptions, ThemeTransitionOptions {
   showDebugHud?: boolean;
 }
 

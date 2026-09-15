@@ -219,62 +219,108 @@
   background-color: #000;
 }
 
-/* Fullscreen Cinematic Viewport */
+/* ── Shell visibility ── */
+.cinematic-mobile-shell  { display: none; }
+.cinematic-desktop-shell { display: contents; }
+
+@media (max-width: 640px) {
+  .cinematic-mobile-shell  { display: flex; flex-direction: column; align-items: center; width: 100%; }
+  .cinematic-desktop-shell { display: none; }
+}
+
+/* ── Fullscreen cinematic container ── */
+/* Desktop: fills the fixed viewport absolutely */
 .fullscreen-cinematic {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 1;
   background-color: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   overflow: hidden;
 }
 
+/* Mobile: lives inside the 16:9 card which is already position:relative */
+@media (max-width: 640px) {
+  .fullscreen-cinematic {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   LAYER STACK (bottom → top inside .fullscreen-cinematic)
+
+   z-index 1  .cinematic-canvas        — animated canvas (injected by JS)
+   z-index 2  .cinematic-fallback-frame — static first/last frame img (full bleed)
+   z-index 3  .voltra-letters-svg       — giant VOLTRA text (behind house)
+   z-index 4  .cinematic-house-layer    — same image, clip-path = house polygon
+                                          → house physically IN FRONT of letters
+   z-index 5  .voltra-subtitles-svg     — subtitle copy in the sky
+   z-index 6  .theme-controls           — UI overlay
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* Layer 1 — animated canvas (appended by CinematicFrameSequence.ts) */
 .fullscreen-cinematic .cinematic-canvas {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: center;
   display: block;
   z-index: 1;
 }
 
-/* Architectural Depth Typography Layer (SVG Stage) */
-.voltra-depth-svg {
+/* Layer 2 — static fallback, shown until canvas paints */
+.cinematic-fallback-frame {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+  object-fit: cover;
+  object-position: center 35%;
+  display: block;
   z-index: 2;
+}
+
+/* Layer 3 — VOLTRA letters SVG (BEHIND the house) */
+.voltra-letters-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
   pointer-events: none;
   display: block;
   user-select: none;
 }
 
-/* Editorial Subtitles in Sky */
-.voltra-subtitle-text {
-  letter-spacing: 0.06em;
-  text-transform: none;
-  font-weight: 500;
-  transition: fill 0.8s ease, opacity 0.8s ease;
+/* Layer 4 — house foreground clip (IN FRONT of letters) */
+.cinematic-house-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 35%;
+  display: block;
+  z-index: 4;
+  pointer-events: none;
 }
 
-.voltra-theme-light .voltra-subtitle-text {
-  fill: #1a2533;
-  opacity: 0.72;
+/* Layer 5 — subtitle SVG */
+.voltra-subtitles-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+  pointer-events: none;
+  display: block;
+  user-select: none;
 }
 
-.voltra-theme-dark .voltra-subtitle-text {
-  fill: #c8d9f0;
-  opacity: 0.80;
-}
-
-/* VOLTRA Massive Depth Letters */
+/* ── VOLTRA Letters typography ── */
 .voltra-letter {
   font-family: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-weight: 800;
@@ -283,55 +329,56 @@
 }
 
 .voltra-theme-light .voltra-letter {
-  fill: #18222e;
-  opacity: 0.95;
-  filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.22));
+  fill: #152030;
+  opacity: 0.92;
+  filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.15));
 }
 
 .voltra-theme-dark .voltra-letter {
-  fill: rgba(230, 240, 255, 0.91);
-  opacity: 0.93;
-  filter: drop-shadow(0 6px 40px rgba(0, 0, 0, 0.90)) drop-shadow(0 0 60px rgba(100, 160, 255, 0.12));
+  fill: rgba(210, 230, 255, 0.88);
+  opacity: 0.90;
+  filter: drop-shadow(0 4px 32px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 50px rgba(80, 140, 255, 0.10));
 }
 
-/* Entrance Animation: VOLTRA rises from behind the house */
+/* ── VOLTRA entrance animation — rises from behind the house ── */
 @keyframes voltraRiseFromBehind {
-  0% {
-    transform: translateY(260px);
-    opacity: 0;
-  }
-  18% {
-    opacity: 0;
-  }
-  35% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(0);
-    opacity: 1;
-  }
+  0%   { transform: translateY(200px); opacity: 0; }
+  20%  { opacity: 0; }
+  42%  { opacity: 1; }
+  100% { transform: translateY(0); opacity: 1; }
 }
 
 .voltra-brand-group {
   transform-box: view-box;
-  animation: voltraRiseFromBehind 3.4s cubic-bezier(0.12, 1, 0.22, 1) 0.2s both;
-  will-change: transform;
+  animation: voltraRiseFromBehind 3.2s cubic-bezier(0.10, 1, 0.20, 1) 0.15s both;
+  will-change: transform, opacity;
+}
+
+/* ── Subtitle text ── */
+.voltra-subtitle-text {
+  letter-spacing: 0.04em;
+  font-weight: 500;
+  transition: fill 0.8s ease, opacity 0.8s ease;
+}
+
+.voltra-theme-light .voltra-subtitle-text {
+  fill: #1a2533;
+  opacity: 0.70;
+}
+
+.voltra-theme-dark .voltra-subtitle-text {
+  fill: #c8d9f0;
+  opacity: 0.78;
 }
 
 @keyframes voltraSubtitlesFade {
-  0% {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  0%   { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
 .voltra-subtitles {
   transform-box: view-box;
-  animation: voltraSubtitlesFade 2.0s cubic-bezier(0.16, 1, 0.3, 1) 1.6s both;
+  animation: voltraSubtitlesFade 1.8s cubic-bezier(0.16, 1, 0.3, 1) 1.8s both;
   will-change: opacity, transform;
 }
 
@@ -363,8 +410,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   border-radius: 9999px;
   border: 1px solid rgba(255, 255, 255, 0.22);
   background: rgba(15, 23, 42, 0.38);
@@ -1145,4 +1192,163 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 @media (max-width: 480px) {
   .recharts-wrapper { font-size: 9px !important; }
   .recharts-cartesian-axis-tick-value { font-size: 8px !important; }
+}
+
+/* ==========================================================================
+   VOLTRA CINEMATIC LANDING — MOBILE PHONE LAYOUT
+   On screens ≤ 640 px the cinematic hero is presented as a framed 16:9 card
+   centred vertically, with branded space above and below (like the reference).
+   ========================================================================== */
+
+@media (max-width: 640px) {
+
+  /* Root becomes a tall scrollable column instead of a fixed fullscreen layer */
+  .cinematic-landing-root {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: #0a0f1a;          /* deep navy — premium background */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── ABOVE-CARD BRANDING BAND ── */
+  .cinematic-mobile-top {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 20px;
+    flex-shrink: 0;
+  }
+
+  .cinematic-mobile-wordmark {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.55);
+  }
+
+  .cinematic-mobile-bolt-line {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .cinematic-mobile-bolt-line span.line-seg {
+    width: 1px;
+    height: 18px;
+    background: rgba(255, 255, 255, 0.18);
+    display: block;
+  }
+
+  .cinematic-mobile-bolt {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  .cinematic-mobile-tagline {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.38);
+    text-align: center;
+    margin-top: 4px;
+  }
+
+  /* ── 16:9 FRAMED CINEMATIC CARD ── */
+  .cinematic-mobile-frame {
+    width: calc(100vw - 32px);            /* full-width minus side margins */
+    aspect-ratio: 16 / 9;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.10),
+      0 24px 60px rgba(0, 0, 0, 0.65),
+      0 4px 16px rgba(0, 0, 0, 0.5);
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  /* All layers inside the card are already absolute/inset-0 — no overrides needed */
+  /* The house-layer clip-path still works because .fullscreen-cinematic is relative */
+
+  /* ── BELOW-CARD BRANDING BAND ── */
+  .cinematic-mobile-bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding-top: 20px;
+    flex-shrink: 0;
+  }
+
+  .cinematic-mobile-bottom-copy {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 3.5px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.38);
+    text-align: center;
+    line-height: 1.8;
+  }
+
+  .cinematic-mobile-bottom-wordmark {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.42);
+    margin-top: 2px;
+  }
+
+  /* ── Theme controls: hidden from the fixed layer on mobile ── */
+  /* The theme button is rendered inside the card via inline absolute positioning */
+  .theme-controls {
+    display: none;
+  }
+
+  /* Scroll hint arrow — swipe up indicator */
+  .cinematic-mobile-swipe {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.55;
+    animation: swipeHintBounce 2.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .cinematic-mobile-swipe span {
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #fff;
+  }
+
+  .cinematic-mobile-swipe svg {
+    color: #fff;
+  }
+
+  @keyframes swipeHintBounce {
+    0%, 100% { transform: translateX(-50%) translateY(0); opacity: 0.55; }
+    50%       { transform: translateX(-50%) translateY(5px); opacity: 0.85; }
+  }
+
+  /* The slice overlay stays fixed/fullscreen even on mobile */
+  .voltra-slice-overlay {
+    position: fixed;
+    inset: 0;
+  }
 }
