@@ -1540,6 +1540,7 @@ function AssetInspectorModal({
   const [detail, setDetail] = useState<AssetDetailResponse | null>(null);
   const [timeseries, setTimeseries] = useState<TimeseriesPoint[]>([]);
   const [loadingDetail, setLoadingDetail] = useState(true);
+  const [loadingTimeseries, setLoadingTimeseries] = useState(true);
   const [apiError, setApiError] = useState(false);
   const [chartTab, setChartTab] = useState<"trajectory" | "temperature" | "gases">("trajectory");
   const [showReportDialog, setShowReportDialog] = useState(false);
@@ -1549,7 +1550,9 @@ function AssetInspectorModal({
   useEffect(() => {
     let active = true;
     setLoadingDetail(true);
+    setLoadingTimeseries(true);
     setDetail(null);
+    setTimeseries([]);
     setApiError(false);
 
     techtonicsApi
@@ -1560,8 +1563,15 @@ function AssetInspectorModal({
 
     techtonicsApi
       .getTimeseries(asset.id)
-      .then((ts) => { if (active && ts.timeseries?.length) setTimeseries(ts.timeseries); })
-      .catch(() => {});
+      .then((ts) => {
+        if (active && Array.isArray(ts?.timeseries) && ts.timeseries.length > 0) {
+          setTimeseries(ts.timeseries);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoadingTimeseries(false);
+      });
 
     return () => { active = false; };
   }, [asset.id]);
@@ -1573,18 +1583,13 @@ function AssetInspectorModal({
       return timeseries
         .filter((_, i) => i % stride === 0 || i === timeseries.length - 1)
         .map((pt) => {
-          const loadPct = pt.load_pct ?? pt.load_percentage ?? 0;
+          const loadPct = pt.load_pct ?? pt.load_percentage ?? (asset.ratedCapacityMw ? (asset.currentLoadMw / asset.ratedCapacityMw) * 100 : 70);
           const ratedCap = asset.ratedCapacityMw || 40;
           const loadMw = loadPct > 0
             ? Math.round((loadPct / 100) * ratedCap * 10) / 10
             : Math.round((asset.currentLoadMw || 0) * 10) / 10;
-          // Use RUL_days from the timeseries — it is the per-day ML pipeline output
-          // (the raw health_index column is unnormalized training data, not Model 1 output)
-          const rulFromTs = pt.RUL_days;
-          // Compute health index equivalent: HI ≈ max(13.4, 180 − RUL) capped 0–100
-          const hiFromRul = rulFromTs != null
-            ? Math.max(0, Math.min(100, Math.round((180 - rulFromTs) * 100) / 100))
-            : asset.healthIndexRaw ?? 0;
+          const rulFromTs = pt.RUL_days ?? pt.rul_days ?? asset.rulDays;
+          const hiFromRul = pt.health_index ?? (rulFromTs != null ? Math.max(0, Math.min(100, Math.round((180 - rulFromTs) * 100) / 100)) : (asset.healthIndexRaw ?? 0));
           const tempC = Math.round((pt.top_oil_temp_c ?? pt.temperature ?? asset.coreTempC ?? 55) * 10) / 10;
           const c2h2 = Math.round((pt.Acethylene ?? 0) * 100) / 100;
           const ch4 = Math.round((pt.Methane ?? 0) * 10) / 10;
@@ -1603,19 +1608,22 @@ function AssetInspectorModal({
           };
         });
     }
-    // Fallback: use static telemetry history baked into gridData.ts
-    return (asset.telemetryHistory || []).map((pt, idx) => ({
-      time: pt.time,
-      day: idx,
-      loadMw: pt.loadMw,
-      loadPct: asset.ratedCapacityMw ? Math.round((pt.loadMw / asset.ratedCapacityMw) * 1000) / 10 : 0,
-      healthIndex: asset.healthIndexRaw ?? 0,
-      rulDays: asset.rulDays ?? null,
-      tempC: pt.tempC,
-      c2h2: 0,
-      ch4: 0,
-      h2: 0,
-    }));
+    // If no backend timeseries, check if asset has non-empty static telemetry history with real data
+    if (asset.telemetryHistory && asset.telemetryHistory.length > 0) {
+      return asset.telemetryHistory.map((pt, idx) => ({
+        time: pt.time,
+        day: idx,
+        loadMw: pt.loadMw,
+        loadPct: asset.ratedCapacityMw ? Math.round((pt.loadMw / asset.ratedCapacityMw) * 1000) / 10 : 0,
+        healthIndex: asset.healthIndexRaw ?? 0,
+        rulDays: asset.rulDays ?? null,
+        tempC: pt.tempC,
+        c2h2: 0,
+        ch4: 0,
+        h2: 0,
+      }));
+    }
+    return [];
   }, [timeseries, asset]);
 
   // Resolved values — guard against null from API (JSON null !== undefined)
@@ -1810,15 +1818,26 @@ function AssetInspectorModal({
           )}
 
           {/* ── Telemetry Chart with Multi-Sensor View Tabs ── */}
-          {chartData.length > 0 && (
+          {loadingTimeseries ? (
+            <div className="border-b border-border/40 px-5 py-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Activity className="size-3.5 text-primary animate-pulse" />
+                <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">SCADA Telemetry History</h4>
+              </div>
+              <div className="h-44 w-full flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border/50 bg-muted/20">
+                <Loader2 className="size-5 animate-spin text-primary" />
+                <span className="text-[11px] font-mono text-muted-foreground">Fetching 90-day time-series telemetry from backend...</span>
+              </div>
+            </div>
+          ) : chartData.length > 0 ? (
             <div className="border-b border-border/40 px-5 py-4">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <div className="flex items-center gap-2">
-                 <Activity className="size-3.5 text-primary" />
-                 <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
-                   {chartTab === "trajectory" ? "RUL Decay & Load Stress (90-Day)" : chartTab === "temperature" ? "Core & Oil Temperature History" : "Dissolved Fault Gas Evolution (C₂H₂ · CH₄ · H₂)"}
-                 </h4>
-               </div>
+                  <Activity className="size-3.5 text-primary" />
+                  <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                    {chartTab === "trajectory" ? "RUL Decay & Load Stress (90-Day)" : chartTab === "temperature" ? "Core & Oil Temperature History" : "Dissolved Fault Gas Evolution (C₂H₂ · CH₄ · H₂)"}
+                  </h4>
+                </div>
 
                 {/* View Toggles */}
                 <div className="flex items-center gap-1 rounded-lg border border-border/60 bg-muted/40 p-0.5 text-[10px] font-mono">
@@ -1878,29 +1897,33 @@ function AssetInspectorModal({
                 )}
               </div>
 
-              <div className="h-48 w-full min-h-[190px]">
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={180}>
+              <div className="h-52 w-full min-h-[200px]">
+                <ResponsiveContainer width="100%" height={200}>
                   <AreaChart data={chartData} margin={{ top: 8, right: 12, left: -10, bottom: 0 }}>
                     <defs>
-                      <linearGradient id="hiGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#ef4444" stopOpacity={0.4} />
-                        <stop offset="100%" stopColor="#ef4444" stopOpacity={0.02} />
+                      <linearGradient id="rulGradModal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#ef4444" stopOpacity={0.45} />
+                        <stop offset="100%" stopColor="#ef4444" stopOpacity={0.05} />
                       </linearGradient>
-                      <linearGradient id="loadGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.35} />
-                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.02} />
+                      <linearGradient id="loadGradModal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} />
+                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.05} />
                       </linearGradient>
-                      <linearGradient id="tempGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#f97316" stopOpacity={0.4} />
-                        <stop offset="100%" stopColor="#f97316" stopOpacity={0.02} />
+                      <linearGradient id="tempGradModal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#f97316" stopOpacity={0.45} />
+                        <stop offset="100%" stopColor="#f97316" stopOpacity={0.05} />
                       </linearGradient>
-                      <linearGradient id="c2h2Grad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#a855f7" stopOpacity={0.4} />
-                        <stop offset="100%" stopColor="#a855f7" stopOpacity={0.02} />
+                      <linearGradient id="c2h2GradModal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#a855f7" stopOpacity={0.45} />
+                        <stop offset="100%" stopColor="#a855f7" stopOpacity={0.05} />
                       </linearGradient>
-                      <linearGradient id="ch4Grad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.35} />
-                        <stop offset="100%" stopColor="#06b6d4" stopOpacity={0.02} />
+                      <linearGradient id="ch4GradModal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.45} />
+                        <stop offset="100%" stopColor="#06b6d4" stopOpacity={0.05} />
+                      </linearGradient>
+                      <linearGradient id="h2GradModal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#eab308" stopOpacity={0.45} />
+                        <stop offset="100%" stopColor="#eab308" stopOpacity={0.05} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid stroke="#64748b" strokeOpacity={0.25} vertical={false} strokeDasharray="3 3" />
@@ -1909,14 +1932,14 @@ function AssetInspectorModal({
                       axisLine={false}
                       tickLine={false}
                       tick={{ fontSize: 9, fill: "#94a3b8" }}
-                      interval={Math.max(1, Math.floor(chartData.length / 10))}
+                      interval={Math.max(1, Math.floor(chartData.length / 9))}
                     />
                     <YAxis
                       axisLine={false}
                       tickLine={false}
                       tick={{ fontSize: 9, fill: "#94a3b8" }}
                       width={32}
-                      domain={[0, 'auto']}
+                      domain={chartTab === "temperature" ? ['dataMin - 5', 'dataMax + 5'] : [0, 'auto']}
                     />
                     <Tooltip
                       contentStyle={{
@@ -1936,8 +1959,8 @@ function AssetInspectorModal({
                           dataKey="rulDays"
                           name="RUL Days"
                           stroke="#ef4444"
-                          strokeWidth={2}
-                          fill="url(#hiGrad)"
+                          strokeWidth={2.5}
+                          fill="url(#rulGradModal)"
                           isAnimationActive={false}
                           connectNulls
                         />
@@ -1947,8 +1970,9 @@ function AssetInspectorModal({
                           name="Load %"
                           stroke="#3b82f6"
                           strokeWidth={2}
-                          fill="url(#loadGrad)"
+                          fill="url(#loadGradModal)"
                           isAnimationActive={false}
+                          connectNulls
                         />
                       </>
                     )}
@@ -1958,9 +1982,10 @@ function AssetInspectorModal({
                         dataKey="tempC"
                         name="Core Temp (°C)"
                         stroke="#f97316"
-                        strokeWidth={2.2}
-                        fill="url(#tempGrad)"
+                        strokeWidth={2.5}
+                        fill="url(#tempGradModal)"
                         isAnimationActive={false}
+                        connectNulls
                       />
                     )}
                     {chartTab === "gases" && (
@@ -1971,8 +1996,9 @@ function AssetInspectorModal({
                           name="Acetylene C₂H₂ (ppm)"
                           stroke="#a855f7"
                           strokeWidth={2}
-                          fill="url(#c2h2Grad)"
+                          fill="url(#c2h2GradModal)"
                           isAnimationActive={false}
+                          connectNulls
                         />
                         <Area
                           type="monotone"
@@ -1980,8 +2006,9 @@ function AssetInspectorModal({
                           name="Methane CH₄ (ppm)"
                           stroke="#06b6d4"
                           strokeWidth={2}
-                          fill="url(#ch4Grad)"
+                          fill="url(#ch4GradModal)"
                           isAnimationActive={false}
+                          connectNulls
                         />
                         <Area
                           type="monotone"
@@ -1989,8 +2016,9 @@ function AssetInspectorModal({
                           name="Hydrogen H₂ (ppm)"
                           stroke="#eab308"
                           strokeWidth={2}
-                          fill="url(#hiGrad)"
+                          fill="url(#h2GradModal)"
                           isAnimationActive={false}
+                          connectNulls
                         />
                       </>
                     )}
@@ -1998,7 +2026,7 @@ function AssetInspectorModal({
                 </ResponsiveContainer>
               </div>
             </div>
-          )}
+          ) : null}
 
           {/* ── Operator Actions ── */}
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">

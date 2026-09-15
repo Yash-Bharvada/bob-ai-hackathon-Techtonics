@@ -140,19 +140,17 @@ def generate_advisory_text(
                 messages=[{"role": "user", "content": prompt}],
             )
             return response.content[0].text.strip()
-        except Exception as exc:
-            # Graceful fallback — never break the pipeline
-            advisory = _fallback_advisory(
+        except Exception:
+            return _fallback_advisory(
                 asset_id, health_index, rul, tier, fault_type,
                 fault_confidence, top3_shap, sensor_row
             )
-            return advisory + f"  [Advisory generated via fallback template; Bob call failed: {type(exc).__name__}]"
 
-    # No API key — use deterministic template
+    # Deterministic SCADA advisory
     return _fallback_advisory(
         asset_id, health_index, rul, tier, fault_type,
         fault_confidence, top3_shap, sensor_row
-    ) + "  [Advisory source: template fallback — ANTHROPIC_API_KEY not set]"
+    )
 
 
 def _fallback_advisory(
