@@ -25,11 +25,16 @@ from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent / ".env")
 
-# Make pipeline importable
+# Make backend and pipeline importable both at runtime and for IDE static analysis
 BACKEND_DIR  = Path(__file__).parent
 SRC_DIR      = BACKEND_DIR.parent
 PIPELINE_DIR = SRC_DIR / "pipeline"
-sys.path.insert(0, str(PIPELINE_DIR))
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
+if str(PIPELINE_DIR) not in sys.path:
+    sys.path.insert(0, str(PIPELINE_DIR))
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException
@@ -39,9 +44,14 @@ from typing import Any, Dict, List, Optional
 
 from auth_router import router as auth_router
 
-from score_asset_risk import score_asset_risk, score_all_assets
-from grid_impact_ranker import rank_assets
-from maintenance_plan import generate_maintenance_plan
+try:
+    from pipeline.score_asset_risk import score_asset_risk, score_all_assets
+    from pipeline.grid_impact_ranker import rank_assets
+    from pipeline.maintenance_plan import generate_maintenance_plan
+except ImportError:
+    from score_asset_risk import score_asset_risk, score_all_assets
+    from grid_impact_ranker import rank_assets
+    from maintenance_plan import generate_maintenance_plan
 
 DATA_DIR = SRC_DIR / "data"
 
