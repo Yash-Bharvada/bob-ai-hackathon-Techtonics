@@ -1,11 +1,14 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, Zap, CheckCircle2, AlertCircle, Sun, Moon } from "lucide-react";
+import { Menu, Zap, CheckCircle2, AlertCircle, Sun, Moon, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { techtonicsApi } from "@/lib/techtonicsApi";
 import { VoltraLogo } from "@/components/VoltraLogo";
+import { AuthModal } from "@/components/AuthModal";
+import { authSession, type OperatorProfile } from "@/lib/authSession";
 
 const links = [
   { to: "/", label: "Home" },
+  { to: "/dashboard", label: "Dashboard" },
   { to: "/grid", label: "Live Grid" },
   { to: "/predict", label: "Prediction" },
   { to: "/technology", label: "Technology" },
@@ -15,6 +18,8 @@ export function SiteNav() {
   const { location } = useRouterState();
   const path = location.pathname;
   const [open, setOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [profile, setProfile] = useState<OperatorProfile>(authSession.getProfile());
   const [backendLive, setBackendLive] = useState<boolean | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("light");
 
@@ -120,6 +125,15 @@ export function SiteNav() {
           </Link>
           <button
             type="button"
+            onClick={() => setAuthOpen(true)}
+            title={`Signed in as ${profile.name} (${profile.zone.split("·")[0]})`}
+            className="pill hidden items-center gap-1.5 rounded-full border border-border/80 bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm transition-all hover:bg-muted lg:inline-flex"
+          >
+            <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="max-w-[100px] truncate">{profile.name}</span>
+          </button>
+          <button
+            type="button"
             onClick={toggleTheme}
             aria-label={theme === "dark" ? "Switch to Day Mode" : "Switch to Night Mode"}
             title={theme === "dark" ? "Switch to Day Mode" : "Switch to Night Mode"}
@@ -154,6 +168,14 @@ export function SiteNav() {
               {l.label}
             </Link>
           ))}
+          <button
+            type="button"
+            onClick={() => { setOpen(false); setAuthOpen(true); }}
+            className="rounded-xl px-4 py-3 text-sm font-medium hover:bg-muted text-left flex items-center justify-between text-foreground"
+          >
+            <span>Operator: {profile.name}</span>
+            <span className="text-xs text-muted-foreground">{profile.zone.split("·")[0]}</span>
+          </button>
           <div className="mt-2 flex items-center justify-between border-t border-border/40 pt-2 text-xs text-muted-foreground px-3">
             <span>FastAPI Backend</span>
             <span className={backendLive ? "text-signal font-medium" : "text-warning"}>
@@ -162,6 +184,12 @@ export function SiteNav() {
           </div>
         </nav>
       )}
+
+      <AuthModal
+        open={authOpen}
+        onClose={() => setAuthOpen(false)}
+        onSuccess={(p) => setProfile(p)}
+      />
     </header>
   );
 }

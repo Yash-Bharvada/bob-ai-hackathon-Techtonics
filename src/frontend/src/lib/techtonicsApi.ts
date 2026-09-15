@@ -265,4 +265,91 @@ export const techtonicsApi = {
     if (!res.ok) throw new Error(`HTTP ${res.status} from /events/report`);
     return res.json();
   },
+
+  /**
+   * POST /api/groq-report
+   * Generates live plain-English maintenance directives using Groq API (Llama 3.3 70B).
+   */
+  async generateGroqReport(payload: {
+    asset_id: string;
+    health_index: number;
+    rul_days: number;
+    fault_type: string;
+    ambient_temp_c: number;
+    load_mw?: number;
+    rated_mva?: number;
+    substation?: string;
+    c2h2_ppm?: number;
+    ch4_ppm?: number;
+    h2_ppm?: number;
+  }): Promise<{
+    status: string;
+    provider: string;
+    asset_id: string;
+    executive_summary: string;
+    thermal_analysis: string;
+    weather_correlation: string;
+    recommended_actions: Array<{
+      priority: "HIGH" | "MEDIUM" | "LOW";
+      action: string;
+      impact: string;
+      timeline: string;
+    }>;
+  }> {
+    const res = await requestWithTimeout(`${API_BASE}/api/groq-report`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }, 12000);
+    if (!res.ok) throw new Error(`HTTP ${res.status} from /api/groq-report`);
+    return res.json();
+  },
+
+  /**
+   * POST /api/events/search
+   * Search past ground hazard events and retrieve cumulative active risk multipliers.
+   */
+  async searchPastEvents(query = "", zone = ""): Promise<{
+    status: string;
+    total_matched: number;
+    active_risk_multiplier: number;
+    events: Array<{
+      incident_id: string;
+      received_at: string;
+      zone_name: string;
+      event_description: string;
+      category: string;
+      risk_multiplier: string;
+      disclaimer: string;
+    }>;
+  }> {
+    const res = await requestWithTimeout(`${API_BASE}/api/events/search`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, zone }),
+    }, 6000);
+    if (!res.ok) throw new Error(`HTTP ${res.status} from /api/events/search`);
+    return res.json();
+  },
+
+  /**
+   * GET /api/weather/live
+   * Fetches real-time weather from Open-Meteo for coordinates and returns thermal stress index.
+   */
+  async fetchLiveWeather(lat = 22.56, lon = 72.95): Promise<{
+    status: string;
+    latitude: number;
+    longitude: number;
+    temperature_c: number;
+    humidity_pct: number;
+    wind_speed_kmh: number;
+    thermal_stress_pct: number;
+    cooling_efficiency_pct: number;
+    forecast_24h: Array<{ time: string; temp: number; hour: number }>;
+  }> {
+    const res = await requestWithTimeout(`${API_BASE}/api/weather/live?lat=${lat}&lon=${lon}`, {}, 6000);
+    if (!res.ok) throw new Error(`HTTP ${res.status} from /api/weather/live`);
+    return res.json();
+  },
 };
+
