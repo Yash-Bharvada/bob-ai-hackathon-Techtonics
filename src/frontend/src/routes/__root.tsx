@@ -4,10 +4,11 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { type ReactNode, useState, useEffect } from "react";
+import { type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { SiteNav } from "@/components/SiteNav";
@@ -21,12 +22,9 @@ function NotFoundComponent() {
       <div className="max-w-md text-center">
         <h1 className="text-7xl font-bold text-foreground font-mono">404</h1>
         <p className="mt-4 text-muted-foreground">This grid segment is offline.</p>
-        <div className="mt-6 flex justify-center gap-3">
-          <Link
-            to="/"
-            className="pill inline-flex items-center bg-ink px-5 py-2.5 text-sm text-cream hover:bg-ink/90"
-          >
-            Dashboard Home
+        <div className="mt-6">
+          <Link to="/" className="pill inline-flex items-center bg-ink px-5 py-2.5 text-sm text-cream hover:bg-ink/90">
+            Return to Command Center
           </Link>
         </div>
       </div>
@@ -34,19 +32,15 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
+function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error("Signal error caught in root boundary:", error);
   const router = useRouter();
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold text-foreground">
-          The telemetry signal was interrupted
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Attempting automated reconnect to local grid telemetry gateway.
-        </p>
+        <h1 className="text-xl font-semibold text-foreground">The telemetry signal was interrupted</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Attempting automated reconnect to local grid telemetry gateway.</p>
         <div className="mt-6 flex justify-center gap-2">
           <button
             onClick={() => {
@@ -57,10 +51,7 @@ function ErrorComponent({ error, reset }: { error: unknown; reset: () => void })
           >
             Reconnect Telemetry
           </button>
-          <a
-            href="/"
-            className="pill border border-border px-5 py-2.5 text-sm text-foreground hover:bg-surface"
-          >
+          <a href="/" className="pill border border-border px-5 py-2.5 text-sm text-foreground hover:bg-surface">
             Dashboard
           </a>
         </div>
@@ -75,17 +66,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "VOLTRA — Predictive Grid Intelligence" },
-      {
-        name: "description",
-        content:
-          "VOLTRA analyzes real-time grid behavior, dissolved gases, and physical telemetry to forecast outages before equipment failure occurs.",
-      },
+      { name: "description", content: "VOLTRA analyzes real-time grid behavior, dissolved gases, and physical telemetry to forecast outages before equipment failure occurs." },
       { name: "author", content: "VOLTRA Intelligence Systems" },
       { property: "og:title", content: "VOLTRA — Predictive Grid Intelligence" },
-      {
-        property: "og:description",
-        content: "The lights have not gone out yet. VOLTRA sees that they are going to.",
-      },
+      { property: "og:description", content: "The lights have not gone out yet. VOLTRA sees that they are going to." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -97,17 +81,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "manifest", href: "/site.webmanifest" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap",
-      },
-      // Preload the first cinematic frame for instant display
-      {
-        rel: "preload",
-        as: "image",
-        href: "/assets/cinematic/first-frame.webp",
-        type: "image/webp",
-      },
+      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@700;800;900&display=swap" },
+      { rel: "preload", as: "image", href: "/assets/cinematic/first-frame.webp", type: "image/webp" },
     ],
   }),
   shellComponent: RootShell,
@@ -130,55 +105,22 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
-/** sessionStorage key — once set the cinematic never shows again in the same tab */
-const ENTERED_KEY = "voltra:platform-entered";
-
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  // Start as false — avoids SSR mismatch.
-  // On client mount: show cinematic ONLY if user hasn't entered yet this session.
-  const [showCinematic, setShowCinematic] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    // Only show cinematic on first visit (not on internal navigations or refreshes after entry)
-    const alreadyEntered = sessionStorage.getItem(ENTERED_KEY) === "1";
-    if (!alreadyEntered) {
-      setShowCinematic(true);
-    }
-  }, []);
-
-  const handleEnter = () => {
-    sessionStorage.setItem(ENTERED_KEY, "1");
-    setShowCinematic(false);
-  };
+  const { location } = useRouterState();
+  const isHome = location.pathname === "/";
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Cinematic landing — only on first visit, never on internal navigations */}
-      {mounted && showCinematic && <CinematicLanding onEnter={handleEnter} />}
-
-      {/* React dashboard — always rendered for SSR; hidden by cinematic overlay on client */}
-      <div
-        className="min-h-screen flex flex-col bg-background text-foreground"
-        style={
-          mounted && showCinematic
-            ? {
-                opacity: 0,
-                pointerEvents: "none",
-                transition: "opacity 0.65s cubic-bezier(0.4,0,0.2,1)",
-              }
-            : { opacity: 1, transition: "opacity 0.65s cubic-bezier(0.4,0,0.2,1)" }
-        }
-      >
-        <SiteNav />
-        <main className="flex-1">
-          <Outlet />
-        </main>
-        <SiteFooter />
-      </div>
-
+      <CinematicLanding isHomePage={isHome}>
+        <div className="min-h-screen flex flex-col bg-background text-foreground">
+          <SiteNav />
+          <main className="flex-1">
+            <Outlet />
+          </main>
+          <SiteFooter />
+        </div>
+      </CinematicLanding>
       <Toaster />
     </QueryClientProvider>
   );

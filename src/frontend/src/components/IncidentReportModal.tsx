@@ -96,7 +96,7 @@ export function IncidentReportModal({ open, onClose, defaultZone = "" }: Inciden
         matchedPattern: clientResult.matched_pattern,
       });
       setSubmitting(false);
-      toast.error("⚠️ Submission blocked — potential injection attack detected.");
+      toast.error("Submission blocked — potential injection attack detected.");
       // Still fire the backend so it can log to rejected_submissions_log.csv
       techtonicsApi.reportEvent(payload).catch(() => {
         /* best-effort */

@@ -5,3 +5,4 @@ export * from "./ThemeTransitionController.ts";
 export * from "./CinematicThemeTransition.ts";
 export * from "./VoltraDepthText.ts";
 export * from "./VoltraSliceSlide.ts";
+export * from "./CinematicLanding.tsx";
