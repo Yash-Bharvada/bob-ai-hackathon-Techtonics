@@ -14,9 +14,13 @@ Endpoints:
   GET  /api/weather             — weather data
   GET  /api/timeseries/{asset_id} — 90-day time-series for one asset
   POST /api/score               — score an ad-hoc sensor reading (JSON body)
+  GET  /api/weather/live        — real-time Open-Meteo weather for a lat/lon
+  POST /api/score/csv           — upload CSV of sensor readings → ML scores
+  GET  /api/sample/csv          — download a sample CSV template
 """
 
 import ast
+import io
 import json
 import sys
 from pathlib import Path
@@ -36,22 +40,19 @@ if str(PIPELINE_DIR) not in sys.path:
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
+import httpx
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 
 from auth_router import router as auth_router
 
-try:
-    from pipeline.score_asset_risk import score_asset_risk, score_all_assets
-    from pipeline.grid_impact_ranker import rank_assets
-    from pipeline.maintenance_plan import generate_maintenance_plan
-except ImportError:
-    from score_asset_risk import score_asset_risk, score_all_assets
-    from grid_impact_ranker import rank_assets
-    from maintenance_plan import generate_maintenance_plan
+from pipeline.score_asset_risk import score_asset_risk, score_all_assets
+from pipeline.grid_impact_ranker import rank_assets
+from pipeline.maintenance_plan import generate_maintenance_plan
 
 DATA_DIR = SRC_DIR / "data"
 
@@ -382,6 +383,203 @@ def score_adhoc(reading: SensorReading):
     result.pop("fault_confidence", None)
 
     return result
+
+
+# ---------------------------------------------------------------------------
+# Live weather — Open-Meteo
+# ---------------------------------------------------------------------------
+
+# DGA gas column names expected by the scoring pipeline
+_CSV_SENSOR_COLS = [
+    "asset_id", "Hydrogen", "Oxigen", "Nitrogen", "Methane", "CO", "CO2",
+    "Ethylene", "Ethane", "Acethylene", "DBDS", "Power factor",
+    "Interfacial V", "Dielectric rigidity", "Water content",
+    "top_oil_temp_c", "load_pct",
+]
+
+_SAMPLE_CSV_ROWS = [
+    "asset_id,Hydrogen,Oxigen,Nitrogen,Methane,CO,CO2,Ethylene,Ethane,Acethylene,DBDS,Power factor,Interfacial V,Dielectric rigidity,Water content,top_oil_temp_c,load_pct",
+    "TX-SAMPLE-1,15,9800,36000,30,200,900,3,15,0.1,0.5,0.002,35,60,12,65,70",
+    "TX-SAMPLE-2,80,9500,35500,120,350,1500,25,60,8,0.3,0.006,28,45,18,75,85",
+    "TX-SAMPLE-3,5,10200,36800,12,90,600,1,8,0.05,0.6,0.0015,38,65,9,58,55",
+]
+
+
+@app.get("/api/weather/live")
+async def get_live_weather(lat: float = 22.56, lon: float = 72.95):
+    """
+    Fetch real-time weather from Open-Meteo for any lat/lon.
+    Returns ambient temperature, humidity, wind speed, and a thermal-stress index
+    useful for evaluating cooling headroom on substation transformers.
+    """
+    url = (
+        "https://api.open-meteo.com/v1/forecast"
+        f"?latitude={lat}&longitude={lon}"
+        "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,apparent_temperature"
+        "&hourly=temperature_2m"
+        "&forecast_days=1"
+        "&timezone=auto"
+    )
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            resp = await client.get(url)
+        if resp.status_code != 200:
+            raise HTTPException(502, f"Open-Meteo returned HTTP {resp.status_code}")
+        data = resp.json()
+    except httpx.TimeoutException:
+        raise HTTPException(504, "Open-Meteo request timed out")
+
+    cur = data.get("current", {})
+    temp_c: float      = cur.get("temperature_2m", 30.0)
+    humidity: float    = cur.get("relative_humidity_2m", 60.0)
+    wind_kmh: float    = cur.get("wind_speed_10m", 10.0)
+    apparent_c: float  = cur.get("apparent_temperature", temp_c)
+
+    # Thermal-stress index for transformers:
+    #   base = normalised temperature above 25°C reference
+    #   humidity component: every 10% above 60% adds ~2% stress
+    #   wind penalty: low wind (<10 km/h) worsens cooling
+    base_stress  = max(0.0, (temp_c - 25.0) / 55.0) * 100.0
+    hum_penalty  = max(0.0, (humidity - 60.0) / 10.0) * 2.0
+    wind_bonus   = max(0.0, (wind_kmh - 10.0) / 40.0) * 5.0
+    thermal_stress = round(min(100.0, base_stress + hum_penalty - wind_bonus), 1)
+
+    # Build 24-hour forecast from hourly data (up to 24 pts)
+    hourly_times  = data.get("hourly", {}).get("time", [])[:24]
+    hourly_temps  = data.get("hourly", {}).get("temperature_2m", [])[:24]
+    forecast_24h  = [
+        {"time": t, "temp": round(v, 1), "hour": int(t[11:13]) if len(t) > 13 else 0}
+        for t, v in zip(hourly_times, hourly_temps)
+    ]
+
+    return {
+        "status": "ok",
+        "latitude": lat,
+        "longitude": lon,
+        "temperature_c": round(temp_c, 1),
+        "apparent_temp_c": round(apparent_c, 1),
+        "humidity_pct": round(humidity, 1),
+        "wind_speed_kmh": round(wind_kmh, 1),
+        "thermal_stress_pct": thermal_stress,
+        "cooling_efficiency_pct": round(max(0.0, 100.0 - thermal_stress), 1),
+        "forecast_24h": forecast_24h,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Sample CSV download
+# ---------------------------------------------------------------------------
+
+@app.get("/api/sample/csv")
+def download_sample_csv():
+    """
+    Return a ready-to-fill CSV template the user can populate with their own
+    DGA / oil-analysis sensor readings and re-upload to /api/score/csv.
+    """
+    content = "\n".join(_SAMPLE_CSV_ROWS) + "\n"
+    return StreamingResponse(
+        io.BytesIO(content.encode()),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="voltra_sample_readings.csv"'},
+    )
+
+
+# ---------------------------------------------------------------------------
+# CSV batch scoring endpoint
+# ---------------------------------------------------------------------------
+
+@app.post("/api/score/csv")
+async def score_csv_upload(file: UploadFile = File(...)):
+    """
+    Accept a CSV of sensor readings (one row per transformer reading),
+    run every row through the ML pipeline, and return scored results.
+
+    Required columns (case-sensitive, same as /api/score):
+      asset_id, Hydrogen, Methane, Acethylene, Ethylene, Ethane, CO, CO2,
+      Oxigen, Nitrogen, DBDS, Power factor, Interfacial V, Dielectric rigidity,
+      Water content, top_oil_temp_c, load_pct
+
+    Optional columns are filled with fleet-average defaults when missing.
+    Returns JSON with a `results` list; each entry mirrors /api/score output
+    plus the original row index and asset_id.
+    """
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(400, "Only .csv files are accepted.")
+
+    raw_bytes = await file.read()
+    if len(raw_bytes) > 5 * 1024 * 1024:  # 5 MB guard
+        raise HTTPException(413, "File too large — maximum 5 MB.")
+
+    try:
+        df = pd.read_csv(io.BytesIO(raw_bytes))
+    except Exception as exc:
+        raise HTTPException(422, f"Could not parse CSV: {exc}")
+
+    if df.empty:
+        raise HTTPException(422, "CSV file is empty.")
+
+    # Normalise column names (strip whitespace)
+    df.columns = [c.strip() for c in df.columns]
+
+    # Fleet-average defaults (fall back when a column is absent)
+    _DEFAULTS = {
+        "Hydrogen": 15.0, "Oxigen": 10000.0, "Nitrogen": 35000.0,
+        "Methane": 30.0, "CO": 200.0, "CO2": 900.0,
+        "Ethylene": 3.0, "Ethane": 15.0, "Acethylene": 0.1,
+        "DBDS": 0.5, "Power factor": 0.002, "Interfacial V": 35.0,
+        "Dielectric rigidity": 60.0, "Water content": 12.0,
+        "top_oil_temp_c": 65.0, "load_pct": 70.0,
+    }
+    for col, default in _DEFAULTS.items():
+        if col not in df.columns:
+            df[col] = default
+        else:
+            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(default)
+
+    if "asset_id" not in df.columns:
+        df["asset_id"] = [f"ROW-{i+1}" for i in range(len(df))]
+
+    results = []
+    errors  = []
+
+    for idx, row in df.iterrows():
+        sensor = row.to_dict()
+        asset_id = str(sensor.pop("asset_id", f"ROW-{idx+1}"))
+        # Drop any extra columns the scoring function doesn't expect
+        sensor.pop("load_pct", None)  # not used by score_asset_risk directly
+
+        try:
+            result = score_asset_risk(sensor, generate_advisory=False)
+        except Exception as exc:
+            errors.append({"row": int(idx), "asset_id": asset_id, "error": str(exc)})
+            continue
+
+        # Normalise field names
+        result["health_index"] = result.pop("health_index_score", result.get("health_index", 0))
+        raw_proba = result.pop("fault_proba_all", {})
+        total_votes = sum(raw_proba.values()) if raw_proba else 1.0
+        if total_votes > 0:
+            result["fault_probabilities"] = {k: round(v / total_votes, 4) for k, v in raw_proba.items()}
+            result["fault_prob"] = round(max(raw_proba.values()) / total_votes, 4)
+        else:
+            result["fault_prob"] = result.pop("fault_confidence", 0.0)
+        result["top_3_shap"] = result.pop("top3_shap_features", [])
+        result.pop("fault_confidence", None)
+
+        results.append({
+            "row": int(idx),
+            "asset_id": asset_id,
+            **{k: (None if (isinstance(v, float) and v != v) else v) for k, v in result.items()},
+        })
+
+    return {
+        "status": "ok",
+        "total_rows": len(df),
+        "scored": len(results),
+        "errors": len(errors),
+        "error_details": errors,
+        "results": results,
+    }
 
 
 # ---------------------------------------------------------------------------

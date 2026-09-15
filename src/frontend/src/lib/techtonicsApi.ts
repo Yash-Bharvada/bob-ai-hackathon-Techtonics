@@ -426,5 +426,55 @@ export const techtonicsApi = {
     if (!res.ok) throw new Error(`HTTP ${res.status} from /api/events/stats`);
     return res.json();
   },
+
+  /**
+   * POST /api/score/csv
+   * Upload a CSV of sensor readings → ML pipeline → scored results.
+   */
+  async scoreCSV(file: File): Promise<CsvScoreResponse> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const authHeaders = _getAuthHeaders();
+    const res = await fetch(`${API_BASE}/api/score/csv`, {
+      method: "POST",
+      headers: { ...authHeaders },   // do NOT set Content-Type — browser does multipart boundary
+      body: formData,
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as any)?.detail ?? `HTTP ${res.status} from /api/score/csv`);
+    }
+    return res.json();
+  },
+
+  /** GET /api/sample/csv — returns the URL to trigger a browser download */
+  getSampleCsvUrl(): string {
+    return `${API_BASE}/api/sample/csv`;
+  },
 };
+
+// ─── CSV scoring types ────────────────────────────────────────────────────────
+
+export interface CsvScoreRow {
+  row: number;
+  asset_id: string;
+  health_index: number;
+  RUL_days: number;
+  risk_tier: string;
+  fault_type: string;
+  fault_prob: number;
+  fault_probabilities?: Record<string, number>;
+  top_3_shap?: [string, number][];
+  advisory_text?: string;
+}
+
+export interface CsvScoreResponse {
+  status: string;
+  total_rows: number;
+  scored: number;
+  errors: number;
+  error_details: Array<{ row: number; asset_id: string; error: string }>;
+  results: CsvScoreRow[];
+}
 

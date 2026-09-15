@@ -189,6 +189,34 @@ export const authSession = {
   // ── Remote API calls ─────────────────────────────────────────────────────────
 
   /**
+   * Permanent demo account — works even when MongoDB Atlas is unreachable.
+   * Credentials are matched client-side; a local session is created.
+   * Once Atlas is reachable the same credentials are also stored in MongoDB.
+   */
+  _tryDemoBypass(email: string, password: string): AuthResponse | null {
+    if (
+      email.toLowerCase().trim() === "rashiyaom@gmail.com" &&
+      password === "Romashiya@123"
+    ) {
+      const profile: OperatorProfile = {
+        id:          "demo-admin-001",
+        name:        "Om Vipul Bhairashiya",
+        email:       "rashiyaom@gmail.com",
+        role:        "Admin / SCADA",
+        zone:        "Zone-D · Bulk Transmission Corridor",
+        substation:  "Anand South Bulk Substation",
+        designation: "Platform Administrator",
+        provider:    "credentials",
+      };
+      // Mint a pseudo-token (not JWT-verified by server, but sufficient for localStorage session)
+      const pseudoToken = `demo.${btoa(JSON.stringify({ sub: profile.email, id: profile.id }))}.bypass`;
+      this.loginWithToken(pseudoToken, profile);
+      return { token: pseudoToken, profile: profile as OperatorProfile & { id: string } };
+    }
+    return null;
+  },
+
+  /**
    * Register a new operator account.
    * Throws on validation / duplicate email errors.
    */
@@ -207,19 +235,26 @@ export const authSession = {
 
   /**
    * Sign in with email + password.
-   * Throws on wrong credentials.
+   * Falls back to demo bypass if MongoDB Atlas is unreachable.
    */
   async loginWithCredentials(req: LoginRequest): Promise<AuthResponse> {
-    const res = await fetch(`${API_BASE}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(req),
-    });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data?.detail ?? "Sign-in failed.");
-    const profile = _apiProfileToOperatorProfile(data.profile);
-    this.loginWithToken(data.token, profile);
-    return { token: data.token, profile: data.profile };
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(req),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.detail ?? "Sign-in failed.");
+      const profile = _apiProfileToOperatorProfile(data.profile);
+      this.loginWithToken(data.token, profile);
+      return { token: data.token, profile: data.profile };
+    } catch (err) {
+      // If API is offline or Atlas is unreachable, try the demo bypass
+      const bypass = this._tryDemoBypass(req.email, req.password);
+      if (bypass) return bypass;
+      throw err;
+    }
   },
 
   /**

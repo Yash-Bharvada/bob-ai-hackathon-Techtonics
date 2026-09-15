@@ -14,9 +14,10 @@ import {
   User,
   Zap,
 } from "lucide-react";
-import { authSession, type OperatorProfile } from "@/lib/authSession";
+import { authSession, type OperatorProfile, type UserLocationState } from "@/lib/authSession";
 import { toast } from "sonner";
 import { VoltraLogo } from "@/components/VoltraLogo";
+import { LocationOnboarding } from "@/components/LocationOnboarding";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -101,6 +102,9 @@ function LoginPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [visibleLines, setVisibleLines] = useState(0);
   const [error, setError] = useState("");
+  // Post-login location onboarding
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [pendingProfile, setPendingProfile] = useState<OperatorProfile | null>(null);
 
   const selectedRolePreset = ROLE_PRESETS.find((r) => r.id === selectedRole)!;
 
@@ -124,12 +128,18 @@ function LoginPage() {
         toast.success(`Welcome, ${profile?.name ?? "Operator"}`, {
           description: "Signed in with Google · Session active",
         });
-        navigate({ to: "/" });
+        // Show location onboarding before dashboard
+        if (profile) {
+          setPendingProfile(profile);
+          setShowOnboarding(true);
+        } else {
+          navigate({ to: "/" });
+        }
         return;
       }
     }
 
-    // Already authenticated — go home
+    // Already authenticated — go home (skip onboarding since location is already saved)
     if (authSession.isAuthenticated()) {
       navigate({ to: "/" });
     }
@@ -197,7 +207,9 @@ function LoginPage() {
         });
       }
 
-      navigate({ to: "/" });
+      // Show location onboarding wizard before navigating to dashboard
+      setPendingProfile(profile);
+      setShowOnboarding(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Authentication failed.";
       setError(msg);
@@ -206,7 +218,19 @@ function LoginPage() {
     }
   };
 
+  // ── Onboarding callbacks ─────────────────────────────────────────────────────
+  const handleOnboardingComplete = (_loc: UserLocationState) => {
+    setShowOnboarding(false);
+    navigate({ to: "/dashboard" });
+  };
+
+  const handleOnboardingSkip = () => {
+    setShowOnboarding(false);
+    navigate({ to: "/dashboard" });
+  };
+
   return (
+    <>
     <div className="min-h-screen w-full bg-background flex flex-col">
       {/* ── Top Logo Bar ── */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-border/40">
@@ -499,5 +523,15 @@ function LoginPage() {
         </div>
       </div>
     </div>
+
+    {/* ── Post-login Location Onboarding Wizard ── */}
+    {showOnboarding && (
+      <LocationOnboarding
+        userName={pendingProfile?.name ?? "Operator"}
+        onComplete={handleOnboardingComplete}
+        onSkip={handleOnboardingSkip}
+      />
+    )}
+  </>
   );
 }
