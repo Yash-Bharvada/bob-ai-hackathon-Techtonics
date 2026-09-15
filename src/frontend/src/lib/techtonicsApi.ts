@@ -38,7 +38,23 @@ export interface EventReportResponse {
   message: string;
 }
 
-export const API_BASE = (import.meta.env.VITE_API_BASE as string) || "http://localhost:8000";
+export function getApiBase(): string {
+  if (import.meta.env.VITE_API_BASE) {
+    return (import.meta.env.VITE_API_BASE as string).replace(/\/$/, "");
+  }
+  if (typeof window !== "undefined") {
+    const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+    // Local dev: if frontend is on Vite dev ports (5173/3000/3001), target FastAPI on 8000
+    if (isLocal && (window.location.port === "5173" || window.location.port === "3000" || window.location.port === "3001")) {
+      return "http://localhost:8000";
+    }
+    // Production / Railway: target current origin
+    return window.location.origin;
+  }
+  return "http://localhost:8000";
+}
+
+export const API_BASE = getApiBase();
 
 export interface RankedAsset {
   rank: number;

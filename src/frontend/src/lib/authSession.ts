@@ -14,7 +14,7 @@
  *   Authorization: Bearer <token>
  */
 
-import { API_BASE } from "@/lib/techtonicsApi";
+import { API_BASE, getApiBase } from "@/lib/techtonicsApi";
 
 export interface OperatorProfile {
   name: string;
@@ -261,7 +261,8 @@ export const authSession = {
    * Initiate Google OAuth — redirects the browser to the FastAPI handler.
    */
   startGoogleOAuth(): void {
-    window.location.href = `${API_BASE}/api/auth/google`;
+    const base = getApiBase();
+    window.location.href = `${base}/api/auth/google`;
   },
 
   /**
