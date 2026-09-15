@@ -339,22 +339,26 @@ function PredictionStudioPage() {
     <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6">
       {/* ── Guest Preview Banner ── */}
       {!isAuthed && !guestBannerDismissed && (
-        <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm shadow-sm">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="shrink-0 size-7 grid place-items-center rounded-full bg-amber-500/20">
-              <Lock className="size-3.5 text-amber-400" />
+        <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-amber-600/50 bg-amber-500/15 dark:border-amber-500/40 dark:bg-amber-950/40 px-4 py-3 text-sm shadow-sm">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="shrink-0 size-8 grid place-items-center rounded-lg bg-amber-600 dark:bg-amber-500 text-white dark:text-black shadow-sm">
+              <Lock className="size-4" />
             </span>
             <div className="min-w-0">
-              <p className="font-semibold text-amber-300 text-xs sm:text-sm">Preview Mode — Calculated Predictions Only</p>
-              <p className="text-[11px] text-muted-foreground truncate">Sign in to load live model inference, real asset sensor readings, and 90-day RUL trajectory from the backend.</p>
+              <p className="font-bold text-amber-950 dark:text-amber-200 text-xs sm:text-sm">
+                Real Anand Region Model-Trained Data <span className="font-normal opacity-85">(Evaluation Baseline)</span>
+              </p>
+              <p className="text-[11px] sm:text-xs text-amber-900/90 dark:text-amber-300/80">
+                This baseline is sourced from real operational telemetry trained on the Anand regional grid (not synthetic). Sign in to upload custom sensor CSVs or trigger live AI predictions.
+              </p>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <Link to="/login" className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-[11px] font-bold text-black hover:bg-amber-400 transition-colors">
-              <LogIn className="size-3" /> Sign In
+            <Link to="/login" className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition-colors">
+              <LogIn className="size-3.5" /> Sign In
             </Link>
-            <button onClick={() => setGuestBannerDismissed(true)} className="text-muted-foreground hover:text-foreground transition-colors p-1">
-              <X className="size-3.5" />
+            <button onClick={() => setGuestBannerDismissed(true)} className="text-amber-900/70 dark:text-amber-300/70 hover:text-foreground transition-colors p-1" aria-label="Dismiss banner">
+              <X className="size-4" />
             </button>
           </div>
         </div>

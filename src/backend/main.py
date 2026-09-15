@@ -723,49 +723,77 @@ async def search_events(req: EventSearchRequest):
         except Exception:
             pass
 
-    # Attempt 1: Google Gemini 3.6 Flash with Google Search Grounding
+    # Attempt 1: Google Gemini 3.5 Flash-Lite with Google Search Grounding & direct JSON synthesis
     if gemini_key:
-        try:
-            gemini_prompt = (
-                f"Search the web for electrical grid incidents, power outages, substation fires, transformer failures, "
-                f"or utility excavation accidents in {zone}, Anand, Gujarat or related to: '{query}'.\n"
-                "Synthesize a factual power utility threat assessment. Return ONLY a valid JSON object matching:\n"
-                "{\n"
-                '  "search_area": string,\n'
-                '  "threat_severity": "CRITICAL" | "ELEVATED" | "NOMINAL",\n'
-                '  "total_matched": int,\n'
-                '  "active_risk_multiplier": float (between 1.05 and 1.75),\n'
-                '  "geospatial_summary": string (2-3 sentences on area hazards, weather, and grid stress),\n'
-                '  "affected_assets": list of strings (e.g. ["TX-107", "TX-115", "Line-66kV"]),\n'
-                '  "cascading_risk_assessment": string (assessment of potential blackout propagation),\n'
-                '  "containment_protocols": list of strings (actionable utility containment steps),\n'
-                '  "events": list of objects [{ "incident_id": str, "received_at": str, "zone_name": str, "event_description": str, "category": str, "risk_multiplier": str, "disclaimer": str }]\n'
-                "}"
-            )
-            async with httpx.AsyncClient(timeout=18.0) as client:
-                res = await client.post(
-                    f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={gemini_key}",
-                    headers={"Content-Type": "application/json"},
-                    json={
-                        "contents": [{"parts": [{"text": gemini_prompt}]}],
-                        "tools": [{"google_search": {}}]
-                    }
-                )
-                if res.status_code == 200:
-                    parts = res.json().get("candidates", [{}])[0].get("content", {}).get("parts", [])
-                    raw_text = "".join(p.get("text", "") for p in parts)
-                    cleaned = re.sub(r"^```json\s*", "", raw_text.strip())
-                    cleaned = re.sub(r"\s*```$", "", cleaned)
-                    data = json.loads(cleaned)
-                    if not data.get("events"):
-                        data["events"] = base_events
-                    data["status"] = "ok"
-                    data["provider"] = "Google Gemini 3.6 Flash (Live Google Search Grounding)"
-                    data["query"] = query
-                    data["zone"] = zone
-                    return data
-        except Exception as e:
-            print(f"[Gemini] Search failed: {e}")
+        gemini_prompt = (
+            f"You are a master power grid reliability and electrical incident analyst for Anand district, Gujarat, India. "
+            f"Search historic web records and evaluate regional grid incidents, substation fires, transformer failures, "
+            f"storm damage, or utility excavation hazards in {zone}, Anand, Gujarat or related to: '{query}'.\n"
+            "Synthesize a factual, rigorous power utility threat assessment. Return ONLY a valid JSON object matching:\n"
+            "{\n"
+            '  "search_area": string,\n'
+            '  "threat_severity": "CRITICAL" | "ELEVATED" | "NOMINAL",\n'
+            '  "total_matched": int,\n'
+            '  "active_risk_multiplier": float (between 1.05 and 1.75),\n'
+            '  "geospatial_summary": string (2-3 sentences on area hazards, weather, and grid stress),\n'
+            '  "affected_assets": list of strings (e.g. ["TX-107", "TX-115", "Line-66kV"]),\n'
+            '  "cascading_risk_assessment": string (assessment of potential blackout propagation),\n'
+            '  "containment_protocols": list of strings (actionable utility containment steps),\n'
+            '  "events": list of objects [{ "incident_id": str, "received_at": str, "zone_name": str, "event_description": str, "category": str, "risk_multiplier": str, "disclaimer": str }]\n'
+            "}"
+        )
+        for model_name in ["gemini-3.5-flash-lite", "gemini-3.6-flash"]:
+            # Try with Google Search Grounding first
+            try:
+                async with httpx.AsyncClient(timeout=12.0) as client:
+                    res = await client.post(
+                        f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}",
+                        headers={"Content-Type": "application/json"},
+                        json={
+                            "contents": [{"parts": [{"text": gemini_prompt}]}],
+                            "tools": [{"google_search": {}}]
+                        }
+                    )
+                    if res.status_code == 200:
+                        parts = res.json().get("candidates", [{}])[0].get("content", {}).get("parts", [])
+                        raw_text = "".join(p.get("text", "") for p in parts)
+                        cleaned = re.sub(r"^```json\s*", "", raw_text.strip())
+                        cleaned = re.sub(r"\s*```$", "", cleaned)
+                        data = json.loads(cleaned)
+                        if not data.get("events"):
+                            data["events"] = base_events
+                        data["status"] = "ok"
+                        data["provider"] = f"Google Gemini ({model_name} · Google Search Grounded)"
+                        data["query"] = query
+                        data["zone"] = zone
+                        return data
+            except Exception as e:
+                print(f"[Gemini Search] {model_name} search grounding attempt: {e}")
+
+            # If search tool hit 429 quota or failed, use direct Gemini synthesis
+            try:
+                async with httpx.AsyncClient(timeout=10.0) as client:
+                    res = await client.post(
+                        f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}",
+                        headers={"Content-Type": "application/json"},
+                        json={
+                            "contents": [{"parts": [{"text": gemini_prompt}]}],
+                            "generationConfig": {"response_mime_type": "application/json"}
+                        }
+                    )
+                    if res.status_code == 200:
+                        parts = res.json().get("candidates", [{}])[0].get("content", {}).get("parts", [])
+                        raw_text = "".join(p.get("text", "") for p in parts)
+                        data = json.loads(raw_text.strip())
+                        if not data.get("events"):
+                            data["events"] = base_events
+                        data["status"] = "ok"
+                        data["provider"] = f"Google Gemini ({model_name} · Live Grid Synthesis)"
+                        data["query"] = query
+                        data["zone"] = zone
+                        return data
+            except Exception as e:
+                print(f"[Gemini Direct] {model_name} direct synthesis attempt: {e}")
 
     # Attempt 2: Groq LPU with comprehensive Anand corridor grid safety knowledge
     if groq_key:

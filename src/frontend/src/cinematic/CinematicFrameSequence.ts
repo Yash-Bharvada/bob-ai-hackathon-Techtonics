@@ -356,6 +356,7 @@ export class CinematicFrameSequence {
     const offsetY = (canvasHeight - drawHeight) / 2;
 
     this.ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+    this.container.classList.add("canvas-ready");
   }
 
   private findNearestLoadedFrame(target: number): HTMLImageElement | null {

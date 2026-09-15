@@ -313,8 +313,34 @@ export function TechnologyPage() {
   ];
 
   const team = [
-    { name: "Om Vipul Bhairashiya", role: "Full-Stack · ML Pipeline · IBM Bob Integration", branch: "rashiyaom" },
-    { name: "Yash Bharvada", role: "ML Modeling · Backend Architecture · Dataset Engineering", branch: "main" },
+    {
+      name: "Om Rashiya",
+      role: "Backend and Frontend",
+      email: "24cs084@charusat.edu.in",
+      lead: true,
+      branch: "rashiyaom",
+    },
+    {
+      name: "Yash Bharvada",
+      role: "Python Model and Backend",
+      email: "23cs006@charusat.edu.in",
+      lead: false,
+      branch: "main",
+    },
+    {
+      name: "Nikunj Desai",
+      role: "Frontend Polish and Mobile Responsiveness",
+      email: "24cs016@charusat.edu.in",
+      lead: false,
+      branch: "nikunj",
+    },
+    {
+      name: "Purva Shah",
+      role: "Documentation, Architecture Handling, Presentation and End-to-End Testing",
+      email: "24cs094@charusat.edu.in",
+      lead: false,
+      branch: "purva",
+    },
   ];
 
   return (
@@ -841,15 +867,26 @@ export function TechnologyPage() {
           </h2>
         </div>
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          {team.map(({ name, role, branch }) => (
-            <div key={name} className="flex items-center gap-4 rounded-3xl border border-border/60 bg-card p-5">
+          {team.map(({ name, role, email, lead, branch }) => (
+            <div key={name} className="flex items-center gap-4 rounded-3xl border border-border/60 bg-card p-5 transition-colors hover:border-signal/40">
               <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-ink text-signal font-mono text-xl font-bold">
                 {name[0]}
               </div>
-              <div>
-                <p className="font-sans text-sm font-semibold text-foreground">{name}</p>
-                <p className="text-xs text-muted-foreground">{role}</p>
-                <p className="mt-1 font-mono text-[10px] text-signal/70">branch: {branch}</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="font-sans text-sm font-semibold text-foreground truncate">{name}</p>
+                  {lead && (
+                    <span className="rounded-full bg-signal/20 px-2 py-0.5 font-mono text-[10px] font-semibold text-signal">
+                      Lead
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{role}</p>
+                <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[10px] font-mono text-muted-foreground">
+                  <span className="text-foreground/70">{email}</span>
+                  <span>·</span>
+                  <span className="text-signal/80">branch: {branch}</span>
+                </div>
               </div>
             </div>
           ))}

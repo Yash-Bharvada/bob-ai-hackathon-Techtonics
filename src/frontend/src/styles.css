@@ -281,6 +281,12 @@
   object-position: center 35%;
   display: block;
   z-index: 2;
+  transition: opacity 0.5s ease;
+}
+
+.fullscreen-cinematic.canvas-ready .cinematic-fallback-frame {
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Layer 3 — VOLTRA letters SVG (BEHIND the house) */
