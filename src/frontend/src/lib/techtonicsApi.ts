@@ -32,16 +32,23 @@ export interface RankedAsset {
   substation_name?: string;
   grid_zone?: string;
   criticality_tier?: string;
+  /** Normalised from health_index_score by backend /api/ranked */
   health_index: number;
   RUL_days: number;
   fault_type: string;
+  /** Normalised from fault_confidence by backend */
   fault_prob?: number;
   risk_tier: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
   composite_score: number;
   mva_rating?: number;
   voltage_kv?: string;
   customer_count_served?: number;
+  /** Normalised from top3_shap_features by backend */
   top_3_shap?: [string, number][];
+  archetype?: string;
+  core_temp_c?: number;
+  load_pct?: number;
+  current_load_mw?: number;
 }
 
 export interface RankedResponse {
@@ -58,17 +65,30 @@ export interface RankedResponse {
 
 export interface AssetDetailResponse {
   asset_id: string;
-  /** Renamed from health_index_score in pipeline — normalised by backend */
+  /** Normalised from health_index_score by backend /api/asset/{id} */
   health_index: number;
   RUL_days: number;
   risk_tier: string;
   fault_type: string;
-  /** Renamed from fault_confidence in pipeline */
+  /** Normalised from fault_confidence (0–1 fraction) by backend */
   fault_prob: number;
   fault_probabilities?: Record<string, number>;
-  /** Renamed from top3_shap_features in pipeline */
+  /** Normalised from top3_shap_features by backend */
   top_3_shap: [string, number][];
-  sensor_readings?: Record<string, any>;
+  /** Raw sensor readings from the latest timeseries snapshot — used to pre-fill predict sliders */
+  sensor_readings?: {
+    Hydrogen?: number;
+    Methane?: number;
+    Acethylene?: number;
+    Ethylene?: number;
+    Ethane?: number;
+    CO?: number;
+    CO2?: number;
+    "Dielectric rigidity"?: number;
+    top_oil_temp_c?: number;
+    load_pct?: number;
+    [key: string]: number | null | undefined;
+  };
   advisory_text: string;
   /** "ibm_bob_llm" when Anthropic key present, "deterministic_fallback" otherwise */
   advisory_source: "ibm_bob_llm" | "deterministic_fallback";
@@ -103,6 +123,7 @@ export interface TimeseriesPoint {
   top_oil_temp_c?: number;
   temperature?: number;
   vibration?: number;
+  load_pct?: number;
   load_percentage?: number;
   "Health index"?: number;
   health_index?: number;
@@ -177,8 +198,9 @@ export interface AdhocScoreResponse {
   RUL_days: number;
   risk_tier: string;
   fault_type: string;
-  /** Normalised from fault_confidence by backend */
+  /** Normalised from fault_confidence (0–1) by backend */
   fault_prob: number;
+  fault_probabilities?: Record<string, number>;
   /** Normalised from top3_shap_features by backend */
   top_3_shap: [string, number][];
   advisory_text?: string;
@@ -268,7 +290,7 @@ export const techtonicsApi = {
 
   /**
    * POST /api/groq-report
-   * Generates live plain-English maintenance directives using Groq API (Llama 3.3 70B).
+   * Generates live plain-English maintenance directives and trajectory forecasting using Groq LPU API.
    */
   async generateGroqReport(payload: {
     asset_id: string;
@@ -289,6 +311,7 @@ export const techtonicsApi = {
     executive_summary: string;
     thermal_analysis: string;
     weather_correlation: string;
+    trajectory_forecast?: string;
     recommended_actions: Array<{
       priority: "HIGH" | "MEDIUM" | "LOW";
       action: string;
@@ -300,19 +323,28 @@ export const techtonicsApi = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-    }, 12000);
+    }, 15000);
     if (!res.ok) throw new Error(`HTTP ${res.status} from /api/groq-report`);
     return res.json();
   },
 
   /**
    * POST /api/events/search
-   * Search past ground hazard events and retrieve cumulative active risk multipliers.
+   * Semantic geospatial area hazard search & dynamic risk multiplier retrieval powered by Google Gemini 3.6 Flash.
    */
   async searchPastEvents(query = "", zone = ""): Promise<{
     status: string;
+    provider?: string;
+    query?: string;
+    zone?: string;
+    search_area?: string;
+    threat_severity?: "CRITICAL" | "ELEVATED" | "NOMINAL";
     total_matched: number;
     active_risk_multiplier: number;
+    geospatial_summary?: string;
+    affected_assets?: string[];
+    cascading_risk_assessment?: string;
+    containment_protocols?: string[];
     events: Array<{
       incident_id: string;
       received_at: string;
@@ -327,7 +359,7 @@ export const techtonicsApi = {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query, zone }),
-    }, 6000);
+    }, 12000);
     if (!res.ok) throw new Error(`HTTP ${res.status} from /api/events/search`);
     return res.json();
   },
@@ -349,6 +381,21 @@ export const techtonicsApi = {
   }> {
     const res = await requestWithTimeout(`${API_BASE}/api/weather/live?lat=${lat}&lon=${lon}`, {}, 6000);
     if (!res.ok) throw new Error(`HTTP ${res.status} from /api/weather/live`);
+    return res.json();
+  },
+
+  /**
+   * GET /api/events/stats
+   * Returns real-time security pipeline counts from actual event files.
+   */
+  async getEventStats(): Promise<{
+    processed: number;
+    verified: number;
+    quarantined: number;
+    blocked: number;
+  }> {
+    const res = await requestWithTimeout(`${API_BASE}/api/events/stats`, {}, 4000);
+    if (!res.ok) throw new Error(`HTTP ${res.status} from /api/events/stats`);
     return res.json();
   },
 };

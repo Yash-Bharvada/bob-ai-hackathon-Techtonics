@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { IncidentReportModal } from "@/components/IncidentReportModal";
 import {
   Area,
@@ -75,25 +75,28 @@ const WEATHER_OPTIONS: { id: WeatherCondition; label: string; icon: string }[] =
 function PredictionStudioPage() {
   const [activeScenarioId, setActiveScenarioId] = useState<string>("tx107-arcing");
   const [selectedAssetId, setSelectedAssetId] = useState<string>("TX-107");
-  const [loadFactor, setLoadFactor] = useState<number>(88);
-  const [ambientTemp, setAmbientTemp] = useState<number>(36);
-  const [voltageDeviation, setVoltageDeviation] = useState<number>(-4.8);
+  // Start at neutral values — will be overwritten immediately by the API fetch below
+  const [loadFactor, setLoadFactor] = useState<number>(65);
+  const [ambientTemp, setAmbientTemp] = useState<number>(30);
+  const [voltageDeviation, setVoltageDeviation] = useState<number>(0);
   const [weatherCondition, setWeatherCondition] = useState<WeatherCondition>("clear");
-  const [equipmentWear, setEquipmentWear] = useState<number>(85);
+  const [equipmentWear, setEquipmentWear] = useState<number>(50);
   const [waveformType, setWaveformType] = useState<"live" | "transient" | "harmonic">("transient");
+  const [sensorLoading, setSensorLoading] = useState(true);
 
-  // DGA gas sliders (ppm)
-  const [acethylenePpm, setAcethylenePpm] = useState<number>(2592);
-  const [methanePpm, setMethanePpm] = useState<number>(1850);
-  const [hydrogenPpm, setHydrogenPpm] = useState<number>(3280);
-  const [dielectricRigidity, setDielectricRigidity] = useState<number>(28);
+  // DGA gas sliders (ppm) — zero defaults, overwritten by real API data on mount
+  const [acethylenePpm, setAcethylenePpm] = useState<number>(0);
+  const [methanePpm, setMethanePpm] = useState<number>(0);
+  const [hydrogenPpm, setHydrogenPpm] = useState<number>(0);
+  const [dielectricRigidity, setDielectricRigidity] = useState<number>(60);
 
   const [calculating, setCalculating] = useState(false);
   const [calculationTrigger, setCalculationTrigger] = useState(0);
   const [liveResult, setLiveResult] = useState<AdhocScoreResponse | null>(null);
+  const [liveTsHistory, setLiveTsHistory] = useState<Array<{ day: number; rulDays: number; loadPct: number }>>([]);
   const [reportModalOpen, setReportModalOpen] = useState(false);
 
-  // Compute prediction results based on current sliders
+  // Compute prediction results based on current sliders (used only as fallback when API offline)
   const currentInputs: ScenarioInput = useMemo(
     () => ({
       assetId: selectedAssetId,
@@ -129,29 +132,78 @@ function PredictionStudioPage() {
     return initialGridAssets.find((a) => a.id === selectedAssetId) || initialGridAssets[0];
   }, [selectedAssetId]);
 
-  // Handle Preset Scenario Selection
+  // Load real telemetry + sensor readings from backend API whenever asset changes
+  useEffect(() => {
+    let active = true;
+    setSensorLoading(true);
+    setLiveResult(null);
+
+    // Fetch asset detail for ML scores + sensor readings to pre-fill sliders
+    techtonicsApi.getAssetDetail(selectedAssetId, false).then((detail) => {
+      if (!active) return;
+      // Cast: both AssetDetailResponse and AdhocScoreResponse share the normalised fields
+      setLiveResult(detail as unknown as AdhocScoreResponse);
+      const readings = detail.sensor_readings;
+      if (readings) {
+        if (readings.Acethylene != null) setAcethylenePpm(Math.round(readings.Acethylene));
+        if (readings.Methane != null) setMethanePpm(Math.round(readings.Methane));
+        if (readings.Hydrogen != null) setHydrogenPpm(Math.round(readings.Hydrogen));
+        if (readings["Dielectric rigidity"] != null) setDielectricRigidity(Math.round(readings["Dielectric rigidity"]));
+        if (readings.load_pct != null) setLoadFactor(Math.round(readings.load_pct));
+        if (readings.top_oil_temp_c != null) setAmbientTemp(Math.max(20, Math.round(readings.top_oil_temp_c - 35)));
+      }
+    }).catch(() => {}).finally(() => { if (active) setSensorLoading(false); });
+
+    // Fetch timeseries for the 90-day RUL trajectory chart
+    techtonicsApi.getTimeseries(selectedAssetId).then((ts) => {
+      if (!active || !ts.timeseries?.length) return;
+      const stride = Math.max(1, Math.floor(ts.timeseries.length / 40));
+      const pts = ts.timeseries
+        .filter((_, i) => i % stride === 0 || i === ts.timeseries.length - 1)
+        .map((pt) => ({
+          day: pt.day,
+          rulDays: pt.RUL_days ?? 0,
+          loadPct: pt.load_pct ?? pt.load_percentage ?? 0,
+        }));
+      setLiveTsHistory(pts);
+    }).catch(() => {});
+
+    return () => { active = false; };
+  }, [selectedAssetId]);
+
+  // Handle Preset Scenario Selection — switch asset and let the useEffect fetch live data
   const applyPreset = (presetId: string) => {
     const found = presetScenarios.find((p) => p.id === presetId);
     if (!found) return;
     setActiveScenarioId(presetId);
-    setSelectedAssetId(found.inputs.assetId);
-    setLoadFactor(found.inputs.loadFactorPercent);
-    setAmbientTemp(found.inputs.ambientTempC);
-    setVoltageDeviation(found.inputs.voltageDeviationPercent);
+
+    // Only set weather/waveform from preset — gas values come from real API
     setWeatherCondition(found.inputs.weatherCondition);
-    setEquipmentWear(found.inputs.equipmentWearPercent);
-
-    if (found.inputs.acethylenePpm !== undefined) setAcethylenePpm(found.inputs.acethylenePpm);
-    if (found.inputs.methanePpm !== undefined) setMethanePpm(found.inputs.methanePpm);
-    if (found.inputs.hydrogenPpm !== undefined) setHydrogenPpm(found.inputs.hydrogenPpm);
-    if (found.inputs.dielectricRigidityKv !== undefined) setDielectricRigidity(found.inputs.dielectricRigidityKv);
-
     if (presetId.includes("arcing")) setWaveformType("transient");
     else if (presetId.includes("thermal")) setWaveformType("harmonic");
     else setWaveformType("live");
 
-    setLiveResult(null);
-    toast.info(`Loaded preset: ${found.title}`);
+    // Changing selectedAssetId will trigger the useEffect that fetches live sensor data
+    if (found.inputs.assetId !== selectedAssetId) {
+      setSelectedAssetId(found.inputs.assetId);
+      toast.info(`Loaded archetype: ${found.title} — fetching live sensor data...`);
+    } else {
+      // Same asset — immediately score with current slider values
+      toast.info(`Archetype selected: ${found.title}`);
+      techtonicsApi.scoreAdhoc({
+        asset_id: found.inputs.assetId,
+        Hydrogen: hydrogenPpm,
+        Methane: methanePpm,
+        Acethylene: acethylenePpm,
+        Ethylene: found.inputs.ethylenePpm ?? 200,
+        Ethane: found.inputs.ethanePpm ?? 80,
+        Dielectric_rigidity: dielectricRigidity,
+        top_oil_temp_c: ambientTemp + 35,
+        generate_advisory: false,
+      }).then((score) => {
+        setLiveResult(score);
+      }).catch(() => {});
+    }
   };
 
   // Run Prediction button action (Calls FastAPI POST /api/score with fallback)
@@ -346,7 +398,15 @@ function PredictionStudioPage() {
           <div className="rounded-3xl border border-border/80 bg-card p-6 shadow-sm">
             <div className="flex items-center justify-between">
               <h3 className="font-sans text-base font-semibold text-foreground">Stress & Gas Parameters</h3>
-              <Sliders className="size-4 text-muted-foreground" />
+              {sensorLoading ? (
+                <span className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground">
+                  <Loader2 className="size-3 animate-spin" /> Loading live sensor data...
+                </span>
+              ) : (
+                <span className="flex items-center gap-1.5 text-[10px] font-mono text-emerald-500 font-semibold">
+                  <span className="size-1.5 rounded-full bg-emerald-500" /> Live — Day 89 snapshot
+                </span>
+              )}
             </div>
 
             <div className="mt-5 space-y-4 text-xs">
@@ -550,74 +610,88 @@ function PredictionStudioPage() {
             </div>
           </div>
 
-          {/* 24-Hour Projected Outage Risk Trajectory Curve */}
+          {/* 90-Day RUL Degradation & Load Trajectory (real timeseries from model) */}
           <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-sans text-sm font-semibold text-foreground">
-                  24-Hour Outage Risk Trajectory Projection
+                  90-Day Degradation Trajectory (Live Model Data)
                 </h4>
                 <p className="text-[11px] text-muted-foreground">
-                  Simulated risk escalation against 80% critical outage threshold
+                  Remaining Useful Life (days) and Load % from the real per-day ML pipeline output
                 </p>
               </div>
               <span className="pill bg-surface px-2.5 py-0.5 text-[10px] font-mono text-muted-foreground border border-border">
-                Sampling: Hourly Step
+                {liveTsHistory.length > 0 ? `${liveTsHistory.length} data points · FastAPI Live` : "Loading..."}
               </span>
             </div>
 
             <div className="mt-5 h-52 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={prediction.trajectory}>
-                  <defs>
-                    <linearGradient id="riskGlow" x1="0" y1="0" x2="0" y2="1">
-                      <stop
-                        offset="0%"
-                        stopColor={displayedHI >= 50 ? "var(--color-danger)" : "var(--color-signal)"}
-                        stopOpacity={0.4}
-                      />
-                      <stop
-                        offset="100%"
-                        stopColor={displayedHI >= 50 ? "var(--color-danger)" : "var(--color-signal)"}
-                        stopOpacity={0}
-                      />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid stroke="var(--color-border)" vertical={false} opacity={0.5} />
-                  <XAxis
-                    dataKey="label"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
-                  />
-                  <YAxis
-                    domain={[0, 100]}
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--color-card)",
-                      borderColor: "var(--color-border)",
-                      borderRadius: "0.75rem",
-                      fontSize: "0.75rem",
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="projectedRisk"
-                    name="Projected Risk %"
-                    stroke={displayedHI >= 50 ? "var(--color-danger)" : "var(--color-signal)"}
-                    strokeWidth={2}
-                    fill="url(#riskGlow)"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              {liveTsHistory.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={liveTsHistory}>
+                    <defs>
+                      <linearGradient id="rulGlow" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={displayedHI >= 50 ? "#ef4444" : "#22c55e"} stopOpacity={0.4} />
+                        <stop offset="100%" stopColor={displayedHI >= 50 ? "#ef4444" : "#22c55e"} stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="loadGlow" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} />
+                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid stroke="var(--color-border)" vertical={false} opacity={0.4} />
+                    <XAxis
+                      dataKey="day"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 9, fill: "var(--color-muted-foreground)" }}
+                      tickFormatter={(v) => `D${v}`}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 9, fill: "var(--color-muted-foreground)" }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "var(--color-card)",
+                        borderColor: "var(--color-border)",
+                        borderRadius: "0.75rem",
+                        fontSize: "0.72rem",
+                      }}
+                      labelFormatter={(v) => `Day ${v}`}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="rulDays"
+                      name="RUL (days)"
+                      stroke={displayedHI >= 50 ? "#ef4444" : "#22c55e"}
+                      strokeWidth={2}
+                      fill="url(#rulGlow)"
+                      isAnimationActive={false}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="loadPct"
+                      name="Load %"
+                      stroke="#3b82f6"
+                      strokeWidth={1.5}
+                      fill="url(#loadGlow)"
+                      isAnimationActive={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex h-full items-center justify-center">
+                  <Loader2 className="size-5 animate-spin text-primary mr-2" />
+                  <span className="text-xs text-muted-foreground">Loading real timeseries from FastAPI...</span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Recommended Actions */}
+          {/* Recommended Actions — derived from live model tier */}
           <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-sm">
             <h4 className="font-sans text-sm font-semibold text-foreground mb-3">
               Automated Prescriptive Actions

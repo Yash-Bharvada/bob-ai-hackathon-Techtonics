@@ -1,4 +1,6 @@
+import { useState, useEffect } from "react";
 import { AlertTriangle, Radio, Zap, ShieldCheck } from "lucide-react";
+import { techtonicsApi } from "@/lib/techtonicsApi";
 
 export type GridNode = {
   id: string;
@@ -28,6 +30,30 @@ export function GridDiagram({
   onSelect?: (id: string) => void;
   compact?: boolean;
 }) {
+  const [liveNodes, setLiveNodes] = useState<GridNode[]>(nodes);
+
+  useEffect(() => {
+    let active = true;
+    techtonicsApi.getRanked().then((res) => {
+      if (active && res.ranked_assets?.length) {
+        const rankedMap = new Map(res.ranked_assets.map((r) => [r.asset_id, r]));
+        setLiveNodes((prev) =>
+          prev.map((node) => {
+            const live = rankedMap.get(node.id);
+            if (!live) return node;
+            const status: "risk" | "watch" | "stable" =
+              live.risk_tier === "CRITICAL" || live.risk_tier === "HIGH"
+                ? "risk"
+                : live.risk_tier === "MEDIUM"
+                ? "watch"
+                : "stable";
+            return { ...node, status };
+          })
+        );
+      }
+    }).catch(() => {});
+    return () => { active = false; };
+  }, []);
   return (
     <div
       className={`relative w-full overflow-hidden rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-sm ${
@@ -126,7 +152,7 @@ export function GridDiagram({
       </svg>
 
       {/* Interactive Substation Node Pins */}
-      {nodes.map((node) => {
+      {liveNodes.map((node) => {
         const isSelected = selected === node.id;
         const leftPercent = (node.x / 1000) * 100;
         const topPercent = (node.y / 500) * 100;

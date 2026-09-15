@@ -1,11 +1,11 @@
-import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, Sun, Moon, User, ArrowUpRight, X } from "lucide-react";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { Menu, Sun, Moon, LogIn, LogOut, User, ArrowUpRight, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { VoltraLogo } from "@/components/VoltraLogo";
-import { AuthModal } from "@/components/AuthModal";
 import { authSession, type OperatorProfile } from "@/lib/authSession";
+import { toast } from "sonner";
 
-const links = [
+const NAV_LINKS = [
   { to: "/", label: "Home" },
   { to: "/dashboard", label: "Dashboard" },
   { to: "/grid", label: "Live Grid" },
@@ -15,13 +15,17 @@ const links = [
 
 export function SiteNav() {
   const { location } = useRouterState();
+  const navigate = useNavigate();
   const path = location.pathname;
   const [open, setOpen] = useState(false);
-  const [authOpen, setAuthOpen] = useState(false);
-  const [profile, setProfile] = useState<OperatorProfile>(authSession.getProfile());
+  const [profile, setProfile] = useState<OperatorProfile | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("light");
 
+  // Client-side only — localStorage unavailable on server
   useEffect(() => {
+    setProfile(authSession.getProfile());
+    setMounted(true);
     if (typeof document !== "undefined") {
       const isDark =
         document.documentElement.classList.contains("dark") ||
@@ -30,6 +34,23 @@ export function SiteNav() {
       setTheme(isDark ? "dark" : "light");
     }
   }, []);
+
+  // Re-sync profile when route changes (handles post-login redirect)
+  useEffect(() => {
+    if (mounted) {
+      setProfile(authSession.getProfile());
+    }
+  }, [path, mounted]);
+
+  const isAuthenticated = mounted && !!profile;
+
+  const handleSignOut = () => {
+    authSession.logout();
+    setProfile(null);
+    setOpen(false);
+    toast.success("Signed out of VOLTRA console");
+    navigate({ to: "/login" });
+  };
 
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";
@@ -49,7 +70,8 @@ export function SiteNav() {
     <>
       <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl transition-all">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
-          {/* Left: Brand Logo */}
+
+          {/* Left: Brand */}
           <Link
             to="/"
             className="flex items-center gap-2.5 transition-transform hover:scale-[1.01]"
@@ -58,9 +80,9 @@ export function SiteNav() {
             <VoltraLogo size={34} showText={true} subtitle="Grid Risk Advisor" />
           </Link>
 
-          {/* Center: Clean Capsule Navigation */}
+          {/* Center: Capsule Nav */}
           <nav className="hidden items-center gap-1 rounded-full border border-border/60 bg-muted/50 p-1 md:flex shadow-xs backdrop-blur-md">
-            {links.map((l) => {
+            {NAV_LINKS.map((l) => {
               const active = l.to === "/" ? path === "/" : path.startsWith(l.to);
               return (
                 <Link
@@ -78,20 +100,42 @@ export function SiteNav() {
             })}
           </nav>
 
-          {/* Right: Quick Actions */}
+          {/* Right: Actions */}
           <div className="flex items-center gap-2">
-            {/* Operator Session Pill */}
-            <button
-              type="button"
-              onClick={() => setAuthOpen(true)}
-              title={`Signed in as ${profile.name} (${profile.zone.split("·")[0]})`}
-              className="hidden items-center gap-2 rounded-full border border-border/70 bg-card/80 px-3 py-1.5 text-xs font-semibold text-foreground shadow-xs transition-all hover:bg-muted hover:border-border sm:inline-flex"
-            >
-              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="max-w-[110px] truncate">{profile.name}</span>
-            </button>
 
-            {/* Primary Console CTA */}
+            {/* Auth Pill — signed in */}
+            {isAuthenticated && (
+              <div className="hidden items-center gap-1 sm:flex">
+                <span
+                  title={`${profile!.role} · ${profile!.zone}`}
+                  className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/80 px-3 py-1.5 text-xs font-semibold text-foreground shadow-xs cursor-default"
+                >
+                  <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="max-w-[120px] truncate">{profile!.name}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  title="Sign out"
+                  className="grid size-8 place-items-center rounded-full border border-border/60 bg-card/80 text-muted-foreground hover:text-foreground hover:bg-red-500/10 hover:border-red-500/30 transition-all"
+                >
+                  <LogOut className="size-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Auth Pill — not signed in */}
+            {mounted && !isAuthenticated && (
+              <Link
+                to="/login"
+                className="hidden items-center gap-1.5 rounded-full border border-border/70 bg-card/80 px-3.5 py-1.5 text-xs font-semibold text-foreground shadow-xs transition-all hover:bg-muted hover:border-border sm:inline-flex"
+              >
+                <LogIn className="size-3.5" />
+                Sign In
+              </Link>
+            )}
+
+            {/* Live Grid CTA */}
             <Link
               to="/grid"
               className="pill hidden items-center gap-1 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:inline-flex"
@@ -99,12 +143,11 @@ export function SiteNav() {
               Live Grid <ArrowUpRight className="size-3.5 opacity-80" />
             </Link>
 
-            {/* Glassmorphic Minimal Day/Night Toggle */}
+            {/* Day/Night Toggle */}
             <button
               type="button"
               onClick={toggleTheme}
               aria-label={theme === "dark" ? "Switch to Day Mode" : "Switch to Night Mode"}
-              title={theme === "dark" ? "Switch to Day Mode" : "Switch to Night Mode"}
               className="grid size-9 place-items-center rounded-full border border-border/70 bg-card/80 backdrop-blur-md text-foreground shadow-xs transition-all hover:scale-105 hover:bg-muted active:scale-95"
             >
               {theme === "dark" ? (
@@ -114,7 +157,7 @@ export function SiteNav() {
               )}
             </button>
 
-            {/* Mobile Hamburger Menu Toggle */}
+            {/* Mobile Hamburger */}
             <button
               type="button"
               aria-label="Toggle navigation"
@@ -126,10 +169,10 @@ export function SiteNav() {
           </div>
         </div>
 
-        {/* Mobile Dropdown Menu */}
+        {/* Mobile Dropdown */}
         {open && (
           <nav className="glass absolute inset-x-4 top-16 grid gap-1 rounded-2xl p-3 md:hidden shadow-lg border border-border z-50">
-            {links.map((l) => (
+            {NAV_LINKS.map((l) => (
               <Link
                 key={l.to}
                 to={l.to}
@@ -139,31 +182,40 @@ export function SiteNav() {
                 {l.label}
               </Link>
             ))}
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                setAuthOpen(true);
-              }}
-              className="rounded-xl px-4 py-3 text-sm font-semibold hover:bg-muted text-left flex items-center justify-between text-foreground border-t border-border/40 mt-1 pt-3"
-            >
-              <span className="flex items-center gap-2">
-                <span className="size-2 rounded-full bg-emerald-500" />
-                <span>Operator: {profile.name}</span>
-              </span>
-              <span className="text-xs text-muted-foreground font-mono">{profile.zone.split("·")[0]}</span>
-            </button>
+
+            <div className="border-t border-border/40 mt-1 pt-2">
+              {isAuthenticated ? (
+                <>
+                  <div className="flex items-center justify-between rounded-xl px-4 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <User className="size-3.5 text-muted-foreground" />
+                      <span className="text-sm font-semibold text-foreground">{profile!.name}</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[120px]">{profile!.role}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    className="flex w-full items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold hover:bg-red-500/10 text-red-500 transition-colors"
+                  >
+                    <LogOut className="size-4" />
+                    Sign Out
+                  </button>
+                </>
+              ) : (
+                <Link
+                  to="/login"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold hover:bg-muted text-foreground"
+                >
+                  <LogIn className="size-4" />
+                  Sign In to Console
+                </Link>
+              )}
+            </div>
           </nav>
         )}
       </header>
-
-      {/* Auth Modal Portaled cleanly */}
-      <AuthModal
-        open={authOpen}
-        onClose={() => setAuthOpen(false)}
-        onSuccess={(p) => setProfile(p)}
-      />
     </>
   );
 }
-

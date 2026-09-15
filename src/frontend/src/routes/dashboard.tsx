@@ -1,535 +1,622 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import {
-  Activity,
   AlertTriangle,
   ArrowRight,
+  Activity,
   BrainCircuit,
-  Building,
+  Bell,
   CheckCircle2,
-  Clock3,
-  CloudLightning,
+  ChevronRight,
+  Clock,
   Compass,
-  Cpu,
-  Download,
-  Flame,
-  Gauge,
-  Layers,
-  Loader2,
   MapPin,
-  Navigation,
-  RefreshCw,
-  Search,
   ShieldAlert,
-  ShieldCheck,
-  Sparkles,
-  Thermometer,
+  TrendingUp,
   User,
-  Wrench,
   Zap,
 } from "lucide-react";
 import {
-  Area,
-  AreaChart,
+  BarChart,
+  Bar,
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
+  Cell,
 } from "recharts";
-import { Button } from "@/components/ui/button";
 import { AuthModal } from "@/components/AuthModal";
 import { LocationPromptModal } from "@/components/LocationPromptModal";
 import { authSession, type OperatorProfile, type UserLocationState } from "@/lib/authSession";
-import { techtonicsApi } from "@/lib/techtonicsApi";
-import { initialGridAssets, type GridAsset } from "@/lib/gridData";
+import { techtonicsApi, type RankedAsset, type MaintenanceAction } from "@/lib/techtonicsApi";
+import { initialGridAssets } from "@/lib/gridData";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
-      { title: "Operator Dashboard · VOLTRA" },
-      { name: "description", content: "Personalized regional grid intelligence dashboard with live Open-Meteo telemetry and Groq API maintenance reports." },
+      { title: "Dashboard · VOLTRA Grid Risk Advisor" },
+      { name: "description", content: "Enterprise grid intelligence dashboard. Live model-driven asset health, risk scores, and AI recommendations for the Anand District transmission network." },
     ],
   }),
-  component: UserDashboardPage,
+  component: DashboardPage,
 });
 
-export function UserDashboardPage() {
-  const [profile, setProfile] = useState<OperatorProfile>(authSession.getProfile());
-  const [location, setLocation] = useState<UserLocationState>(authSession.getLocation());
+function getRiskColor(score: number) {
+  if (score >= 70) return "text-red-400";
+  if (score >= 40) return "text-amber-400";
+  return "text-emerald-400";
+}
+
+function getRiskBg(score: number) {
+  if (score >= 70) return "bg-red-500/15 border-red-500/30";
+  if (score >= 40) return "bg-amber-500/15 border-amber-500/30";
+  return "bg-emerald-500/15 border-emerald-500/30";
+}
+
+function getRiskLabel(score: number) {
+  if (score >= 70) return "High Risk";
+  if (score >= 40) return "Watch";
+  return "Healthy";
+}
+
+function hiToRisk(hi: number) {
+  return Math.min(100, Math.round((hi / 90) * 100));
+}
+
+const DEFAULT_PROFILE: OperatorProfile = {
+  name: "Grid Operator",
+  email: "operator@anand-grid.gov.in",
+  role: "Regional Dispatch Engineer",
+  zone: "Zone-B · Industrial",
+  substation: "GIDC Industrial Phase-2",
+};
+
+function DashboardPage() {
+  const [profile, setProfile] = useState<OperatorProfile>(() => authSession.getProfile() ?? DEFAULT_PROFILE);
+  const [location, setLocation] = useState<UserLocationState>(() => authSession.getLocation());
+  const [mounted, setMounted] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [locationModalOpen, setLocationModalOpen] = useState(false);
-
-  // Live Open-Meteo weather state
-  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [currentTime, setCurrentTime] = useState("");
+  const [rankedAssets, setRankedAssets] = useState<RankedAsset[]>([]);
+  const [planActions, setPlanActions] = useState<MaintenanceAction[]>([]);
+  const [apiConnected, setApiConnected] = useState(false);
   const [liveWeather, setLiveWeather] = useState<{
     temperature_c: number;
     humidity_pct: number;
-    wind_speed_kmh: number;
     thermal_stress_pct: number;
-    cooling_efficiency_pct: number;
-    forecast_24h: Array<{ time: string; temp: number; hour: number }>;
-  }>({
-    temperature_c: 34.2,
-    humidity_pct: 58.0,
-    wind_speed_kmh: 14.5,
-    thermal_stress_pct: 20.2,
-    cooling_efficiency_pct: 82.5,
-    forecast_24h: [
-      { time: "00:00", temp: 26.5, hour: 0 },
-      { time: "04:00", temp: 25.1, hour: 4 },
-      { time: "08:00", temp: 29.4, hour: 8 },
-      { time: "12:00", temp: 35.8, hour: 12 },
-      { time: "16:00", temp: 34.2, hour: 16 },
-      { time: "20:00", temp: 30.1, hour: 20 },
-    ],
-  });
-
-  // Target asset in user's zone
-  const targetAsset: GridAsset = useMemo(() => {
-    if (profile.zone.includes("Zone-B")) {
-      return initialGridAssets.find((a) => a.id === "TX-107") || initialGridAssets[0];
-    } else if (profile.zone.includes("Zone-A")) {
-      return initialGridAssets.find((a) => a.id === "TX-104") || initialGridAssets[1];
-    } else if (profile.zone.includes("Zone-D")) {
-      return initialGridAssets.find((a) => a.id === "TX-115") || initialGridAssets[2];
-    }
-    return initialGridAssets.find((a) => a.id === "TX-112") || initialGridAssets[3];
-  }, [profile.zone]);
-
-  // Groq Live Report state
-  const [groqLoading, setGroqLoading] = useState(false);
-  const [groqReport, setGroqReport] = useState<{
-    provider: string;
-    executive_summary: string;
-    thermal_analysis: string;
-    weather_correlation: string;
-    recommended_actions: Array<{
-      priority: "HIGH" | "MEDIUM" | "LOW";
-      action: string;
-      impact: string;
-      timeline: string;
-    }>;
-  }>({
-    provider: "VOLTRA Groq Llama 3.3 70B Directives",
-    executive_summary: `Evaluating ${targetAsset.id} under live ambient telemetry. Electrical discharge monitored with active IEEE C57.104 tracking.`,
-    thermal_analysis: `Ambient temperature correlates with transformer top-oil saturation headroom at ${targetAsset.currentLoadMw} MW operating load.`,
-    weather_correlation: "Hyperlocal Open-Meteo atmospheric readings integrated into transformer thermal dissipation curve.",
-    recommended_actions: [
-      {
-        priority: "HIGH",
-        action: "Perform comprehensive DGA syringe sampling and bushing thermography",
-        impact: "Early failure preemption (−38% risk)",
-        timeline: "< 24 hours",
-      },
-      {
-        priority: "HIGH",
-        action: `Evaluate 15-20% load reduction from ${targetAsset.id} to adjacent tie-lines`,
-        impact: "Thermal stress relief (−24% risk)",
-        timeline: "< 6 hours",
-      },
-      {
-        priority: "MEDIUM",
-        action: "Verify auxiliary forced-air cooling fan relay circuit",
-        impact: "Cooling margin optimization",
-        timeline: "Within 48 hours",
-      },
-    ],
-  });
-
-  // Past events search state
-  const [eventQuery, setEventQuery] = useState("");
-  const [eventResults, setEventResults] = useState<Array<any>>([]);
-  const [activeRiskMultiplier, setActiveRiskMultiplier] = useState(1.0);
-  const [searchingEvents, setSearchingEvents] = useState(false);
-
-  // Fetch live weather when coordinates change
-  const fetchWeather = async (lat: number, lon: number) => {
-    setWeatherLoading(true);
-    try {
-      const data = await techtonicsApi.fetchLiveWeather(lat, lon);
-      setLiveWeather(data);
-    } catch {
-      // Keep default
-    } finally {
-      setWeatherLoading(false);
-    }
-  };
+  }>({ temperature_c: 33.4, humidity_pct: 61, thermal_stress_pct: 22 });
+  const [incidents, setIncidents] = useState<any[]>([]);
+  const [securityStats, setSecurityStats] = useState({ processed: 18, verified: 15, quarantined: 2, blocked: 1 });
 
   useEffect(() => {
-    fetchWeather(location.latitude, location.longitude);
+    setMounted(true);
+    const tick = () => {
+      const now = new Date();
+      setCurrentTime(now.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }));
+    };
+    tick();
+    const t = setInterval(tick, 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    techtonicsApi.getRanked().then((res) => {
+      if (res.ranked_assets?.length) { setRankedAssets(res.ranked_assets); setApiConnected(true); }
+    }).catch(() => setApiConnected(false));
+
+    techtonicsApi.getPlan().then((res) => {
+      if (res.top_10_actions?.length) { setPlanActions(res.top_10_actions); }
+    }).catch(() => {});
+
+    techtonicsApi.getEventStats().then((stats) => {
+      setSecurityStats(stats);
+    }).catch(() => {});
+
+    techtonicsApi.fetchLiveWeather(location.latitude, location.longitude)
+      .then((wx) => setLiveWeather({ temperature_c: wx.temperature_c, humidity_pct: wx.humidity_pct, thermal_stress_pct: wx.thermal_stress_pct }))
+      .catch(() => {});
+
+    techtonicsApi.searchPastEvents("", "").then((res) => {
+      if (res.events?.length) setIncidents(res.events.slice(0, 3));
+    }).catch(() => {});
   }, [location.latitude, location.longitude]);
 
-  // Fetch Groq report
-  const handleGenerateGroqReport = async () => {
-    setGroqLoading(true);
-    try {
-      const rep = await techtonicsApi.generateGroqReport({
-        asset_id: targetAsset.id,
-        health_index: targetAsset.healthIndexRaw,
-        rul_days: targetAsset.rulDays,
-        fault_type: targetAsset.faultType,
-        ambient_temp_c: liveWeather.temperature_c,
-        load_mw: targetAsset.currentLoadMw,
-        rated_mva: targetAsset.ratedCapacityMw,
-        substation: targetAsset.substation,
-        c2h2_ppm: targetAsset.id === "TX-107" ? 2592 : targetAsset.id === "TX-115" ? 0.5 : 4,
-        ch4_ppm: targetAsset.id === "TX-107" ? 1850 : targetAsset.id === "TX-104" ? 1224 : 145,
-        h2_ppm: targetAsset.id === "TX-107" ? 3280 : targetAsset.id === "TX-112" ? 920 : 68,
-      });
-      setGroqReport(rep);
-      toast.success(`Live report generated via ${rep.provider}`);
-    } catch (err: any) {
-      toast.error("Error generating report: " + err.message);
-    } finally {
-      setGroqLoading(false);
+  const displayAssets = useMemo(() => {
+    if (rankedAssets.length > 0) {
+      return rankedAssets.map((r) => {
+        const base = initialGridAssets.find((a) => a.id === r.asset_id);
+        const hi = r.health_index;
+        const rul = r.RUL_days;
+        const riskScore = hiToRisk(hi);
+        return {
+          id: r.asset_id,
+          name: base?.name || `${r.asset_id} · ${r.mva_rating || 25} MVA Substation`,
+          substation: r.substation_name || base?.substation || "Anand Substation",
+          region: r.grid_zone || base?.region || "Anand Zone",
+          type: "Transformer" as const,
+          voltageKv: parseInt(r.voltage_kv || "66", 10) || base?.voltageKv || 66,
+          nominalVoltageKv: parseInt(r.voltage_kv || "66", 10) || base?.nominalVoltageKv || 66,
+          currentLoadMw: r.current_load_mw ?? base?.currentLoadMw ?? 20.0,
+          ratedCapacityMw: r.mva_rating ?? base?.ratedCapacityMw ?? 25.0,
+          frequencyHz: 50.0,
+          coreTempC: r.core_temp_c != null ? Number(r.core_temp_c.toFixed(1)) : (base?.coreTempC ?? 75.0),
+          healthScore: Math.max(5, Math.min(99, Math.round(100 - hi))),
+          healthIndexRaw: hi,
+          rulDays: rul,
+          faultType: r.fault_type,
+          status: (r.risk_tier === "CRITICAL" || r.risk_tier === "HIGH") ? ("risk" as const) : r.risk_tier === "MEDIUM" ? ("watch" as const) : ("stable" as const),
+          riskTier: r.risk_tier,
+          compositeScore: r.composite_score,
+          criticality: r.criticality_tier || "Critical",
+          archetype: r.archetype || base?.archetype || "Standard Asset",
+          activeAnomalies: (r.risk_tier === "CRITICAL" || r.risk_tier === "HIGH") ? 3 : r.risk_tier === "MEDIUM" ? 1 : 0,
+          lastInspected: base?.lastInspected || "2026-09-08",
+          coolingType: base?.coolingType || "ONAF",
+          sf6PressureBar: 5.2,
+          acousticDba: 68.0,
+          top3Shap: r.top_3_shap || base?.top3Shap,
+          telemetryHistory: base?.telemetryHistory || [],
+          incidentLog: base?.incidentLog || [],
+          hi,
+          rul,
+          riskScore,
+        };
+      }).sort((a, b) => b.riskScore - a.riskScore);
     }
-  };
 
-  // Search past events
-  const handleSearchEvents = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setSearchingEvents(true);
-    try {
-      const res = await techtonicsApi.searchPastEvents(eventQuery, profile.zone);
-      setEventResults(res.events);
-      setActiveRiskMultiplier(res.active_risk_multiplier);
-      toast.info(`Found ${res.total_matched} logged incidents. Multiplier: ${res.active_risk_multiplier}×`);
-    } catch (err: any) {
-      toast.error("Error searching past events: " + err.message);
-    } finally {
-      setSearchingEvents(false);
+    return initialGridAssets.map((a) => {
+      const hi = a.healthIndexRaw;
+      const rul = a.rulDays;
+      const riskScore = hiToRisk(hi);
+      return { ...a, hi, rul, riskScore };
+    }).sort((a, b) => b.riskScore - a.riskScore);
+  }, [rankedAssets]);
+
+  const criticalCount = displayAssets.filter((a) => a.riskScore >= 70).length;
+  const watchCount = displayAssets.filter((a) => a.riskScore >= 40 && a.riskScore < 70).length;
+  const avgHI = displayAssets.reduce((s, a) => s + a.hi, 0) / (displayAssets.length || 1);
+  const avgRiskScore = Math.round(displayAssets.reduce((s, a) => s + a.riskScore, 0) / (displayAssets.length || 1));
+  const fleetHealth = Math.round(100 - avgHI);
+  const predictedFailures = displayAssets.filter((a) => a.rul < 40).length;
+  const topCriticalAsset = displayAssets[0];
+
+  const chartData = useMemo(() => {
+    return displayAssets.slice(0, 8).map((a) => ({
+      name: a.id.replace("TX-", ""),
+      risk: a.riskScore,
+      hi: parseFloat(a.hi.toFixed(1)),
+    }));
+  }, [displayAssets]);
+
+  const recommendations = useMemo(() => {
+    if (planActions.length > 0) {
+      return planActions.slice(0, 3).map((act, idx) => ({
+        rank: `0${idx + 1}`,
+        asset: act.asset_id,
+        action: `${act.short_action} (${act.urgency_window ? "Due " + act.urgency_window : act.crew_assignment})`,
+        confidence: act.risk_tier === "HIGH" ? 94 : act.risk_tier === "MEDIUM" ? 82 : 75,
+        priority: (act.risk_tier === "HIGH" ? "HIGH" : act.risk_tier === "MEDIUM" ? "MEDIUM" : "LOW") as "HIGH" | "MEDIUM" | "LOW",
+        detail: act.detail,
+      }));
     }
-  };
+    return [
+      topCriticalAsset && {
+        rank: "01", asset: topCriticalAsset.id,
+        action: topCriticalAsset.riskScore >= 70 ? "Initiate emergency load curtailment and DGA syringe sampling." : "Schedule inspection within this maintenance cycle.",
+        confidence: topCriticalAsset.riskScore > 70 ? 94 : 78,
+        priority: (topCriticalAsset.riskScore > 70 ? "HIGH" : "MEDIUM") as "HIGH" | "MEDIUM" | "LOW",
+      },
+      displayAssets[1] && {
+        rank: "02", asset: displayAssets[1].id,
+        action: "Monitor thermal gradient; verify forced-air cooling relay circuit.",
+        confidence: 82, priority: (displayAssets[1].riskScore > 70 ? "HIGH" : "MEDIUM") as "HIGH" | "MEDIUM" | "LOW",
+      },
+      {
+        rank: "03", asset: "Fleet-Wide",
+        action: `Ambient ${liveWeather.temperature_c.toFixed(1)}°C elevates thermal stress. Review cooling headroom across all monitored assets.`,
+        confidence: 71, priority: "LOW" as const,
+      },
+    ].filter(Boolean) as { rank: string; asset: string; action: string; confidence: number; priority: "HIGH" | "MEDIUM" | "LOW" }[];
+  }, [planActions, topCriticalAsset, displayAssets, liveWeather.temperature_c]);
 
-  useEffect(() => {
-    handleSearchEvents();
-  }, [profile.zone]);
+  if (!mounted) return null;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      {/* Top Bar: User Profile & Geolocation Status */}
-      <div className="flex flex-col gap-4 border-b border-border/60 pb-6 sm:flex-row sm:items-center sm:justify-between">
+    <div className="min-h-screen bg-background px-4 py-6 sm:px-6 lg:px-8">
+
+      {/* ── Header ── */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-muted-foreground">
-            <div className="flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-2.5 py-0.5">
-              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="font-semibold text-foreground">{profile.name}</span>
-              <span className="text-muted-foreground">({profile.role})</span>
-            </div>
-            <span className="text-muted-foreground/50">/</span>
-            <span className="text-foreground font-semibold">{profile.zone.split("·")[0]}</span>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="relative flex size-2">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex size-2 rounded-full bg-emerald-400" />
+            </span>
+            <span className="text-[11px] font-mono font-semibold uppercase tracking-widest text-emerald-500">Operational</span>
+            {currentTime && <><span className="text-muted-foreground/40 text-xs">·</span><span className="text-[11px] font-mono text-muted-foreground">{currentTime}</span></>}
+            {apiConnected && <><span className="text-muted-foreground/40 text-xs">·</span><span className="text-[11px] font-mono text-emerald-500/80">FastAPI Live</span></>}
           </div>
-          <h1 className="mt-2 font-sans text-3xl font-bold sm:text-4xl text-foreground">
-            Regional Grid Dispatch Console
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            Welcome back, {profile.name.split(" ")[0]}
           </h1>
-          <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
-            Localized to <strong className="text-foreground">{profile.substation}</strong>. Scored via Model 1 (Health Index) and Model 2 (DGA Classifier).
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            {profile.substation} · {profile.zone.split("·")[0].trim()} · Anand District Transmission Network
           </p>
         </div>
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          <Button
-            onClick={() => setLocationModalOpen(true)}
-            variant="outline"
-            className="pill text-xs border-border/80 bg-card hover:bg-muted font-semibold shadow-sm"
-          >
-            <Compass className="size-3.5 mr-1.5 text-signal" />
-            {location.autoDetected ? "GPS Synced" : "Node"}: {location.latitude}°N, {location.longitude}°E
-          </Button>
-
-          <Button
-            onClick={() => setAuthModalOpen(true)}
-            variant="outline"
-            className="pill text-xs border-border/80 bg-card hover:bg-muted font-semibold shadow-sm"
-          >
-            <User className="size-3.5 mr-1.5" />
-            Switch Operator
-          </Button>
-
-          <Button
-            onClick={handleGenerateGroqReport}
-            disabled={groqLoading}
-            className="pill bg-signal text-xs font-semibold text-signal-foreground hover:bg-signal/90 shadow-sm"
-          >
-            {groqLoading ? (
-              <>
-                <Loader2 className="size-3.5 animate-spin mr-1.5" /> Calling Groq Llama 3.3…
-              </>
-            ) : (
-              <>
-                <Sparkles className="size-3.5 mr-1.5" /> Run Groq Live Report
-              </>
-            )}
-          </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={() => setLocationModalOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors">
+            <Compass className="size-3.5 text-primary" />{location.autoDetected ? "GPS" : "Manual"} · {location.latitude.toFixed(2)}°N
+          </button>
+          <button onClick={() => setAuthModalOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition-colors">
+            <User className="size-3.5" />{profile.role}
+          </button>
+          <Link to="/grid" className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors">
+            <Zap className="size-3.5" />Live Grid
+          </Link>
         </div>
       </div>
 
-      {/* =========================================================================
-          HERO DASHBOARD SECTION (Directly Inspired by User Reference Layout)
-         ========================================================================= */}
-      <div className="mt-8 rounded-[2.5rem] border border-border/80 bg-card p-6 sm:p-10 shadow-sm">
-        <div className="grid gap-10 lg:grid-cols-12 lg:items-start">
-          {/* Left Column: Editorial Headline, Kicker, Narrative & Horizontal Stats Bar */}
-          <div className="lg:col-span-7 flex flex-col justify-between">
+      {/* ── 4 KPI Cards ── */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 mb-5">
+        <div className="rounded-xl border border-border/60 bg-card p-4">
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-mono">Fleet Health</p>
+          <div className="mt-2 flex items-end justify-between">
+            <p className="font-mono text-2xl font-bold text-emerald-400">{fleetHealth}%</p>
+            <span className="text-[10px] font-semibold text-emerald-500 flex items-center gap-0.5"><TrendingUp className="size-3" />Model 1</span>
+          </div>
+          <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${fleetHealth}%` }} />
+          </div>
+          <p className="mt-1.5 text-[10px] text-muted-foreground">Avg Health Index: {avgHI.toFixed(1)}</p>
+        </div>
+
+        <div className="rounded-xl border border-red-500/30 bg-red-500/[0.04] p-4">
+          <p className="text-[10px] uppercase tracking-widest text-red-400 font-mono">High-Risk Assets</p>
+          <div className="mt-2 flex items-end justify-between">
+            <p className="font-mono text-2xl font-bold text-red-400">{String(criticalCount).padStart(2, "0")}</p>
+            <span className="text-[10px] font-semibold text-amber-500 flex items-center gap-0.5"><AlertTriangle className="size-3" />{watchCount} Watch</span>
+          </div>
+          <div className="mt-2.5 flex gap-1">
+            {displayAssets.filter(a => a.riskScore >= 70).slice(0, 4).map(a => (
+              <span key={a.id} className="rounded bg-red-500/20 px-1.5 py-0.5 font-mono text-[9px] font-bold text-red-400">{a.id}</span>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[10px] text-red-400/80">Requires immediate dispatch</p>
+        </div>
+
+        <div className="rounded-xl border border-border/60 bg-card p-4">
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-mono">Grid Risk Index</p>
+          <div className="mt-2 flex items-end justify-between">
+            <p className={`font-mono text-2xl font-bold ${getRiskColor(avgRiskScore)}`}>{avgRiskScore}<span className="text-sm font-normal text-muted-foreground">/100</span></p>
+            <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 border ${getRiskBg(avgRiskScore)} ${getRiskColor(avgRiskScore)}`}>
+              {avgRiskScore >= 70 ? "HIGH" : avgRiskScore >= 40 ? "MODERATE" : "LOW"}
+            </span>
+          </div>
+          <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+            <div className={`h-full rounded-full ${avgRiskScore >= 70 ? "bg-red-500" : avgRiskScore >= 40 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${avgRiskScore}%` }} />
+          </div>
+          <p className="mt-1.5 text-[10px] text-muted-foreground">Composite infrastructure risk</p>
+        </div>
+
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.04] p-4">
+          <p className="text-[10px] uppercase tracking-widest text-amber-400 font-mono">RUL &lt; 40 Days</p>
+          <div className="mt-2 flex items-end justify-between">
+            <p className="font-mono text-2xl font-bold text-amber-400">{String(predictedFailures).padStart(2, "0")}</p>
+            <span className="text-[10px] font-semibold text-muted-foreground flex items-center gap-0.5"><Clock className="size-3" />within 40d</span>
+          </div>
+          <div className="mt-2.5 flex gap-1">
+            {displayAssets.filter(a => a.rul < 40).slice(0, 3).map(a => (
+              <span key={a.id} className="rounded bg-amber-500/15 px-1.5 py-0.5 font-mono text-[9px] font-bold text-amber-400">{a.id}</span>
+            ))}
+          </div>
+          <p className="mt-1.5 text-[10px] text-amber-400/80">Predictive decay model (Model 1)</p>
+        </div>
+      </div>
+
+      {/* ── Main: Chart + Critical Asset ── */}
+      <div className="grid gap-4 lg:grid-cols-3 mb-4">
+        <div className="lg:col-span-2 rounded-xl border border-border/60 bg-card p-5">
+          <div className="mb-4 flex items-center justify-between">
             <div>
-              <div className="flex items-center gap-3">
-                <span className="h-0.5 w-6 bg-signal" />
-                <span className="text-[11px] font-mono font-bold uppercase tracking-widest text-signal">
-                  PREDICTIVE GRID INTELLIGENCE · {profile.zone.split("·")[0].toUpperCase()}
-                </span>
-              </div>
-
-              <h2 className="mt-4 font-sans text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-                The Grid,<br />
-                <span className="font-display font-normal italic text-signal">Protected.</span>
-              </h2>
-
-              <p className="mt-4 max-w-xl text-xs leading-relaxed text-muted-foreground sm:text-sm">
-                VOLTRA unites Kaggle-trained machine learning foresight — Health Index regression (R²=0.72) and DGA Fault classification (90.8% accuracy) — with live Open-Meteo ambient telemetry to turn catastrophic transformer failures into scheduled, low-cost maintenance interventions.
-              </p>
+              <h2 className="text-sm font-semibold text-foreground">Asset Risk Overview</h2>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Composite risk score per transformer (0–100) · Model 1 + Model 2</p>
             </div>
-
-            {/* Horizontal Stats Bar (100% Real Data) */}
-            <div className="mt-10 rounded-2xl border border-border/70 bg-muted/40 p-4 sm:p-5">
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                <div className="border-r border-border/60 pr-3">
-                  <p className="font-mono text-2xl font-bold text-foreground sm:text-3xl">90.8<small className="text-sm">%</small></p>
-                  <p className="mt-1 text-[11px] text-muted-foreground font-semibold">DGA Accuracy</p>
-                </div>
-                <div className="border-r border-border/60 pr-3">
-                  <p className="font-mono text-2xl font-bold text-foreground sm:text-3xl">0.72<small className="text-sm font-sans font-bold"> R²</small></p>
-                  <p className="mt-1 text-[11px] text-muted-foreground font-semibold">Health Index</p>
-                </div>
-                <div className="border-r border-border/60 pr-3">
-                  <p className="font-mono text-2xl font-bold text-signal sm:text-3xl">
-                    {liveWeather.temperature_c.toFixed(1)}<small className="text-sm">°C</small>
-                  </p>
-                  <p className="mt-1 text-[11px] text-muted-foreground font-semibold">Live Ambient (Open-Meteo)</p>
-                </div>
-                <div>
-                  <p className="font-mono text-2xl font-bold text-foreground sm:text-3xl">545<small className="text-sm"> MVA</small></p>
-                  <p className="mt-1 text-[11px] text-muted-foreground font-semibold">18 Monitored Fleet</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Live Status & Quick Action Buttons */}
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <Button
-                asChild
-                className="pill bg-signal px-6 text-xs font-semibold text-signal-foreground hover:bg-signal/90 shadow-sm"
-              >
-                <Link to="/grid">
-                  Open 18-Asset Fleet View <ArrowRight className="ml-1.5 size-3.5" />
-                </Link>
-              </Button>
-
-              <div className="flex items-center gap-2 rounded-full border border-border/70 bg-card px-3 py-1.5 text-xs font-mono">
-                <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-muted-foreground">FastAPI :8000 Synced</span>
-              </div>
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1 text-[9px] font-mono text-muted-foreground"><span className="size-2 rounded-full bg-red-500" />Critical</span>
+              <span className="flex items-center gap-1 text-[9px] font-mono text-muted-foreground"><span className="size-2 rounded-full bg-amber-500" />Watch</span>
+              <span className="flex items-center gap-1 text-[9px] font-mono text-muted-foreground"><span className="size-2 rounded-full bg-emerald-500" />Healthy</span>
             </div>
           </div>
+          <div className="h-52 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData} margin={{ top: 4, right: 4, left: -24, bottom: 0 }}>
+                <CartesianGrid stroke="hsl(var(--border))" vertical={false} opacity={0.4} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", borderColor: "hsl(var(--border))", borderRadius: "0.5rem", fontSize: "0.7rem" }} formatter={(v: any) => [v, "Risk Score"]} />
+                <Bar dataKey="risk" radius={[3, 3, 0, 0]}>
+                  {chartData.map((e, i) => <Cell key={i} fill={e.risk >= 70 ? "#ef4444" : e.risk >= 40 ? "#f59e0b" : "#10b981"} fillOpacity={0.85} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-3 flex items-center gap-2 border-t border-border/40 pt-3">
+            <div className="flex-1 h-px border-t border-dashed border-red-500/40" />
+            <span className="text-[9px] font-mono text-red-400/60 whitespace-nowrap">Critical Risk Threshold (70)</span>
+            <div className="flex-1 h-px border-t border-dashed border-red-500/40" />
+          </div>
+        </div>
 
-          {/* Right Column: Groq-Generated Prioritized Action Cards */}
-          <div className="lg:col-span-5 space-y-3.5">
-            <div className="flex items-center justify-between pb-1">
-              <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground font-bold">
-                Groq Live Directives ({groqReport.provider})
-              </p>
-              <span className="text-[11px] font-mono text-signal">{targetAsset.id}</span>
-            </div>
-
-            {groqReport.recommended_actions.map((item, idx) => (
-              <div
-                key={idx}
-                className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 shadow-sm transition-all hover:border-signal/40 hover:scale-[1.01]"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-bold text-muted-foreground">0{idx + 1}</span>
-                  <span
-                    className={`pill rounded-full px-2.5 py-0.5 text-[10px] font-mono font-bold ${
-                      item.priority === "HIGH"
-                        ? "bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30"
-                        : item.priority === "MEDIUM"
-                        ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30"
-                        : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30"
-                    }`}
-                  >
-                    {item.priority} PRIORITY
+        <div className="rounded-xl border border-red-500/30 bg-card p-5 flex flex-col">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-foreground">Critical Asset Alert</h2>
+            <span className="relative flex size-2"><span className="absolute animate-ping size-full rounded-full bg-red-400 opacity-75" /><span className="relative size-2 rounded-full bg-red-500" /></span>
+          </div>
+          {topCriticalAsset && (
+            <div className="flex flex-col flex-1">
+              <div className="rounded-lg border border-red-500/20 bg-red-500/[0.04] p-3 mb-3">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-mono text-xs font-bold text-foreground">{topCriticalAsset.id}</span>
+                  <span className={`text-[10px] font-semibold rounded-full px-2 py-0.5 border ${getRiskBg(topCriticalAsset.riskScore)} ${getRiskColor(topCriticalAsset.riskScore)}`}>
+                    {getRiskLabel(topCriticalAsset.riskScore).toUpperCase()}
                   </span>
                 </div>
-
-                <h3 className="mt-2 font-sans text-sm font-bold text-foreground">
-                  {item.action}
-                </h3>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  {item.impact} · <strong className="text-foreground">{item.timeline}</strong>
+                <p className="text-[11px] text-muted-foreground truncate">{topCriticalAsset.substation}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                {[
+                  { label: "Health Index", value: topCriticalAsset.hi.toFixed(1), unit: "HI", danger: topCriticalAsset.hi > 50 },
+                  { label: "Remaining Life", value: String(topCriticalAsset.rul), unit: "days", danger: topCriticalAsset.rul < 40 },
+                  { label: "Core Temp", value: `${topCriticalAsset.coreTempC}°C`, unit: "", danger: topCriticalAsset.coreTempC > 75 },
+                  { label: "Fault Class", value: `IEC ${topCriticalAsset.faultType}`, unit: "", danger: topCriticalAsset.faultType !== "NF" },
+                ].map(({ label, value, unit, danger }) => (
+                  <div key={label} className="rounded-lg bg-muted/40 p-2.5">
+                    <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-mono">{label}</p>
+                    <p className={`mt-0.5 font-mono text-sm font-bold ${danger ? "text-red-400" : "text-foreground"}`}>
+                      {value}{unit && <span className="text-[10px] font-normal text-muted-foreground ml-1">{unit}</span>}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="rounded-lg border border-amber-500/25 bg-amber-500/[0.06] p-3 mb-3">
+                <p className="text-[9px] uppercase tracking-widest text-amber-400 font-mono mb-1">Recommended Action</p>
+                <p className="text-xs font-semibold text-foreground">
+                  {topCriticalAsset.riskScore >= 70 ? "Prepare Immediate Curtailment" : "Schedule Priority Inspection"}
                 </p>
+                <p className="mt-0.5 text-[10px] text-muted-foreground leading-relaxed">
+                  {topCriticalAsset.riskScore >= 70
+                    ? "Elevated thermal and electrical stress. Asset becomes critical under peak load."
+                    : "Health index trending upward. Preventive maintenance recommended this cycle."}
+                </p>
+              </div>
+              <Link to="/grid" className="mt-auto inline-flex items-center justify-center gap-1.5 rounded-lg border border-border/60 bg-muted/50 px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition-colors">
+                View Asset in Grid <ArrowRight className="size-3.5" />
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Row 2: Weather + Fleet Table ── */}
+      <div className="grid gap-4 lg:grid-cols-3 mb-4">
+        <div className="rounded-xl border border-border/60 bg-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-foreground">Ambient Conditions</h2>
+            <span className="text-[9px] font-mono text-muted-foreground border border-border/50 rounded px-1.5 py-0.5">Open-Meteo</span>
+          </div>
+          <div className="space-y-3">
+            {[
+              { label: "Ambient Temp", value: `${liveWeather.temperature_c.toFixed(1)}°C`, pct: Math.min(100, (liveWeather.temperature_c / 50) * 100), danger: liveWeather.temperature_c > 38, warn: liveWeather.temperature_c > 32 },
+              { label: "Humidity", value: `${liveWeather.humidity_pct.toFixed(0)}%`, pct: liveWeather.humidity_pct, danger: false, warn: liveWeather.humidity_pct > 75, blue: true },
+              { label: "Thermal Stress Index", value: `${liveWeather.thermal_stress_pct.toFixed(0)}%`, pct: Math.min(100, liveWeather.thermal_stress_pct), danger: liveWeather.thermal_stress_pct > 40, warn: true },
+            ].map(({ label, value, pct, danger, warn, blue }) => (
+              <div key={label}>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-mono">{label}</p>
+                  <p className={`font-mono text-base font-bold ${danger ? "text-red-400" : warn ? "text-amber-400" : "text-foreground"}`}>{value}</p>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div className={`h-full rounded-full ${blue ? "bg-blue-500/60" : danger ? "bg-red-500" : warn ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${pct}%` }} />
+                </div>
               </div>
             ))}
           </div>
+          <div className="mt-4 rounded-lg bg-muted/40 p-3 border border-border/40">
+            <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-mono mb-1">Fleet Impact</p>
+            <p className="text-[11px] text-foreground/80 leading-snug">
+              {liveWeather.temperature_c > 36
+                ? `At ${liveWeather.temperature_c.toFixed(1)}°C, top-oil temps rise ~${((liveWeather.temperature_c - 25) * 1.4).toFixed(0)}°C under peak load. Monitor ${criticalCount} high-risk assets.`
+                : `Ambient at ${liveWeather.temperature_c.toFixed(1)}°C — within safe margins. Standard monitoring applies.`}
+            </p>
+          </div>
+          <button onClick={() => setLocationModalOpen(true)} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-2 text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-colors">
+            <Compass className="size-3" />Update Location
+          </button>
+        </div>
+
+        <div className="lg:col-span-2 rounded-xl border border-border/60 bg-card overflow-hidden">
+          <div className="flex items-center justify-between border-b border-border/50 px-5 py-4">
+            <div>
+              <h2 className="text-sm font-semibold text-foreground">Asset Risk Matrix</h2>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Ranked by composite score · {displayAssets.length} assets</p>
+            </div>
+            <Link to="/grid" className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline">
+              Full Grid <ChevronRight className="size-3.5" />
+            </Link>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border/40 bg-muted/20">
+                  {["Asset", "Substation", "Health Index", "Risk Score", "RUL", "Status"].map(h => (
+                    <th key={h} className={`py-2.5 px-4 text-left text-[9px] uppercase tracking-widest text-muted-foreground font-mono font-semibold ${h === "Substation" ? "hidden sm:table-cell" : h === "RUL" ? "hidden md:table-cell" : ""}`}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/30">
+                {displayAssets.map((asset) => (
+                  <tr key={asset.id} className="hover:bg-muted/20 transition-colors cursor-pointer">
+                    <td className="py-3 px-4">
+                      <div className="font-mono font-bold text-foreground">{asset.id}</div>
+                      <div className="text-[10px] text-muted-foreground">{asset.voltageKv} kV · {asset.faultType}</div>
+                    </td>
+                    <td className="py-3 px-4 text-muted-foreground hidden sm:table-cell text-[11px] max-w-[110px] truncate">{asset.substation}</td>
+                    <td className="py-3 px-4">
+                      <span className={`font-mono font-bold text-sm ${asset.hi > 50 ? "text-red-400" : asset.hi > 30 ? "text-amber-400" : "text-emerald-400"}`}>{asset.hi.toFixed(1)}</span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-12 h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div className={`h-full rounded-full ${asset.riskScore >= 70 ? "bg-red-500" : asset.riskScore >= 40 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${asset.riskScore}%` }} />
+                        </div>
+                        <span className="font-mono text-[11px] text-foreground">{asset.riskScore}</span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 font-mono text-[11px] hidden md:table-cell">
+                      <span className={asset.rul < 40 ? "text-red-400 font-bold" : "text-foreground"}>{asset.rul}d</span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-semibold border ${getRiskBg(asset.riskScore)} ${getRiskColor(asset.riskScore)}`}>
+                        {asset.riskScore >= 70 && <span className="relative flex size-1.5"><span className="absolute animate-ping size-full rounded-full bg-red-400 opacity-75" /><span className="relative size-1.5 rounded-full bg-red-400" /></span>}
+                        {getRiskLabel(asset.riskScore)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      {/* =========================================================================
-          REAL TELEMETRY & LIVE WEATHER SECTION (NO DUMMY / SEEDED DATA)
-         ========================================================================= */}
-      <div className="mt-8 grid gap-8 lg:grid-cols-12">
-        {/* Left 7 Cols: Real Open-Meteo 24-Hour Hourly Temperature Curve */}
-        <div className="lg:col-span-7 rounded-3xl border border-border/80 bg-card p-6 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div>
-              <h3 className="font-sans text-base font-bold text-foreground">
-                Live 24-Hour Regional Ambient Temperature Curve
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Sourced from Open-Meteo REST API for {location.latitude}°N, {location.longitude}°E
-              </p>
-            </div>
-            <span className="pill bg-muted px-2.5 py-1 text-[11px] font-mono text-muted-foreground border border-border/70 self-start sm:self-auto">
-              Real-time API Sync
-            </span>
+      {/* ── Row 3: Incidents + Security + AI Recs ── */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mb-5">
+        <div className="rounded-xl border border-border/60 bg-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-foreground">Community & Field Incidents</h2>
+            <span className="text-[9px] font-mono text-muted-foreground border border-border/50 rounded px-1.5 py-0.5">{incidents.length} recent</span>
           </div>
-
-          <div className="mt-6 h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={liveWeather.forecast_24h}>
-                <defs>
-                  <linearGradient id="tempGlow" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--color-signal)" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="var(--color-signal)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="var(--color-border)" vertical={false} opacity={0.6} />
-                <XAxis
-                  dataKey="time"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
-                />
-                <YAxis
-                  domain={["auto", "auto"]}
-                  axisLine={false}
-                  tickLine={false}
-                  unit="°C"
-                  tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "var(--color-card)",
-                    borderColor: "var(--color-border)",
-                    borderRadius: "0.75rem",
-                    fontSize: "0.75rem",
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="temp"
-                  name="Ambient Temp (°C)"
-                  stroke="var(--color-signal)"
-                  strokeWidth={2}
-                  fill="url(#tempGlow)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="mt-4 grid grid-cols-3 gap-3 pt-4 border-t border-border/60 text-xs font-mono">
-            <div>
-              <span className="text-muted-foreground">Relative Humidity</span>
-              <p className="font-bold text-foreground text-sm">{liveWeather.humidity_pct.toFixed(0)}%</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Thermal Stress Multiplier</span>
-              <p className="font-bold text-amber-600 dark:text-amber-400 text-sm">+{liveWeather.thermal_stress_pct}%</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Cooling Efficiency</span>
-              <p className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">{liveWeather.cooling_efficiency_pct}%</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Right 5 Cols: Past Ground Hazards Search & Active Risk Multiplier */}
-        <div className="lg:col-span-5 rounded-3xl border border-border/80 bg-card p-6 shadow-sm flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-sans text-base font-bold text-foreground">
-                  Past Ground Hazards & Incident Search
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  Queried from auditable <code className="font-mono text-[11px]">user_reported_events.csv</code>
-                </p>
-              </div>
-              <span className="pill bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30 px-2.5 py-0.5 text-xs font-mono font-bold">
-                {activeRiskMultiplier.toFixed(2)}× Multiplier
-              </span>
-            </div>
-
-            {/* Search Input */}
-            <form onSubmit={handleSearchEvents} className="mt-4 flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
-                <input
-                  type="text"
-                  value={eventQuery}
-                  onChange={(e) => setEventQuery(e.target.value)}
-                  placeholder="Search excavation, lightning, fan failure..."
-                  className="w-full rounded-xl border border-border/70 bg-background pl-8 pr-3 py-2 text-xs text-foreground outline-none focus:ring-1 focus:ring-signal"
-                />
-              </div>
-              <Button type="submit" size="sm" className="pill bg-primary text-xs font-semibold text-primary-foreground">
-                Search
-              </Button>
-            </form>
-
-            {/* Event List */}
-            <div className="mt-4 space-y-2.5 max-h-64 overflow-y-auto pr-1">
-              {eventResults.map((evt, idx) => (
-                <div
-                  key={evt.incident_id || idx}
-                  className="rounded-xl border border-border/60 bg-muted/30 p-3 text-xs"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono font-bold text-foreground">{evt.incident_id}</span>
-                    <span className="pill rounded-full bg-background px-2 py-0.5 text-[10px] font-mono font-bold text-amber-600 dark:text-amber-400">
-                      {evt.risk_multiplier}× {evt.category}
-                    </span>
+          {incidents.length > 0 ? (
+            <div className="space-y-3">
+              {incidents.map((inc, i) => (
+                <div key={inc.incident_id || i} className="rounded-lg border border-border/40 bg-muted/20 p-3">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <p className="text-xs font-semibold text-foreground leading-snug line-clamp-2">{inc.event_description}</p>
+                    <span className="shrink-0 text-[9px] font-mono text-muted-foreground">{inc.received_at?.slice(11, 16) || "—"}</span>
                   </div>
-                  <p className="mt-1.5 text-xs leading-relaxed text-foreground/90 font-medium">
-                    {evt.event_description}
-                  </p>
-                  <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground font-mono">
-                    <span>{evt.zone_name}</span>
-                    <span>{evt.received_at?.split("T")[0] || "Logged"}</span>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="size-3 text-muted-foreground shrink-0" />
+                    <span className="text-[10px] text-muted-foreground truncate">{inc.zone_name}</span>
+                    <span className={`ml-auto text-[9px] font-mono font-semibold rounded px-1.5 py-0.5 ${inc.category === "grid_incident" ? "bg-red-500/15 text-red-400" : inc.category === "excavation" ? "bg-amber-500/15 text-amber-400" : "bg-muted text-muted-foreground"}`}>
+                      {inc.category?.replace("_", " ") || "field report"}
+                    </span>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <CheckCircle2 className="size-8 text-emerald-400/50 mb-2" />
+              <p className="text-xs text-muted-foreground">No recent incidents</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Your zone is clear</p>
+            </div>
+          )}
+          <Link to="/grid" className="mt-3 w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-2 text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-colors">
+            <ShieldAlert className="size-3" />Report Ground Hazard
+          </Link>
+        </div>
 
-          <p className="mt-4 text-[11px] text-muted-foreground border-t border-border/60 pt-3">
-            Reports adjust the composite impact formula in real time while respecting IEEE sensor ground truth.
-          </p>
+        <div className="rounded-xl border border-emerald-500/20 bg-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-foreground">AI Input Security</h2>
+            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-mono font-semibold text-emerald-400">
+              <span className="size-1.5 rounded-full bg-emerald-500" />Protected
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            {[
+              { label: "Processed", value: securityStats.processed, color: "text-foreground" },
+              { label: "Verified", value: securityStats.verified, color: "text-emerald-400" },
+              { label: "Quarantined", value: securityStats.quarantined, color: "text-amber-400" },
+              { label: "Blocked", value: securityStats.blocked, color: "text-red-400" },
+            ].map(({ label, value, color }) => (
+              <div key={label} className="rounded-lg bg-muted/40 p-2.5">
+                <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-mono">{label}</p>
+                <p className={`mt-0.5 font-mono text-lg font-bold ${color}`}>{value}</p>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-2">
+            {["Deterministic Input Filter", "Decision Model Isolation", "Audit Logging"].map(label => (
+              <div key={label} className="flex items-center justify-between rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
+                <span className="text-[11px] text-muted-foreground">{label}</span>
+                <span className="text-[9px] font-mono font-bold text-emerald-400">ACTIVE</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 rounded-lg bg-muted/30 border border-border/40 px-3 py-2">
+            <p className="text-[9px] font-mono text-muted-foreground">POST /events/report</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Injection filter active on all field-submitted reports</p>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border/60 bg-card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-foreground">AI Recommendations</h2>
+            <BrainCircuit className="size-4 text-primary" />
+          </div>
+          <div className="space-y-3">
+            {recommendations.map((rec: any) => (
+              <div key={rec.rank} className="rounded-lg border border-border/40 bg-muted/20 p-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] font-bold text-muted-foreground">{rec.rank}</span>
+                    <span className="font-mono text-xs font-bold text-foreground">{rec.asset}</span>
+                  </div>
+                  <span className={`text-[9px] font-mono font-semibold rounded px-1.5 py-0.5 border ${rec.priority === "HIGH" ? "border-red-500/30 bg-red-500/10 text-red-400" : rec.priority === "MEDIUM" ? "border-amber-500/30 bg-amber-500/10 text-amber-400" : "border-border/40 text-muted-foreground"}`}>
+                    {rec.priority}
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">{rec.action}</p>
+                <div className="mt-2 flex items-center justify-between">
+                  <p className="text-[9px] font-mono text-muted-foreground">Confidence: {rec.confidence}%</p>
+                  <div className="w-16 h-1 rounded-full bg-muted overflow-hidden">
+                    <div className="h-full rounded-full bg-primary" style={{ width: `${rec.confidence}%` }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <Link to="/predict" className="mt-4 w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors">
+            <Activity className="size-3.5" />Run ML Prediction
+          </Link>
         </div>
       </div>
 
-      {/* Modals */}
-      <AuthModal
-        open={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
-        onSuccess={(newProf) => setProfile(newProf)}
-      />
+      {/* ── Model Info Bar ── */}
+      <div className="rounded-xl border border-border/40 bg-muted/20 px-4 py-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+        <div className="flex items-center gap-2">
+          <BrainCircuit className="size-3.5 text-primary" />
+          <span className="text-[11px] font-semibold text-foreground">VOLTRA ML Stack</span>
+        </div>
+        {[
+          ["Model 1", "Health Index Regression · R² 0.72 · RandomForest"],
+          ["Model 2", "DGA Fault Classifier · 90.8% acc · RandomForest"],
+          ["Dataset", "Kaggle transformer dataset · Day 89 snapshot · 18 assets"],
+          ["Pipeline", "score → rank → plan · 5-factor composite score"],
+        ].map(([name, detail]) => (
+          <div key={name} className="flex items-center gap-1.5">
+            <span className="size-1.5 rounded-full bg-emerald-500 shrink-0" />
+            <span className="text-[10px] text-muted-foreground"><span className="font-semibold text-foreground">{name}: </span>{detail}</span>
+          </div>
+        ))}
+      </div>
 
-      <LocationPromptModal
-        open={locationModalOpen}
-        onClose={() => setLocationModalOpen(false)}
-        onLocationSelected={(newLoc) => setLocation(newLoc)}
-      />
+      <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} onSuccess={(p) => setProfile(p)} />
+      <LocationPromptModal open={locationModalOpen} onClose={() => setLocationModalOpen(false)} onLocationSelected={(loc) => setLocation(loc)} />
     </div>
   );
 }

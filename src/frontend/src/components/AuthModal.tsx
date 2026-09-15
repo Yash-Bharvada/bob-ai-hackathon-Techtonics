@@ -36,7 +36,7 @@ export function AuthModal({ open, onClose, onSuccess }: AuthModalProps) {
         : "Borsad Rural Interconnect",
     };
 
-    authSession.saveProfile(profile);
+    authSession.login(profile);
     toast.success(isRegister ? "Operator account created!" : "Signed in to Regional Console");
     if (onSuccess) onSuccess(profile);
     onClose();

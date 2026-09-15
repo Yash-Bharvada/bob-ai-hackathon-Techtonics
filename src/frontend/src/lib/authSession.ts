@@ -1,6 +1,12 @@
 /**
  * authSession.ts
- * Manages user operator sessions, location state, and localStorage persistence.
+ * Manages authenticated operator sessions with localStorage persistence.
+ *
+ * MongoDB-ready architecture:
+ *   - sessionToken field reserved for a real JWT/session token from MongoDB Atlas Auth
+ *   - All read/write functions are synchronous localStorage stubs that can be swapped
+ *     for async API calls when MongoDB is integrated.
+ *   - The shape of OperatorSession mirrors a MongoDB "sessions" collection document.
  */
 
 export interface OperatorProfile {
@@ -9,6 +15,14 @@ export interface OperatorProfile {
   role: string;
   zone: string;
   substation: string;
+}
+
+export interface OperatorSession {
+  profile: OperatorProfile;
+  /** Reserved for MongoDB JWT token — populated by backend login endpoint when integrated */
+  sessionToken: string | null;
+  /** ISO timestamp of last sign-in */
+  signedInAt: string;
 }
 
 export interface UserLocationState {
@@ -20,16 +34,8 @@ export interface UserLocationState {
   timestamp: string;
 }
 
-const STORAGE_KEY_USER = "voltra_operator_profile";
-const STORAGE_KEY_LOC = "voltra_user_location";
-
-const DEFAULT_PROFILE: OperatorProfile = {
-  name: "Operator Dev",
-  email: "operator@anand-grid.gov.in",
-  role: "Regional Dispatch Engineer",
-  zone: "Zone-B · Industrial",
-  substation: "GIDC Industrial Phase-2",
-};
+const STORAGE_KEY_SESSION = "voltra_operator_session";
+const STORAGE_KEY_LOC     = "voltra_user_location";
 
 const DEFAULT_LOCATION: UserLocationState = {
   latitude: 22.5645,
@@ -41,30 +47,70 @@ const DEFAULT_LOCATION: UserLocationState = {
 };
 
 export const authSession = {
-  getProfile(): OperatorProfile {
-    if (typeof window === "undefined") return DEFAULT_PROFILE;
+  // ─── Session ──────────────────────────────────────────────────────────────
+
+  /**
+   * Returns true only when a valid session exists in localStorage.
+   * After MongoDB integration: also validate the JWT expiry.
+   */
+  isAuthenticated(): boolean {
+    if (typeof window === "undefined") return false;
     try {
-      const stored = localStorage.getItem(STORAGE_KEY_USER);
-      return stored ? JSON.parse(stored) : DEFAULT_PROFILE;
+      const raw = localStorage.getItem(STORAGE_KEY_SESSION);
+      if (!raw) return false;
+      const session: OperatorSession = JSON.parse(raw);
+      return !!session?.profile?.email;
     } catch {
-      return DEFAULT_PROFILE;
+      return false;
     }
   },
 
-  saveProfile(profile: OperatorProfile): void {
+  /**
+   * Retrieve the active session, or null if not signed in.
+   */
+  getSession(): OperatorSession | null {
+    if (typeof window === "undefined") return null;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_SESSION);
+      if (!raw) return null;
+      return JSON.parse(raw) as OperatorSession;
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Convenience: get just the OperatorProfile from the active session.
+   */
+  getProfile(): OperatorProfile | null {
+    return this.getSession()?.profile ?? null;
+  },
+
+  /**
+   * Persist a new session after successful login.
+   * When MongoDB is integrated: call the backend /api/auth/login endpoint,
+   * receive a JWT, and store it in sessionToken.
+   */
+  login(profile: OperatorProfile): void {
     if (typeof window === "undefined") return;
-    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(profile));
+    const session: OperatorSession = {
+      profile,
+      sessionToken: null, // TODO: populate from MongoDB /api/auth/login response
+      signedInAt: new Date().toISOString(),
+    };
+    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session));
   },
 
-  isLoggedIn(): boolean {
-    if (typeof window === "undefined") return false;
-    return !!localStorage.getItem(STORAGE_KEY_USER);
-  },
-
+  /**
+   * Clear the active session (sign out).
+   * When MongoDB is integrated: also call /api/auth/logout to revoke the token.
+   */
   logout(): void {
     if (typeof window === "undefined") return;
-    localStorage.removeItem(STORAGE_KEY_USER);
+    localStorage.removeItem(STORAGE_KEY_SESSION);
   },
+
+  // ─── Location ─────────────────────────────────────────────────────────────
 
   getLocation(): UserLocationState {
     if (typeof window === "undefined") return DEFAULT_LOCATION;
@@ -87,7 +133,6 @@ export const authSession = {
         reject(new Error("Geolocation is not supported by your browser"));
         return;
       }
-
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const loc: UserLocationState = {
@@ -101,9 +146,7 @@ export const authSession = {
           this.saveLocation(loc);
           resolve(loc);
         },
-        (err) => {
-          reject(err);
-        },
+        (err) => reject(err),
         { timeout: 10000, enableHighAccuracy: true }
       );
     });
