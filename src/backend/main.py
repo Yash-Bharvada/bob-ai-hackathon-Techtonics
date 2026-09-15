@@ -42,7 +42,7 @@ if str(SRC_DIR) not in sys.path:
 
 import httpx
 import pandas as pd
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -584,25 +584,53 @@ async def score_csv_upload(file: UploadFile = File(...)):
 
 
 # ---------------------------------------------------------------------------
-# Production Single-Container SPA Serving (Railway / Docker deployment)
+# Production Single-Container SSR/SPA Serving (Railway / Docker deployment)
 # ---------------------------------------------------------------------------
 FRONTEND_DIST = SRC_DIR / "frontend" / ".output" / "public"
+NITRO_URL = "http://127.0.0.1:3000"
+
 if FRONTEND_DIST.exists():
     assets_dir = FRONTEND_DIST / "assets"
     if assets_dir.exists():
         app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
 
-    @app.get("/{full_path:path}", include_in_schema=False)
-    async def serve_spa(full_path: str):
-        if full_path.startswith("api/") or full_path.startswith("events/"):
-            raise HTTPException(status_code=404, detail="API endpoint not found")
+@app.api_route("/{full_path:path}", methods=["GET", "POST", "HEAD"], include_in_schema=False)
+async def serve_frontend(request: Request, full_path: str):
+    # Never intercept backend API routes
+    if full_path.startswith("api/") or full_path.startswith("events/") or full_path in ("health", "docs", "openapi.json"):
+        raise HTTPException(status_code=404, detail="API route not found")
+
+    # If it's a static file in public, serve directly
+    if FRONTEND_DIST.exists() and full_path:
         target = FRONTEND_DIST / full_path
         if target.is_file():
             return FileResponse(target)
-        index_file = FRONTEND_DIST / "index.html"
-        if index_file.exists():
-            return FileResponse(index_file)
-        raise HTTPException(status_code=404, detail="Page not found")
+
+    # Proxy to Nitro SSR server on 127.0.0.1:3000
+    target_url = f"{NITRO_URL}/{full_path}"
+    if request.url.query:
+        target_url += f"?{request.url.query}"
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            headers = {k: v for k, v in request.headers.items() if k.lower() not in ("host", "content-length")}
+            body = await request.body()
+            rp_resp = await client.request(
+                method=request.method,
+                url=target_url,
+                headers=headers,
+                content=body,
+                follow_redirects=True,
+            )
+            resp_headers = {k: v for k, v in rp_resp.headers.items() if k.lower() not in ("content-length", "content-encoding", "transfer-encoding")}
+            return StreamingResponse(
+                rp_resp.aiter_bytes(),
+                status_code=rp_resp.status_code,
+                headers=resp_headers,
+                media_type=rp_resp.headers.get("content-type"),
+            )
+    except Exception:
+        raise HTTPException(status_code=503, detail="Frontend SSR initializing...")
 
 
 # ---------------------------------------------------------------------------
