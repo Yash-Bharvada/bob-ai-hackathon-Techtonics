@@ -1,6 +1,6 @@
 # Pitch Deck Blueprint: Grid Risk Advisor (VOLTRA)
 **Team:** Techtonics  
-**Track:** AI · Utilities Sector  
+**Track:** U1 · Utilities Sector
 **Event:** IBM Bob AI Hackathon  
 
 ---
@@ -11,10 +11,10 @@
 ### 🎨 Visual Layout & Concept
 * **Background:** Deep dark ink canvas (`#060d1f`) with a subtle electric lime glow (`#a3e635`).
 * **Main Visual:** High-tech transmission line hero graphic beside a glowing substation node.
-* **Top Pill Badge:** `⚡ IBM BOB HACKATHON · AI TRACK (UTILITIES)`
+* **Top Pill Badge:** `⚡ IBM BOB HACKATHON · TRACK U1 (UTILITIES)`
 * **Headline:** **Grid Risk Advisor**
 * **Subtitle:** Predictive Equipment Failure Advisory & Outage Prevention
-* **Footer Metadata:** Team Techtonics | Om Rashiya & Yash Bhaskar | Powered by IBM Bob & Kaggle ML
+* **Footer Metadata:** Team Techtonics | Om Rashiya · Yash Bharvada · Nikunj Desai · Purva Shah | Powered by IBM Bob & Kaggle ML
 
 ### 📝 On-Slide Content
 * **Platform:** VOLTRA Neural Grid Intelligence Engine
@@ -201,19 +201,22 @@
 
 ### 📝 On-Slide Content
 * **Team Techtonics:**
-  * **Om Rashiya:** Full-Stack & Systems Architecture, VOLTRA React/TypeScript Console, API Integration & Security Pipeline.
-  * **Yash Bhaskar (Lead):** Machine Learning Pipeline, Health Index & DGA Model Training, Composite Ranking & IBM Bob Grounding.
+  * **Om Rashiya (Team Lead):** Full-Stack Architecture, VOLTRA React/TypeScript Console, FastAPI Backend, Security Pipeline.
+  * **Yash Bharvada:** Python ML Pipeline, Health Index & DGA Model Training, IBM Bob & Groq Integration.
+  * **Nikunj Desai:** Frontend Polish, Mobile Responsiveness, VOLTRA UI/UX refinement.
+  * **Purva Shah:** Documentation, Architecture Design, Presentation, End-to-End Testing.
 
 * **Complete Hackathon Deliverables (`submission.yaml`):**
-  * `src/models/`: Dual trained `.pkl` models (Health Index + 25MB DGA Fault Classifier).
-  * `src/backend/`: FastAPI server with 9 live endpoints and IBM Bob integration.
-  * `verdant-market-ai/`: VOLTRA modern operator dashboard (React 19, Recharts, Tailwind).
-  * `docs/`: 5 complete architectural and setup specifications.
-  * `tests/`: End-to-end automated API verification scripts.
+  * `src/models/`: Dual trained `.pkl` models (Health Index Regressor + DGA Fault Classifier).
+  * `src/backend/`: FastAPI server with 20+ live endpoints, JWT auth, IBM Bob + Groq + Gemini integration.
+  * `src/frontend/`: VOLTRA operator dashboard (React 19, TanStack Start, TailwindCSS v4, Recharts).
+  * `docs/`: 6 in-depth documentation files including full API reference.
+  * `src/backend/test_endpoints.py`: End-to-end automated API verification.
 
 ### 🎙️ Speaker Notes (30s)
-> "We are Team Techtonics. Om built the full-stack architecture, API integration, and our interactive operator console, while Yash developed the machine learning pipelines and IBM Bob integration.  
-> Everything you have seen today is completely implemented, verified with automated tests, and documented in our repository.  
+> "We are Team Techtonics — four engineers from CHARUSAT University.
+> Om built the full-stack architecture and operator console. Yash developed the ML pipeline and AI integrations. Nikunj polished the frontend and mobile experience. Purva handled documentation, architecture, and end-to-end testing.
+> Everything you have seen today is completely implemented, verified, and documented in our repository.
 > Thank you, judges. We welcome your questions!"
 
 ---
