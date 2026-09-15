@@ -10,7 +10,7 @@
 |---|---|
 | **Team Name** | Techtonics |
 | **Track** | AI |
-| **Team Lead** | Yash Bhaskar — yash.bhaskar@ibm.com |
+| **Team Lead** | Yash Bharvada — 23cs006@charusat.edu.in |
 
 ---
 
