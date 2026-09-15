@@ -33,6 +33,9 @@ import {
 } from "recharts";
 import { AuthModal } from "@/components/AuthModal";
 import { LocationPromptModal } from "@/components/LocationPromptModal";
+import { EmptyWorkspaceChoice } from "@/components/EmptyWorkspaceChoice";
+import { DataSourceBadge } from "@/components/DataSourceBadge";
+import { gridDataSource, type DataSourceType } from "@/lib/gridDataSource";
 import { authSession, type OperatorProfile, type UserLocationState } from "@/lib/authSession";
 import { techtonicsApi, type RankedAsset, type MaintenanceAction } from "@/lib/techtonicsApi";
 import { initialGridAssets } from "@/lib/gridData";
@@ -84,6 +87,7 @@ function DashboardPage() {
   const [mounted, setMounted] = useState(false);
   // isAuthed derived from mounted — placed here so auth-gated useEffect can reference it
   const isAuthed = mounted && authSession.isAuthenticated();
+  const [dataSource, setDataSource] = useState<DataSourceType>(() => gridDataSource.getDataSource(authSession.isAuthenticated()));
   const [guestBannerDismissed, setGuestBannerDismissed] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [locationModalOpen, setLocationModalOpen] = useState(false);
@@ -110,32 +114,60 @@ function DashboardPage() {
     return () => clearInterval(t);
   }, []);
 
+  // Listen for data source changes across the app
+  useEffect(() => {
+    const handleSourceChange = (e: any) => {
+      setDataSource(e.detail || gridDataSource.getDataSource(authSession.isAuthenticated()));
+    };
+    window.addEventListener("voltra-datasource-changed", handleSourceChange);
+    return () => window.removeEventListener("voltra-datasource-changed", handleSourceChange);
+  }, []);
+
   useEffect(() => {
     if (!mounted) return; // wait for auth check
     if (!isAuthed) return; // guests see static curated data
 
-    techtonicsApi.getRanked().then((res) => {
-      if (res.ranked_assets?.length) { setRankedAssets(res.ranked_assets); setApiConnected(true); }
-    }).catch(() => setApiConnected(false));
-
-    techtonicsApi.getPlan().then((res) => {
-      if (res.top_10_actions?.length) { setPlanActions(res.top_10_actions); }
-    }).catch(() => {});
+    // Always fetch location-specific weather & safety stats
+    techtonicsApi.fetchLiveWeather(location.latitude, location.longitude)
+      .then((wx) => setLiveWeather({ temperature_c: wx.temperature_c, humidity_pct: wx.humidity_pct, thermal_stress_pct: wx.thermal_stress_pct }))
+      .catch(() => {});
 
     techtonicsApi.getEventStats().then((stats) => {
       setSecurityStats(stats);
     }).catch(() => {});
 
-    techtonicsApi.fetchLiveWeather(location.latitude, location.longitude)
-      .then((wx) => setLiveWeather({ temperature_c: wx.temperature_c, humidity_pct: wx.humidity_pct, thermal_stress_pct: wx.thermal_stress_pct }))
-      .catch(() => {});
-
     techtonicsApi.searchPastEvents("", "").then((res) => {
       if (res.events?.length) setIncidents(res.events.slice(0, 3));
     }).catch(() => {});
-  }, [mounted, isAuthed, location.latitude, location.longitude]);
+
+    // Only load grid asset data if user chose a source
+    if (dataSource === "anand") {
+      techtonicsApi.getRanked().then((res) => {
+        if (res.ranked_assets?.length) { setRankedAssets(res.ranked_assets); setApiConnected(true); }
+      }).catch(() => setApiConnected(false));
+
+      techtonicsApi.getPlan().then((res) => {
+        if (res.top_10_actions?.length) { setPlanActions(res.top_10_actions); }
+      }).catch(() => {});
+    } else if (dataSource === "custom") {
+      const custom = gridDataSource.getCustomAssets();
+      setRankedAssets(custom);
+      setApiConnected(true);
+      setPlanActions([]);
+    } else {
+      // "none" — keep blank workspace
+      setRankedAssets([]);
+      setPlanActions([]);
+      setApiConnected(false);
+    }
+  }, [mounted, isAuthed, dataSource, location.latitude, location.longitude]);
 
   const displayAssets = useMemo(() => {
+    // If authenticated operator hasn't selected a dataset yet, return empty
+    if (isAuthed && dataSource === "none") {
+      return [];
+    }
+
     if (rankedAssets.length > 0) {
       return rankedAssets.map((r) => {
         const base = initialGridAssets.find((a) => a.id === r.asset_id);
@@ -145,8 +177,8 @@ function DashboardPage() {
         return {
           id: r.asset_id,
           name: base?.name || `${r.asset_id} · ${r.mva_rating || 25} MVA Substation`,
-          substation: r.substation_name || base?.substation || "Anand Substation",
-          region: r.grid_zone || base?.region || "Anand Zone",
+          substation: r.substation_name || base?.substation || "Substation",
+          region: r.grid_zone || base?.region || "Corridor",
           type: "Transformer" as const,
           voltageKv: parseInt(r.voltage_kv || "66", 10) || base?.voltageKv || 66,
           nominalVoltageKv: parseInt(r.voltage_kv || "66", 10) || base?.nominalVoltageKv || 66,
@@ -178,21 +210,25 @@ function DashboardPage() {
       }).sort((a, b) => b.riskScore - a.riskScore);
     }
 
-    return initialGridAssets.map((a) => {
-      const hi = a.healthIndexRaw;
-      const rul = a.rulDays;
-      const riskScore = hiToRisk(hi);
-      return { ...a, hi, rul, riskScore };
-    }).sort((a, b) => b.riskScore - a.riskScore);
-  }, [rankedAssets]);
+    if (!isAuthed) {
+      return initialGridAssets.map((a) => {
+        const hi = a.healthIndexRaw;
+        const rul = a.rulDays;
+        const riskScore = hiToRisk(hi);
+        return { ...a, hi, rul, riskScore };
+      }).sort((a, b) => b.riskScore - a.riskScore);
+    }
+
+    return [];
+  }, [isAuthed, dataSource, rankedAssets]);
 
   const criticalCount = displayAssets.filter((a) => a.riskScore >= 70).length;
   const watchCount = displayAssets.filter((a) => a.riskScore >= 40 && a.riskScore < 70).length;
-  const avgHI = displayAssets.reduce((s, a) => s + a.hi, 0) / (displayAssets.length || 1);
-  const avgRiskScore = Math.round(displayAssets.reduce((s, a) => s + a.riskScore, 0) / (displayAssets.length || 1));
-  const fleetHealth = Math.round(100 - avgHI);
+  const avgHI = displayAssets.length > 0 ? displayAssets.reduce((s, a) => s + a.hi, 0) / displayAssets.length : 0;
+  const avgRiskScore = displayAssets.length > 0 ? Math.round(displayAssets.reduce((s, a) => s + a.riskScore, 0) / displayAssets.length) : 0;
+  const fleetHealth = displayAssets.length > 0 ? Math.round(100 - avgHI) : 0;
   const predictedFailures = displayAssets.filter((a) => a.rul < 40).length;
-  const topCriticalAsset = displayAssets[0];
+  const topCriticalAsset = displayAssets.length > 0 ? displayAssets[0] : null;
 
   const chartData = useMemo(() => {
     return displayAssets.slice(0, 8).map((a) => ({
@@ -213,24 +249,38 @@ function DashboardPage() {
         detail: act.detail,
       }));
     }
-    return [
-      topCriticalAsset && {
-        rank: "01", asset: topCriticalAsset.id,
+    if (displayAssets.length === 0) {
+      return [];
+    }
+    const recs: { rank: string; asset: string; action: string; confidence: number; priority: "HIGH" | "MEDIUM" | "LOW"; detail?: string }[] = [];
+    if (topCriticalAsset) {
+      recs.push({
+        rank: "01",
+        asset: topCriticalAsset.id,
         action: topCriticalAsset.riskScore >= 70 ? "Initiate emergency load curtailment and DGA syringe sampling." : "Schedule inspection within this maintenance cycle.",
         confidence: topCriticalAsset.riskScore > 70 ? 94 : 78,
-        priority: (topCriticalAsset.riskScore > 70 ? "HIGH" : "MEDIUM") as "HIGH" | "MEDIUM" | "LOW",
-      },
-      displayAssets[1] && {
-        rank: "02", asset: displayAssets[1].id,
+        priority: (topCriticalAsset.riskScore >= 70 ? "HIGH" : "MEDIUM") as "HIGH" | "MEDIUM" | "LOW",
+        detail: `Telemetry indicates elevated Health Index of ${topCriticalAsset.hi.toFixed(1)} with RUL ${topCriticalAsset.rul.toFixed(0)} days.`,
+      });
+    }
+    if (displayAssets[1]) {
+      recs.push({
+        rank: "02",
+        asset: displayAssets[1].id,
         action: "Monitor thermal gradient; verify forced-air cooling relay circuit.",
-        confidence: 82, priority: (displayAssets[1].riskScore > 70 ? "HIGH" : "MEDIUM") as "HIGH" | "MEDIUM" | "LOW",
-      },
-      {
-        rank: "03", asset: "Fleet-Wide",
-        action: `Ambient ${liveWeather.temperature_c.toFixed(1)}°C elevates thermal stress. Review cooling headroom across all monitored assets.`,
-        confidence: 71, priority: "LOW" as const,
-      },
-    ].filter(Boolean) as { rank: string; asset: string; action: string; confidence: number; priority: "HIGH" | "MEDIUM" | "LOW" }[];
+        confidence: 82,
+        priority: (displayAssets[1].riskScore > 70 ? "HIGH" : "MEDIUM") as "HIGH" | "MEDIUM" | "LOW",
+        detail: `Operating at ${displayAssets[1].loadPct}% loading capacity with RUL ${displayAssets[1].rul.toFixed(0)} days.`,
+      });
+    }
+    recs.push({
+      rank: "03",
+      asset: "Fleet-Wide",
+      action: `Ambient ${liveWeather.temperature_c.toFixed(1)}°C elevates thermal stress. Review cooling headroom across all monitored assets.`,
+      confidence: 71,
+      priority: "LOW",
+    });
+    return recs;
   }, [planActions, topCriticalAsset, displayAssets, liveWeather.temperature_c]);
 
   // (isAuthed + guestBannerDismissed declared above near mounted)
@@ -283,6 +333,7 @@ function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <DataSourceBadge />
           <button onClick={() => setLocationModalOpen(true)} className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-3 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors">
             <Compass className="size-3.5 text-primary" />{location.autoDetected ? "GPS" : "Manual"} · {location.latitude.toFixed(2)}°N
           </button>
@@ -294,6 +345,13 @@ function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* ── Empty Workspace Selector for Authenticated Operator ── */}
+      {isAuthed && (dataSource === "none" || displayAssets.length === 0) && (
+        <div className="mb-6">
+          <EmptyWorkspaceChoice />
+        </div>
+      )}
 
       {/* ── 4 KPI Cards ── */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 mb-5">
@@ -391,7 +449,7 @@ function DashboardPage() {
             <h2 className="text-sm font-semibold text-foreground">Critical Asset Alert</h2>
             <span className="relative flex size-2"><span className="absolute animate-ping size-full rounded-full bg-red-400 opacity-75" /><span className="relative size-2 rounded-full bg-red-500" /></span>
           </div>
-          {topCriticalAsset && (
+          {topCriticalAsset ? (
             <div className="flex flex-col flex-1">
               <div className="rounded-lg border border-red-500/20 bg-red-500/[0.04] p-3 mb-3">
                 <div className="flex items-center justify-between mb-1">
@@ -431,6 +489,16 @@ function DashboardPage() {
               <Link to="/grid" className="mt-auto inline-flex items-center justify-center gap-1.5 rounded-lg border border-border/60 bg-muted/50 px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted transition-colors">
                 View Asset in Grid <ArrowRight className="size-3.5" />
               </Link>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center flex-1 py-10 text-center text-muted-foreground">
+              <ShieldCheck className="size-9 text-muted-foreground/40 mb-2.5" />
+              <p className="text-xs font-semibold text-foreground">No Critical Assets Active</p>
+              <p className="text-[11px] text-muted-foreground mt-1 max-w-[220px]">
+                {dataSource === "none"
+                  ? "Workspace is unpopulated. Choose Anand corridor or upload custom data above."
+                  : "All monitored assets are operating within nominal thermal envelopes."}
+              </p>
             </div>
           )}
         </div>
@@ -493,8 +561,16 @@ function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/30">
-                {displayAssets.map((asset) => (
-                  <tr key={asset.id} className="hover:bg-muted/20 transition-colors cursor-pointer">
+                {displayAssets.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-muted-foreground">
+                      <p className="text-xs font-semibold text-foreground">Workspace Is Blank</p>
+                      <p className="text-[11px] text-muted-foreground mt-1">Load Anand corridor sample data or upload your own telemetry CSV above.</p>
+                    </td>
+                  </tr>
+                ) : (
+                  displayAssets.map((asset) => (
+                    <tr key={asset.id} className="hover:bg-muted/20 transition-colors cursor-pointer">
                     <td className="py-3 px-4">
                       <div className="font-mono font-bold text-foreground">{asset.id}</div>
                       <div className="text-[10px] text-muted-foreground">{asset.voltageKv} kV · {asset.faultType}</div>
@@ -521,7 +597,7 @@ function DashboardPage() {
                       </span>
                     </td>
                   </tr>
-                ))}
+                )))}
               </tbody>
             </table>
           </div>
@@ -614,26 +690,34 @@ function DashboardPage() {
             <BrainCircuit className="size-4 text-primary" />
           </div>
           <div className="space-y-3">
-            {recommendations.map((rec: any) => (
-              <div key={rec.rank} className="rounded-lg border border-border/40 bg-muted/20 p-3">
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-[10px] font-bold text-muted-foreground">{rec.rank}</span>
-                    <span className="font-mono text-xs font-bold text-foreground">{rec.asset}</span>
-                  </div>
-                  <span className={`text-[9px] font-mono font-semibold rounded px-1.5 py-0.5 border ${rec.priority === "HIGH" ? "border-red-500/30 bg-red-500/10 text-red-400" : rec.priority === "MEDIUM" ? "border-amber-500/30 bg-amber-500/10 text-amber-400" : "border-border/40 text-muted-foreground"}`}>
-                    {rec.priority}
-                  </span>
-                </div>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">{rec.action}</p>
-                <div className="mt-2 flex items-center justify-between">
-                  <p className="text-[9px] font-mono text-muted-foreground">Confidence: {rec.confidence}%</p>
-                  <div className="w-16 h-1 rounded-full bg-muted overflow-hidden">
-                    <div className="h-full rounded-full bg-primary" style={{ width: `${rec.confidence}%` }} />
-                  </div>
-                </div>
+            {recommendations.length === 0 ? (
+              <div className="rounded-lg border border-border/40 bg-muted/20 p-6 text-center text-muted-foreground">
+                <BrainCircuit className="size-6 mx-auto mb-2 text-muted-foreground/40" />
+                <p className="text-xs font-semibold text-foreground">No Dispatch Actions Pending</p>
+                <p className="text-[10px] text-muted-foreground mt-1">Load Anand corridor or upload custom telemetry to generate automated dispatch recommendations.</p>
               </div>
-            ))}
+            ) : (
+              recommendations.map((rec: any) => (
+                <div key={rec.rank} className="rounded-lg border border-border/40 bg-muted/20 p-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] font-bold text-muted-foreground">{rec.rank}</span>
+                      <span className="font-mono text-xs font-bold text-foreground">{rec.asset}</span>
+                    </div>
+                    <span className={`text-[9px] font-mono font-semibold rounded px-1.5 py-0.5 border ${rec.priority === "HIGH" ? "border-red-500/30 bg-red-500/10 text-red-400" : rec.priority === "MEDIUM" ? "border-amber-500/30 bg-amber-500/10 text-amber-400" : "border-border/40 text-muted-foreground"}`}>
+                      {rec.priority}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">{rec.action}</p>
+                  <div className="mt-2 flex items-center justify-between">
+                    <p className="text-[9px] font-mono text-muted-foreground">Confidence: {rec.confidence}%</p>
+                    <div className="w-16 h-1 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${rec.confidence}%` }} />
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
           <Link to="/predict" className="mt-4 w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors">
             <Activity className="size-3.5" />Run ML Prediction
