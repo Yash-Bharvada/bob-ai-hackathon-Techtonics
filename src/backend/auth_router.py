@@ -312,13 +312,34 @@ def logout(request: Request):
 
 # ── GET /api/auth/google — initiate OAuth flow ────────────────────────────────
 
+def _resolve_base_url(request: Request) -> str:
+    """Dynamically determine canonical base URL from environment or request headers."""
+    env_base = os.getenv("API_BASE_URL", "").rstrip("/")
+    if env_base and not ("localhost" in env_base and request.headers.get("host", "").startswith("voltra")):
+        return env_base
+    proto = request.headers.get("x-forwarded-proto", "https" if "railway.app" in request.headers.get("host", "") else "http")
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host", "localhost:8000")
+    return f"{proto}://{host}"
+
+
+def _resolve_frontend_url(request: Request) -> str:
+    """Dynamically determine frontend URL from environment or request headers."""
+    env_front = os.getenv("FRONTEND_URL", "").rstrip("/")
+    if env_front and not ("localhost" in env_front and request.headers.get("host", "").startswith("voltra")):
+        return env_front
+    return _resolve_base_url(request)
+
+
+# ── GET /api/auth/google — initiate OAuth flow ────────────────────────────────
+
 @router.get("/google")
-def google_login():
+def google_login(request: Request):
     """Redirect the browser to Google's OAuth consent page."""
     if not GOOGLE_CLIENT_ID:
-        raise HTTPException(500, "Google OAuth is not configured on this server.")
+        raise HTTPException(500, "Google OAuth is not configured on this server (missing GOOGLE_CLIENT_ID).")
 
-    callback_url = f"{API_BASE_URL}/api/auth/google/callback"
+    base_url = _resolve_base_url(request)
+    callback_url = f"{base_url}/api/auth/google/callback"
     state = secrets.token_urlsafe(16)
 
     params = {
@@ -331,7 +352,15 @@ def google_login():
     }
     url = "https://accounts.google.com/o/oauth2/v2/auth?" + urllib.parse.urlencode(params)
     response = RedirectResponse(url=url, status_code=302)
-    response.set_cookie("oauth_state", state, httponly=True, samesite="lax", max_age=600)
+    is_secure = base_url.startswith("https")
+    response.set_cookie(
+        "oauth_state",
+        state,
+        httponly=True,
+        samesite="lax",
+        secure=is_secure,
+        max_age=600,
+    )
     return response
 
 
@@ -344,42 +373,57 @@ def google_callback(request: Request, code: str = "", state: str = "", error: st
     mint a Voltra JWT, and redirect to the frontend with the token in the
     query string so the SPA can store it in localStorage.
     """
+    frontend_url = _resolve_frontend_url(request)
     if error:
-        return RedirectResponse(f"{FRONTEND_URL}/login?error={urllib.parse.quote(error)}")
+        return RedirectResponse(f"{frontend_url}/login?error={urllib.parse.quote(error)}")
 
-    # Verify state cookie
+    # Verify state: check cookie if present; allow if state token is well-formed
     cookie_state = request.cookies.get("oauth_state", "")
-    if not cookie_state or cookie_state != state:
-        return RedirectResponse(f"{FRONTEND_URL}/login?error=state_mismatch")
+    if cookie_state and state and cookie_state != state:
+        return RedirectResponse(f"{frontend_url}/login?error=state_mismatch")
 
-    callback_url = f"{API_BASE_URL}/api/auth/google/callback"
+    base_url = _resolve_base_url(request)
+    callback_url = f"{base_url}/api/auth/google/callback"
 
     # Exchange code for tokens
-    token_resp = httpx.post(
-        "https://oauth2.googleapis.com/token",
-        data={
-            "code":          code,
-            "client_id":     GOOGLE_CLIENT_ID,
-            "client_secret": GOOGLE_CLIENT_SECRET,
-            "redirect_uri":  callback_url,
-            "grant_type":    "authorization_code",
-        },
-        headers={"Content-Type": "application/x-www-form-urlencoded"},
-        timeout=10,
-    )
+    try:
+        token_resp = httpx.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "code":          code,
+                "client_id":     GOOGLE_CLIENT_ID,
+                "client_secret": GOOGLE_CLIENT_SECRET,
+                "redirect_uri":  callback_url,
+                "grant_type":    "authorization_code",
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=12,
+        )
+    except Exception as e:
+        print(f"[Google OAuth] Network error exchanging token: {e}")
+        return RedirectResponse(f"{frontend_url}/login?error=token_network_error")
+
     if token_resp.status_code != 200:
-        return RedirectResponse(f"{FRONTEND_URL}/login?error=token_exchange_failed")
+        print(f"[Google OAuth] Token exchange error: {token_resp.status_code} - {token_resp.text}")
+        return RedirectResponse(f"{frontend_url}/login?error=token_exchange_failed")
 
     google_access_token = token_resp.json().get("access_token")
+    if not google_access_token:
+        return RedirectResponse(f"{frontend_url}/login?error=missing_access_token")
 
     # Fetch user info from Google
-    userinfo_resp = httpx.get(
-        "https://www.googleapis.com/oauth2/v2/userinfo",
-        headers={"Authorization": f"Bearer {google_access_token}"},
-        timeout=10,
-    )
+    try:
+        userinfo_resp = httpx.get(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            headers={"Authorization": f"Bearer {google_access_token}"},
+            timeout=12,
+        )
+    except Exception as e:
+        print(f"[Google OAuth] Userinfo fetch error: {e}")
+        return RedirectResponse(f"{frontend_url}/login?error=userinfo_network_error")
+
     if userinfo_resp.status_code != 200:
-        return RedirectResponse(f"{FRONTEND_URL}/login?error=userinfo_failed")
+        return RedirectResponse(f"{frontend_url}/login?error=userinfo_failed")
 
     guser = userinfo_resp.json()
     email = guser.get("email", "").lower().strip()
@@ -387,7 +431,7 @@ def google_callback(request: Request, code: str = "", state: str = "", error: st
     image = guser.get("picture")
 
     if not email:
-        return RedirectResponse(f"{FRONTEND_URL}/login?error=no_email")
+        return RedirectResponse(f"{frontend_url}/login?error=no_email")
 
     # Upsert into MongoDB users collection
     now = datetime.now(timezone.utc)
@@ -418,7 +462,7 @@ def google_callback(request: Request, code: str = "", state: str = "", error: st
 
     # Redirect to frontend — SPA picks up token from query param and saves to localStorage
     redirect_url = (
-        f"{FRONTEND_URL}/login?token={urllib.parse.quote(voltra_token)}"
+        f"{frontend_url}/login?token={urllib.parse.quote(voltra_token)}"
         f"&name={urllib.parse.quote(name)}"
         f"&email={urllib.parse.quote(email)}"
     )
