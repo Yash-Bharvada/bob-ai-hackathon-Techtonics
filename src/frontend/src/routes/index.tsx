@@ -116,7 +116,7 @@ function Home() {
 function Hero() {
   return (
     <section className="mx-auto mt-5 w-full max-w-6xl px-4 sm:px-6">
-      <div className="relative min-h-[650px] overflow-hidden rounded-[2rem] md:min-h-[700px]">
+      <div className="hero-min-height relative min-h-[650px] overflow-hidden rounded-[2rem] md:min-h-[700px]">
         <img
           src={homeImage}
           alt="A powered modern home beside monitored transmission lines at dusk"

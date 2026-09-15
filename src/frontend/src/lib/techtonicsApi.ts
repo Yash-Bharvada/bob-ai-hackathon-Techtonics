@@ -4,6 +4,20 @@
  * Endpoints default to http://localhost:8000 with graceful fallback handling.
  */
 
+// Import lazily to avoid a circular dependency (authSession imports API_BASE from here)
+function _getAuthHeaders(): Record<string, string> {
+  try {
+    const raw = typeof window !== "undefined" ? localStorage.getItem("voltra_operator_session") : null;
+    if (!raw) return {};
+    const session = JSON.parse(raw);
+    const token = session?.sessionToken;
+    if (!token) return {};
+    return { Authorization: `Bearer ${token}` };
+  } catch {
+    return {};
+  }
+}
+
 // ─── Incident Reporting Types (POST /events/report) ──────────────────────────
 
 export interface EventReportRequest {
@@ -210,9 +224,23 @@ export interface AdhocScoreResponse {
 async function requestWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 4000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
+  // Merge auth headers into every outgoing request
+  const authHeaders = _getAuthHeaders();
+  const mergedOptions: RequestInit = {
+    ...options,
+    headers: {
+      ...authHeaders,
+      ...(options.headers as Record<string, string> | undefined),
+    },
+    signal: controller.signal,
+  };
   try {
-    const res = await fetch(url, { ...options, signal: controller.signal });
+    const res = await fetch(url, mergedOptions);
     clearTimeout(id);
+    // If server returns 401 the token is expired — clear session so UI re-directs to login
+    if (res.status === 401) {
+      try { localStorage.removeItem("voltra_operator_session"); } catch {}
+    }
     return res;
   } catch (err) {
     clearTimeout(id);

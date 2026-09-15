@@ -97,7 +97,7 @@ function DashboardPage() {
     thermal_stress_pct: number;
   }>({ temperature_c: 33.4, humidity_pct: 61, thermal_stress_pct: 22 });
   const [incidents, setIncidents] = useState<any[]>([]);
-  const [securityStats, setSecurityStats] = useState({ processed: 18, verified: 15, quarantined: 2, blocked: 1 });
+  const [securityStats, setSecurityStats] = useState<{ processed: number; verified: number; quarantined: number; blocked: number } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -164,7 +164,7 @@ function DashboardPage() {
           criticality: r.criticality_tier || "Critical",
           archetype: r.archetype || base?.archetype || "Standard Asset",
           activeAnomalies: (r.risk_tier === "CRITICAL" || r.risk_tier === "HIGH") ? 3 : r.risk_tier === "MEDIUM" ? 1 : 0,
-          lastInspected: base?.lastInspected || "2026-09-08",
+          lastInspected: base?.lastInspected || "Not on record",
           coolingType: base?.coolingType || "ONAF",
           sf6PressureBar: 5.2,
           acousticDba: 68.0,
@@ -573,17 +573,26 @@ function DashboardPage() {
             </span>
           </div>
           <div className="grid grid-cols-2 gap-2 mb-4">
-            {[
-              { label: "Processed", value: securityStats.processed, color: "text-foreground" },
-              { label: "Verified", value: securityStats.verified, color: "text-emerald-400" },
-              { label: "Quarantined", value: securityStats.quarantined, color: "text-amber-400" },
-              { label: "Blocked", value: securityStats.blocked, color: "text-red-400" },
-            ].map(({ label, value, color }) => (
-              <div key={label} className="rounded-lg bg-muted/40 p-2.5">
-                <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-mono">{label}</p>
-                <p className={`mt-0.5 font-mono text-lg font-bold ${color}`}>{value}</p>
-              </div>
-            ))}
+            {securityStats === null ? (
+              [1,2,3,4].map(i => (
+                <div key={i} className="rounded-lg bg-muted/40 p-2.5 animate-pulse">
+                  <div className="h-2 w-14 rounded bg-muted mb-2" />
+                  <div className="h-5 w-8 rounded bg-muted" />
+                </div>
+              ))
+            ) : (
+              [
+                { label: "Processed", value: securityStats.processed, color: "text-foreground" },
+                { label: "Verified", value: securityStats.verified, color: "text-emerald-400" },
+                { label: "Quarantined", value: securityStats.quarantined, color: "text-amber-400" },
+                { label: "Blocked", value: securityStats.blocked, color: "text-red-400" },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="rounded-lg bg-muted/40 p-2.5">
+                  <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-mono">{label}</p>
+                  <p className={`mt-0.5 font-mono text-lg font-bold ${color}`}>{value}</p>
+                </div>
+              ))
+            )}
           </div>
           <div className="space-y-2">
             {["Deterministic Input Filter", "Decision Model Isolation", "Audit Logging"].map(label => (
@@ -629,6 +638,45 @@ function DashboardPage() {
           <Link to="/predict" className="mt-4 w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors">
             <Activity className="size-3.5" />Run ML Prediction
           </Link>
+        </div>
+      </div>
+
+      {/* ── RUL Distribution Histogram ── */}
+      <div className="rounded-xl border border-border/60 bg-card p-5 mb-4">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Fleet RUL Distribution</h2>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Remaining Useful Life buckets across all {displayAssets.length} assets</p>
+          </div>
+          <span className="text-[9px] font-mono text-muted-foreground border border-border/50 rounded px-1.5 py-0.5">Model 1 Output</span>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {(() => {
+            const buckets = [
+              { label: "< 40d", range: [0, 40], color: "bg-red-500", text: "text-red-400", border: "border-red-500/30" },
+              { label: "40–80d", range: [40, 80], color: "bg-amber-500", text: "text-amber-400", border: "border-amber-500/30" },
+              { label: "80–120d", range: [80, 120], color: "bg-blue-500", text: "text-blue-400", border: "border-blue-500/30" },
+              { label: "120d+", range: [120, Infinity], color: "bg-emerald-500", text: "text-emerald-400", border: "border-emerald-500/30" },
+            ];
+            const maxCount = Math.max(...buckets.map(b => displayAssets.filter(a => a.rul >= b.range[0] && a.rul < b.range[1]).length), 1);
+            return buckets.map(b => {
+              const count = displayAssets.filter(a => a.rul >= b.range[0] && a.rul < b.range[1]).length;
+              const ids = displayAssets.filter(a => a.rul >= b.range[0] && a.rul < b.range[1]).slice(0, 3).map(a => a.id);
+              const barH = Math.max(8, Math.round((count / maxCount) * 64));
+              return (
+                <div key={b.label} className={`rounded-lg border ${b.border} bg-muted/20 p-3 flex flex-col items-center gap-2`}>
+                  <div className="flex items-end justify-center h-16 w-full">
+                    <div className={`w-8 rounded-t-md ${b.color} opacity-80 transition-all`} style={{ height: `${barH}px` }} />
+                  </div>
+                  <p className={`font-mono text-xl font-bold ${b.text}`}>{count}</p>
+                  <p className="text-[10px] font-mono text-muted-foreground">{b.label}</p>
+                  <div className="flex flex-wrap justify-center gap-1">
+                    {ids.map(id => <span key={id} className="text-[8px] font-mono bg-muted/60 rounded px-1 text-muted-foreground">{id}</span>)}
+                  </div>
+                </div>
+              );
+            });
+          })()}
         </div>
       </div>
 

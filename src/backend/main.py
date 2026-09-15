@@ -21,6 +21,10 @@ import json
 import sys
 from pathlib import Path
 
+# Load .env from the backend directory before anything else
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).parent / ".env")
+
 # Make pipeline importable
 BACKEND_DIR  = Path(__file__).parent
 SRC_DIR      = BACKEND_DIR.parent
@@ -32,6 +36,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
+
+from auth_router import router as auth_router
 
 from score_asset_risk import score_asset_risk, score_all_assets
 from grid_impact_ranker import rank_assets
@@ -55,6 +61,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Auth routes (/api/auth/*) ──────────────────────────────────────────────────
+app.include_router(auth_router)
 
 # ---------------------------------------------------------------------------
 # Cached data — loaded once at startup

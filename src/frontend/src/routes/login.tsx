@@ -77,6 +77,18 @@ const TERMINAL_LINES = [
   { cmd: "> TX-115.status", args: "--rul=97d --recovered=true ✓", delay: 1600, highlight: true },
 ];
 
+// Google "G" icon
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" className="shrink-0">
+      <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z" fill="#4285F4"/>
+      <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18Z" fill="#34A853"/>
+      <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332Z" fill="#FBBC05"/>
+      <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.962L3.964 6.294C4.672 4.167 6.656 3.58 9 3.58Z" fill="#EA4335"/>
+    </svg>
+  );
+}
+
 function LoginPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState<"signin" | "register">("signin");
@@ -86,15 +98,43 @@ function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [visibleLines, setVisibleLines] = useState(0);
   const [error, setError] = useState("");
 
-  // Redirect if already authenticated
+  const selectedRolePreset = ROLE_PRESETS.find((r) => r.id === selectedRole)!;
+
+  // ── On mount: consume Google OAuth callback params (?token=…&name=…&email=…)
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+
+    // OAuth error from backend
+    const oauthError = params.get("error");
+    if (oauthError) {
+      setError(`Google sign-in failed: ${oauthError.replace(/_/g, " ")}`);
+      window.history.replaceState({}, "", window.location.pathname);
+      return;
+    }
+
+    // Successful OAuth callback
+    if (params.get("token")) {
+      const consumed = authSession.consumeGoogleCallbackParams(params);
+      if (consumed) {
+        const profile = authSession.getProfile();
+        toast.success(`Welcome, ${profile?.name ?? "Operator"}`, {
+          description: "Signed in with Google · Session active",
+        });
+        navigate({ to: "/" });
+        return;
+      }
+    }
+
+    // Already authenticated — go home
     if (authSession.isAuthenticated()) {
       navigate({ to: "/" });
     }
-  }, [navigate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Animate terminal lines in
   useEffect(() => {
@@ -103,8 +143,15 @@ function LoginPage() {
     });
   }, []);
 
-  const selectedRolePreset = ROLE_PRESETS.find((r) => r.id === selectedRole)!;
+  // ── Google Sign-In ──────────────────────────────────────────────────────────
+  const handleGoogleSignIn = () => {
+    setGoogleLoading(true);
+    setError("");
+    authSession.startGoogleOAuth();
+    // browser will redirect — no further handling needed here
+  };
 
+  // ── Email / Password submit ─────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -117,34 +164,46 @@ function LoginPage() {
       setError("Please enter your full name.");
       return;
     }
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
+      return;
+    }
 
     setLoading(true);
 
-    // Simulate async auth (replace with MongoDB /api/auth/login call when integrated)
-    await new Promise((r) => setTimeout(r, 800));
+    try {
+      let profile: OperatorProfile;
 
-    const profile: OperatorProfile = {
-      name: (tab === "register" ? name.trim() : email.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())) || "Grid Operator",
-      email: email.trim().toLowerCase(),
-      role: selectedRolePreset.label,
-      zone: selectedRolePreset.zone,
-      substation: selectedRolePreset.zone.includes("Zone-B")
-        ? "GIDC Industrial Phase-2 Substation"
-        : selectedRolePreset.zone.includes("Zone-A")
-        ? "Anand Central Transmission Substation"
-        : selectedRolePreset.zone.includes("Zone-D")
-        ? "Anand South Bulk Substation"
-        : "Borsad Rural Interconnect",
-    };
+      if (tab === "register") {
+        const res = await authSession.register({
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          password,
+          zone: selectedRolePreset.zone,
+          role: selectedRolePreset.label,
+        });
+        profile = res.profile;
+        toast.success(`Account created — welcome, ${profile.name}`, {
+          description: `${profile.role} · ${selectedRolePreset.zone.split("·")[0].trim()}`,
+        });
+      } else {
+        const res = await authSession.loginWithCredentials({
+          email: email.trim().toLowerCase(),
+          password,
+        });
+        profile = res.profile;
+        toast.success(`Welcome back, ${profile.name}`, {
+          description: `${profile.role} · Session active`,
+        });
+      }
 
-    authSession.login(profile);
-    setLoading(false);
-
-    toast.success(`Welcome, ${profile.name}`, {
-      description: `Signed in as ${profile.role} · ${profile.zone.split("·")[0].trim()}`,
-    });
-
-    navigate({ to: "/" });
+      navigate({ to: "/" });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Authentication failed.";
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -159,7 +218,7 @@ function LoginPage() {
             <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-75" />
             <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
           </span>
-          FastAPI Online
+          MongoDB Connected
         </span>
       </div>
 
@@ -234,7 +293,7 @@ function LoginPage() {
             </div>
 
             {/* Tab toggle */}
-            <div className="mb-6 grid grid-cols-2 gap-1 rounded-xl border border-border/70 bg-muted/50 p-1 text-[11px] font-semibold">
+            <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl border border-border/70 bg-muted/50 p-1 text-[11px] font-semibold">
               <button
                 type="button"
                 onClick={() => { setTab("signin"); setError(""); }}
@@ -253,6 +312,33 @@ function LoginPage() {
               >
                 Create Account
               </button>
+            </div>
+
+            {/* Google Sign-In Button */}
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={googleLoading || loading}
+              className="mb-4 flex w-full items-center justify-center gap-2.5 rounded-xl border border-border/70 bg-card py-3 text-sm font-semibold text-foreground shadow-xs transition-all hover:bg-muted hover:border-border disabled:opacity-60 disabled:cursor-wait"
+            >
+              {googleLoading ? (
+                <>
+                  <span className="size-4 rounded-full border-2 border-muted-foreground/30 border-t-foreground animate-spin" />
+                  Redirecting to Google…
+                </>
+              ) : (
+                <>
+                  <GoogleIcon />
+                  Continue with Google
+                </>
+              )}
+            </button>
+
+            {/* Divider */}
+            <div className="mb-5 flex items-center gap-3">
+              <span className="flex-1 h-px bg-border/60" />
+              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">or continue with email</span>
+              <span className="flex-1 h-px bg-border/60" />
             </div>
 
             {/* Form */}
@@ -307,7 +393,7 @@ function LoginPage() {
                     type={showPw ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••••"
+                    placeholder="Min. 8 characters"
                     autoComplete={tab === "register" ? "new-password" : "current-password"}
                     className="w-full rounded-xl border border-border bg-muted/30 pl-10 pr-11 py-3 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary/60 focus:bg-card focus:ring-2 focus:ring-primary/10 transition-all"
                   />
@@ -322,38 +408,40 @@ function LoginPage() {
                 </div>
               </div>
 
-              {/* Role Picker */}
-              <div>
-                <label className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                  Operator Role
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {ROLE_PRESETS.map((role) => {
-                    const Icon = role.icon;
-                    const active = selectedRole === role.id;
-                    return (
-                      <button
-                        key={role.id}
-                        type="button"
-                        onClick={() => setSelectedRole(role.id)}
-                        className={`flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition-all ${
-                          active
-                            ? "border-primary/60 bg-primary/8 ring-1 ring-primary/20"
-                            : "border-border/60 bg-muted/20 hover:bg-muted/50"
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <Icon className={`size-3.5 ${active ? "text-primary" : "text-muted-foreground"}`} />
-                          <span className={`text-[11px] font-bold leading-tight ${active ? "text-foreground" : "text-foreground/80"}`}>
-                            {role.label}
-                          </span>
-                        </div>
-                        <span className="text-[10px] text-muted-foreground leading-tight">{role.sub}</span>
-                      </button>
-                    );
-                  })}
+              {/* Role Picker (register only — sign-in keeps last saved role) */}
+              {tab === "register" && (
+                <div>
+                  <label className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                    Operator Role
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {ROLE_PRESETS.map((role) => {
+                      const Icon = role.icon;
+                      const active = selectedRole === role.id;
+                      return (
+                        <button
+                          key={role.id}
+                          type="button"
+                          onClick={() => setSelectedRole(role.id)}
+                          className={`flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition-all ${
+                            active
+                              ? "border-primary/60 bg-primary/8 ring-1 ring-primary/20"
+                              : "border-border/60 bg-muted/20 hover:bg-muted/50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <Icon className={`size-3.5 ${active ? "text-primary" : "text-muted-foreground"}`} />
+                            <span className={`text-[11px] font-bold leading-tight ${active ? "text-foreground" : "text-foreground/80"}`}>
+                              {role.label}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground leading-tight">{role.sub}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Error */}
               {error && (
@@ -366,13 +454,13 @@ function LoginPage() {
               {/* Submit */}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || googleLoading}
                 className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-foreground py-3.5 text-sm font-bold text-background transition-all hover:bg-foreground/90 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <>
                     <span className="size-4 rounded-full border-2 border-background/30 border-t-background animate-spin" />
-                    Authenticating...
+                    {tab === "register" ? "Creating account…" : "Authenticating…"}
                   </>
                 ) : (
                   <>
@@ -387,7 +475,7 @@ function LoginPage() {
             <div className="mt-6 flex items-start gap-2 rounded-xl border border-border/40 bg-muted/20 p-3.5 text-[11px] text-muted-foreground leading-relaxed">
               <ShieldCheck className="size-3.5 shrink-0 mt-0.5 text-emerald-500" />
               <span>
-                Sessions persist in your browser. MongoDB authentication will be integrated for production — JWT token support is architected and ready.
+                Accounts are stored in MongoDB Atlas. Passwords are bcrypt-hashed. Sessions use signed JWTs — never plaintext credentials.
               </span>
             </div>
 

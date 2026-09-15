@@ -406,7 +406,7 @@ function PredictionStudioPage() {
       </div>
 
       {/* Main Studio Workspace Grid */}
-      <div className="mt-8 grid gap-8 lg:grid-cols-12">
+      <div className="mt-8 predict-workspace grid gap-8 lg:grid-cols-12">
         {/* Left Column: Simulation Controls (5 cols) */}
         <div className="space-y-6 lg:col-span-5">
           {/* Target Asset Selector Card */}
@@ -733,10 +733,48 @@ function PredictionStudioPage() {
             </div>
           </div>
 
-          {/* Recommended Actions — derived from live model tier */}
+          {/* Fault Probability Breakdown */}
+          {liveResult?.fault_probabilities && Object.keys(liveResult.fault_probabilities).length > 0 && (
+            <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-sm">
+              <h4 className="font-sans text-sm font-semibold text-foreground mb-4">
+                Fault Class Probability (Model 2 — DGA Classifier)
+              </h4>
+              <div className="space-y-2.5">
+                {Object.entries(liveResult.fault_probabilities)
+                  .sort(([, a], [, b]) => (b as number) - (a as number))
+                  .slice(0, 6)
+                  .map(([cls, prob]) => {
+                    const pct = Math.round((prob as number) * 100);
+                    const isTop = cls === liveResult.fault_type;
+                    return (
+                      <div key={cls}>
+                        <div className="flex items-center justify-between mb-1 text-xs">
+                          <span className={`font-mono font-bold ${isTop ? "text-foreground" : "text-muted-foreground"}`}>
+                            {isTop && <span className="mr-1.5 text-[9px] rounded px-1 py-0.5 bg-primary/10 text-primary font-bold">TOP</span>}
+                            {cls}
+                          </span>
+                          <span className={`font-mono font-semibold ${isTop ? "text-foreground" : "text-muted-foreground"}`}>{pct}%</span>
+                        </div>
+                        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${isTop ? (displayedHI >= 50 ? "bg-red-500" : "bg-primary") : "bg-muted-foreground/40"}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
+          {/* Recommended Actions — live Groq actions when available, else local heuristic */}
           <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-sm">
             <h4 className="font-sans text-sm font-semibold text-foreground mb-3">
               Automated Prescriptive Actions
+              {liveResult?.advisory_text && (
+                <span className="ml-2 text-[10px] font-mono font-normal text-emerald-500">· Live Model</span>
+              )}
             </h4>
             <div className="space-y-2.5">
               {prediction.recommendedActions.map((action, idx) => (

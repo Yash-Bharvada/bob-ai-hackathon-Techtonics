@@ -1,13 +1,20 @@
 /**
  * authSession.ts
- * Manages authenticated operator sessions with localStorage persistence.
+ * ==============
+ * Manages authenticated operator sessions.
  *
- * MongoDB-ready architecture:
- *   - sessionToken field reserved for a real JWT/session token from MongoDB Atlas Auth
- *   - All read/write functions are synchronous localStorage stubs that can be swapped
- *     for async API calls when MongoDB is integrated.
- *   - The shape of OperatorSession mirrors a MongoDB "sessions" collection document.
+ * Auth flow:
+ *   Email/Password  →  POST /api/auth/register or /api/auth/login
+ *                       ← { token, profile }  stored in localStorage
+ *   Google OAuth    →  browser redirected to /api/auth/google
+ *                       ← callback lands on /login?token=…&name=…&email=…
+ *                          LoginPage picks up query params and calls authSession.loginWithToken()
+ *
+ * Every protected API call attaches the token as:
+ *   Authorization: Bearer <token>
  */
+
+import { API_BASE } from "@/lib/techtonicsApi";
 
 export interface OperatorProfile {
   name: string;
@@ -15,11 +22,16 @@ export interface OperatorProfile {
   role: string;
   zone: string;
   substation: string;
+  /** User's DB _id — populated after real auth */
+  id?: string;
+  image?: string | null;
+  designation?: string;
+  provider?: "credentials" | "google";
 }
 
 export interface OperatorSession {
   profile: OperatorProfile;
-  /** Reserved for MongoDB JWT token — populated by backend login endpoint when integrated */
+  /** JWT returned by /api/auth/login or /api/auth/register */
   sessionToken: string | null;
   /** ISO timestamp of last sign-in */
   signedInAt: string;
@@ -34,6 +46,34 @@ export interface UserLocationState {
   timestamp: string;
 }
 
+// ─── Auth API request / response types ────────────────────────────────────────
+
+export interface RegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+  zone?: string;
+  role?: string;
+  designation?: string;
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  profile: OperatorProfile & {
+    id: string;
+    substation?: string;
+    createdAt?: string;
+    lastLoginAt?: string;
+  };
+}
+
+// ─── Storage keys ──────────────────────────────────────────────────────────────
+
 const STORAGE_KEY_SESSION = "voltra_operator_session";
 const STORAGE_KEY_LOC     = "voltra_user_location";
 
@@ -46,13 +86,35 @@ const DEFAULT_LOCATION: UserLocationState = {
   timestamp: new Date().toISOString(),
 };
 
-export const authSession = {
-  // ─── Session ──────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-  /**
-   * Returns true only when a valid session exists in localStorage.
-   * After MongoDB integration: also validate the JWT expiry.
-   */
+function _zoneToSubstation(zone: string): string {
+  if (zone.includes("Zone-B")) return "GIDC Industrial Phase-2 Substation";
+  if (zone.includes("Zone-A")) return "Anand Central Transmission Substation";
+  if (zone.includes("Zone-D")) return "Anand South Bulk Substation";
+  return "Borsad Rural Interconnect";
+}
+
+function _apiProfileToOperatorProfile(p: AuthResponse["profile"]): OperatorProfile {
+  return {
+    id:          p.id,
+    name:        p.name,
+    email:       p.email,
+    role:        p.role ?? "Regional Dispatch Engineer",
+    zone:        p.zone ?? "Zone-B · Heavy Manufacturing Corridor",
+    substation:  p.substation ?? _zoneToSubstation(p.zone ?? ""),
+    image:       p.image ?? null,
+    designation: p.designation ?? "",
+    provider:    p.provider ?? "credentials",
+  };
+}
+
+// ─── authSession singleton ────────────────────────────────────────────────────
+
+export const authSession = {
+
+  // ── Session ──────────────────────────────────────────────────────────────────
+
   isAuthenticated(): boolean {
     if (typeof window === "undefined") return false;
     try {
@@ -65,9 +127,6 @@ export const authSession = {
     }
   },
 
-  /**
-   * Retrieve the active session, or null if not signed in.
-   */
   getSession(): OperatorSession | null {
     if (typeof window === "undefined") return null;
     try {
@@ -79,38 +138,146 @@ export const authSession = {
     }
   },
 
-  /**
-   * Convenience: get just the OperatorProfile from the active session.
-   */
   getProfile(): OperatorProfile | null {
     return this.getSession()?.profile ?? null;
   },
 
+  getToken(): string | null {
+    return this.getSession()?.sessionToken ?? null;
+  },
+
   /**
-   * Persist a new session after successful login.
-   * When MongoDB is integrated: call the backend /api/auth/login endpoint,
-   * receive a JWT, and store it in sessionToken.
+   * Persist a session after receiving a JWT + profile from the backend.
    */
-  login(profile: OperatorProfile): void {
+  loginWithToken(token: string, profile: OperatorProfile): void {
     if (typeof window === "undefined") return;
     const session: OperatorSession = {
       profile,
-      sessionToken: null, // TODO: populate from MongoDB /api/auth/login response
+      sessionToken: token,
       signedInAt: new Date().toISOString(),
     };
     localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session));
   },
 
   /**
-   * Clear the active session (sign out).
-   * When MongoDB is integrated: also call /api/auth/logout to revoke the token.
+   * Legacy method kept for AuthModal compatibility — stores profile without a token.
+   * Will be replaced once AuthModal is wired to the API.
    */
+  login(profile: OperatorProfile): void {
+    if (typeof window === "undefined") return;
+    const session: OperatorSession = {
+      profile,
+      sessionToken: null,
+      signedInAt: new Date().toISOString(),
+    };
+    localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(session));
+  },
+
   logout(): void {
     if (typeof window === "undefined") return;
+    // Fire-and-forget server-side logout notification
+    const token = this.getToken();
+    if (token) {
+      fetch(`${API_BASE}/api/auth/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {/* ignore — token is already stateless */});
+    }
     localStorage.removeItem(STORAGE_KEY_SESSION);
   },
 
-  // ─── Location ─────────────────────────────────────────────────────────────
+  // ── Remote API calls ─────────────────────────────────────────────────────────
+
+  /**
+   * Register a new operator account.
+   * Throws on validation / duplicate email errors.
+   */
+  async register(req: RegisterRequest): Promise<AuthResponse> {
+    const res = await fetch(`${API_BASE}/api/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.detail ?? "Registration failed.");
+    const profile = _apiProfileToOperatorProfile(data.profile);
+    this.loginWithToken(data.token, profile);
+    return { token: data.token, profile: data.profile };
+  },
+
+  /**
+   * Sign in with email + password.
+   * Throws on wrong credentials.
+   */
+  async loginWithCredentials(req: LoginRequest): Promise<AuthResponse> {
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.detail ?? "Sign-in failed.");
+    const profile = _apiProfileToOperatorProfile(data.profile);
+    this.loginWithToken(data.token, profile);
+    return { token: data.token, profile: data.profile };
+  },
+
+  /**
+   * Initiate Google OAuth — redirects the browser to the FastAPI handler.
+   */
+  startGoogleOAuth(): void {
+    window.location.href = `${API_BASE}/api/auth/google`;
+  },
+
+  /**
+   * Called by LoginPage after the Google OAuth callback redirects back
+   * with ?token=…&name=…&email=… in the URL.
+   * Returns true if a token was found and consumed.
+   */
+  consumeGoogleCallbackParams(searchParams: URLSearchParams): boolean {
+    const token = searchParams.get("token");
+    const name  = searchParams.get("name");
+    const email = searchParams.get("email");
+    if (!token || !email) return false;
+
+    const profile: OperatorProfile = {
+      name:       name ?? email.split("@")[0],
+      email,
+      role:       "Regional Dispatch Engineer",
+      zone:       "Zone-B · Heavy Manufacturing Corridor",
+      substation: "GIDC Industrial Phase-2 Substation",
+      provider:   "google",
+    };
+    this.loginWithToken(token, profile);
+
+    // Strip the token from the URL bar without a page reload
+    if (typeof window !== "undefined") {
+      const clean = window.location.pathname;
+      window.history.replaceState({}, "", clean);
+    }
+    return true;
+  },
+
+  /**
+   * Fetch the current user's profile from the server using the stored JWT.
+   * Returns null if not authenticated or if the token is expired.
+   */
+  async fetchMe(): Promise<OperatorProfile | null> {
+    const token = this.getToken();
+    if (!token) return null;
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return _apiProfileToOperatorProfile(data);
+    } catch {
+      return null;
+    }
+  },
+
+  // ── Location ──────────────────────────────────────────────────────────────────
 
   getLocation(): UserLocationState {
     if (typeof window === "undefined") return DEFAULT_LOCATION;

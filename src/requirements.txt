@@ -7,3 +7,9 @@ fastapi>=0.111
 uvicorn[standard]>=0.29
 python-dotenv>=1.0
 kagglehub>=0.2
+# ── Auth / MongoDB ──────────────────────────────────────────────────
+pymongo[srv]>=4.6
+bcrypt>=4.1
+python-jose[cryptography]>=3.3
+python-multipart>=0.0.9
+httpx>=0.27
