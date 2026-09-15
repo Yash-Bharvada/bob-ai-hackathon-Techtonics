@@ -7,6 +7,7 @@ import { GridDiagram } from "@/components/GridDiagram";
 import { TX115InterventionBanner } from "@/components/TX115InterventionBanner";
 import { techtonicsApi, type RankedAsset } from "@/lib/techtonicsApi";
 import { authSession } from "@/lib/authSession";
+import { safeParseShap } from "@/lib/gridData";
 import homeImage from "@/assets/voltra-home.jpeg";
 import gridImage from "@/assets/voltra-grid.jpg";
 
@@ -409,9 +410,10 @@ function FaultAnalysis({ topAsset }: { topAsset?: RankedAsset | null }) {
   const capacity = topAsset?.mva_rating ? `${topAsset.mva_rating} MVA` : "25 MVA";
 
   const factors = useMemo(() => {
-    if (topAsset?.top_3_shap?.length) {
-      const maxVal = Math.max(...topAsset.top_3_shap.map(([, v]) => Math.abs(v)), 1);
-      return topAsset.top_3_shap.map(([name, v]) => [
+    const shap = safeParseShap(topAsset?.top_3_shap);
+    if (shap.length) {
+      const maxVal = Math.max(...shap.map(([, v]) => Math.abs(v)), 1);
+      return shap.map(([name, v]) => [
         `${name} Driver (SHAP Model 1)`,
         Math.min(99, Math.max(20, Math.round((Math.abs(v) / maxVal) * 94))),
       ] as [string, number]);
