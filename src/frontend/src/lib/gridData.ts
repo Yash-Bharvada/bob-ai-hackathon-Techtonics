@@ -394,36 +394,36 @@ export const initialGridAssets: GridAsset[] = [
   })),
 ];
 
-export const initialGridTicker: GridTickerEvent[] = [
-  {
-    id: "TICK-1",
-    timestamp: "13:48:10",
-    assetId: "TX-107",
-    message: "Critical DGA arcing alert: C2H2 rate-of-rise exceeds IEC thresholds. Immediate dispatch recommended.",
-    severity: "critical",
-  },
-  {
-    id: "TICK-2",
-    timestamp: "13:42:05",
-    assetId: "TX-115",
-    message: "Stalled recovery verified: Health index stabilized at 36.1 post fan replacement and load curtailment.",
-    severity: "info",
-  },
-  {
-    id: "TICK-3",
-    timestamp: "13:30:18",
-    assetId: "TX-104",
-    message: "Progressive thermal signature: CH4 and C2H4 elevation correlates with heatwave ambient peak.",
-    severity: "warning",
-  },
-  {
-    id: "TICK-4",
-    timestamp: "13:15:00",
-    assetId: "TX-112",
-    message: "Excavation strike transient damping complete; D1 low-energy discharge monitoring continues.",
-    severity: "warning",
-  },
-];
+export const initialGridTicker: GridTickerEvent[] = [];
+
+/**
+ * Helper to safely parse SHAP data from lists, string representations, or API formats.
+ */
+export function safeParseShap(raw: any): [string, number][] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) {
+    return raw
+      .filter((item) => Array.isArray(item) && item.length >= 2)
+      .map(([k, v]) => [String(k), typeof v === "number" && isFinite(v) ? v : Number(v) || 0] as [string, number]);
+  }
+  if (typeof raw === "string" && raw.trim()) {
+    try {
+      const normalized = raw
+        .replace(/\(/g, "[")
+        .replace(/\)/g, "]")
+        .replace(/'/g, '"');
+      const parsed = JSON.parse(normalized);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .filter((item: any) => Array.isArray(item) && item.length >= 2)
+          .map(([k, v]: [any, any]) => [String(k), Number(v) || 0] as [string, number]);
+      }
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
 
 /**
  * Merge live FastAPI /api/ranked response into the GridAsset list
@@ -440,6 +440,13 @@ export function mergeRankedIntoAssets(baseAssets: GridAsset[], rankedList: Ranke
     const isHigh = live.risk_tier === "HIGH";
     const isMedium = live.risk_tier === "MEDIUM";
 
+    const parsedLiveShap = safeParseShap(live.top_3_shap);
+    const shap = parsedLiveShap.length > 0 ? parsedLiveShap : asset.top3Shap;
+
+    const coreTempC = live.core_temp_c != null && isFinite(live.core_temp_c) ? Number(live.core_temp_c.toFixed(1)) : asset.coreTempC;
+    const currentLoadMw = live.current_load_mw != null && isFinite(live.current_load_mw) ? Number(live.current_load_mw.toFixed(1)) : asset.currentLoadMw;
+    const archetype = live.archetype || asset.archetype;
+
     return {
       ...asset,
       healthIndexRaw: hiRaw,
@@ -450,7 +457,10 @@ export function mergeRankedIntoAssets(baseAssets: GridAsset[], rankedList: Ranke
       compositeScore: live.composite_score,
       status: (isCritical || isHigh) ? "risk" : isMedium ? "watch" : "stable",
       activeAnomalies: (isCritical || isHigh) ? 3 : isMedium ? 1 : 0,
-      top3Shap: live.top_3_shap || asset.top3Shap,
+      top3Shap: shap,
+      coreTempC,
+      currentLoadMw,
+      archetype,
     };
   });
 }

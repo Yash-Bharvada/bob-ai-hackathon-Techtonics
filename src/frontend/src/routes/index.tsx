@@ -1,11 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis } from "recharts";
-import { Activity, AlertTriangle, ArrowRight, BrainCircuit, Check, Clock3, CloudLightning, Database, Gauge, Radio, ShieldCheck, Zap, Wrench } from "lucide-react";
+import { Activity, AlertTriangle, ArrowRight, BrainCircuit, Check, Clock3, CloudLightning, Database, Gauge, LogIn, Radio, ShieldCheck, Zap, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GridDiagram } from "@/components/GridDiagram";
 import { TX115InterventionBanner } from "@/components/TX115InterventionBanner";
-import homeImage from "@/assets/voltra-home.jpg";
+import { techtonicsApi, type RankedAsset } from "@/lib/techtonicsApi";
+import { authSession } from "@/lib/authSession";
+import { safeParseShap } from "@/lib/gridData";
+import homeImage from "@/assets/voltra-home.jpeg";
 import gridImage from "@/assets/voltra-grid.jpg";
 
 export const Route = createFileRoute("/")({
@@ -20,7 +23,7 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-const history = [
+const defaultHistory = [
   { time: "Day 60", load: 65, health: 86 }, { time: "Day 68", load: 72, health: 81 },
   { time: "Day 75", load: 84, health: 64 }, { time: "Day 78", load: 92, health: 28 }, // TX-115 Peak degradation
   { time: "Day 80", load: 60, health: 45 }, // Maintenance
@@ -29,8 +32,72 @@ const history = [
 ];
 
 function Home() {
+  const [txHistory, setTxHistory] = useState(defaultHistory);
+  const [topAsset, setTopAsset] = useState<RankedAsset | null>(null);
+  const [gridMetrics, setGridMetrics] = useState({
+    assetsMonitored: "18",
+    criticalCount: "02",
+    criticalAssets: "TX-107, TX-112",
+    watchCount: "02",
+    meanRul: "89.4d",
+  });
+
+  useEffect(() => {
+    techtonicsApi.getTimeseries("TX-115").then((res) => {
+      if (res.timeseries?.length) {
+        const sampled = res.timeseries
+          .filter((_, i) => i % 3 === 0 || i === res.timeseries.length - 1)
+          .map((pt) => ({
+            time: `Day ${pt.day}`,
+            load: Math.round(pt.load_percentage || 60),
+            health: Math.round(Math.max(5, Math.min(99, 100 - (pt["Health index"] ?? pt.health_index ?? 36)))),
+          }));
+        setTxHistory(sampled);
+      }
+    }).catch(() => {});
+
+    techtonicsApi.getRanked().then((res) => {
+      if (res.ranked_assets?.length) {
+        const assets = res.ranked_assets;
+        setTopAsset(assets[0]);
+        const critical = assets.filter((a) => a.risk_tier === "HIGH" || a.risk_tier === "CRITICAL");
+        const watch = assets.filter((a) => a.risk_tier === "MEDIUM");
+        const avgRul = assets.reduce((s, a) => s + (a.RUL_days || 0), 0) / assets.length;
+        setGridMetrics({
+          assetsMonitored: String(assets.length).padStart(2, "0"),
+          criticalCount: String(critical.length).padStart(2, "0"),
+          criticalAssets: critical.slice(0, 2).map((a) => a.asset_id).join(", ") || "None",
+          watchCount: String(watch.length).padStart(2, "0"),
+          meanRul: `${avgRul.toFixed(1)}d`,
+        });
+      }
+    }).catch(() => {});
+  }, []);
+
+  const [isAuthed, setIsAuthed] = useState(false);
+  useEffect(() => { setIsAuthed(authSession.isAuthenticated()); }, []);
+
   return (
     <div className="overflow-hidden pt-5">
+      {/* Unauthenticated prompt banner */}
+      {!isAuthed && (
+        <div className="mx-auto mb-2 max-w-6xl px-4 sm:px-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-3.5 text-sm">
+            <div className="flex items-center gap-2.5 text-foreground/80">
+              <ShieldCheck className="size-4 text-primary shrink-0" />
+              <span className="text-xs sm:text-sm">
+                <strong className="text-foreground">Sign in to access</strong> the live grid console, predictions, and AI advisories.
+              </span>
+            </div>
+            <Link
+              to="/login"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-xs font-bold text-background hover:bg-foreground/90 transition-colors"
+            >
+              <LogIn className="size-3.5" /> Sign In
+            </Link>
+          </div>
+        </div>
+      )}
       <Hero />
       <div className="mx-auto mt-12 max-w-6xl px-4 sm:px-6">
         <TX115InterventionBanner />
@@ -38,9 +105,9 @@ function Home() {
       <Problem />
       <Pipeline />
       <CinematicGrid />
-      <Dashboard />
-      <FaultAnalysis />
-      <Analytics />
+      <Dashboard metrics={gridMetrics} />
+      <FaultAnalysis topAsset={topAsset} />
+      <Analytics historyData={txHistory} />
       <Action />
     </div>
   );
@@ -49,7 +116,7 @@ function Home() {
 function Hero() {
   return (
     <section className="mx-auto mt-5 w-full max-w-6xl px-4 sm:px-6">
-      <div className="relative min-h-[650px] overflow-hidden rounded-[2rem] md:min-h-[700px]">
+      <div className="hero-min-height relative min-h-[650px] overflow-hidden rounded-[2rem] md:min-h-[700px]">
         <img
           src={homeImage}
           alt="A powered modern home beside monitored transmission lines at dusk"
@@ -137,24 +204,56 @@ function Problem() {
 }
 
 function FlowPanel({ title, tone, items, footer }: { title: string; tone: "muted" | "signal"; items: string[]; footer: string }) {
+  const isSignal = tone === "signal";
+
   return (
-    <div className={`rounded-3xl border border-border/60 p-6 ${tone === "signal" ? "bg-signal/20" : "glass"}`}>
+    <div
+      className={`rounded-3xl border p-6 sm:p-7 shadow-sm transition-all ${
+        isSignal
+          ? "border-emerald-500/30 bg-emerald-500/5"
+          : "border-border/80 bg-card"
+      }`}
+    >
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold">{title}</p>
-        <span className={`size-2 rounded-full ${tone === "signal" ? "bg-signal" : "bg-muted-foreground"}`} />
+        <p className="text-sm font-bold text-foreground">{title}</p>
+        <span
+          className={`size-2.5 rounded-full ${
+            isSignal ? "bg-emerald-500" : "bg-muted-foreground"
+          }`}
+        />
       </div>
-      <div className="mt-8 space-y-2">
+      <div className="mt-6 space-y-2.5">
         {items.map((item, i) => (
           <div key={item}>
-            <div className="flex items-center gap-3 rounded-xl bg-surface/70 px-4 py-3 text-sm">
-              <span className="grid size-6 place-items-center rounded-full bg-ink text-[10px] text-cream font-mono">{i + 1}</span>
-              {item}
+            <div
+              className={`flex items-center gap-3.5 rounded-2xl px-4 py-3 text-xs font-semibold ${
+                isSignal
+                  ? "border border-emerald-500/20 bg-card text-foreground shadow-sm"
+                  : "border border-border/60 bg-muted/40 text-foreground"
+              }`}
+            >
+              <span
+                className={`grid size-6 place-items-center rounded-full text-[10px] font-mono font-bold ${
+                  isSignal
+                    ? "bg-emerald-600 text-white"
+                    : "bg-muted text-muted-foreground border border-border"
+                }`}
+              >
+                {i + 1}
+              </span>
+              <span>{item}</span>
             </div>
-            {i < items.length - 1 && <div className="ml-7 h-3 w-px bg-border" />}
+            {i < items.length - 1 && <div className="ml-7 h-2.5 w-px bg-border/70" />}
           </div>
         ))}
       </div>
-      <p className="mt-5 text-xs text-muted-foreground">{footer}</p>
+      <p
+        className={`mt-6 text-xs font-medium ${
+          isSignal ? "text-emerald-700 dark:text-emerald-400 font-semibold" : "text-muted-foreground"
+        }`}
+      >
+        {footer}
+      </p>
     </div>
   );
 }
@@ -237,7 +336,23 @@ function CinematicGrid() {
   );
 }
 
-function Dashboard() {
+function Dashboard({
+  metrics = {
+    assetsMonitored: "18",
+    criticalCount: "02",
+    criticalAssets: "TX-107, TX-112",
+    watchCount: "02",
+    meanRul: "89.4d",
+  },
+}: {
+  metrics?: {
+    assetsMonitored: string;
+    criticalCount: string;
+    criticalAssets: string;
+    watchCount: string;
+    meanRul: string;
+  };
+}) {
   return (
     <section className="mx-auto mt-24 w-full max-w-6xl px-6">
       <div className="grid gap-8 lg:grid-cols-[.85fr_1.6fr]">
@@ -250,19 +365,21 @@ function Dashboard() {
             Healthy substations stay quiet. Emerging equipment risks rise into view with SHAP feature explainability and IBM Bob plain-English advisories.
           </p>
           <div className="mt-8 grid grid-cols-2 gap-3">
-            <Metric icon={ShieldCheck} value="18" label="Assets Monitored" status="Online" />
-            <Metric icon={AlertTriangle} value="02" label="Critical High Risk" status="TX-107, TX-112" />
-            <Metric icon={Activity} value="02" label="Watch Tier" status="TX-104, TX-115" />
-            <Metric icon={Clock3} value="89.4d" label="Mean RUL" status="Fleet Wide" />
+            <Metric icon={ShieldCheck} value={metrics.assetsMonitored} label="Assets Monitored" status="Online" />
+            <Metric icon={AlertTriangle} value={metrics.criticalCount} label="Critical High Risk" status={metrics.criticalAssets} />
+            <Metric icon={Activity} value={metrics.watchCount} label="Watch Tier" status="Elevated Risk" />
+            <Metric icon={Clock3} value={metrics.meanRul} label="Mean RUL" status="Fleet Wide" />
           </div>
         </div>
-        <div className="glass rounded-3xl p-3">
-          <div className="flex items-center justify-between px-3 py-2">
+        <div className="rounded-3xl border border-border/80 bg-card p-4 sm:p-6 shadow-sm">
+          <div className="flex items-center justify-between px-2 pb-4">
             <div>
-              <p className="text-sm font-semibold">Anand District Regional Sub-Transmission</p>
-              <p className="text-[10px] text-muted-foreground font-mono">LIVE · 5 NODES MAPPED</p>
+              <p className="text-sm font-bold text-foreground">Anand District Regional Sub-Transmission</p>
+              <p className="text-[10px] text-muted-foreground font-mono font-semibold uppercase">LIVE · 5 NODES MAPPED</p>
             </div>
-            <span className="pill bg-signal/20 px-3 py-1 text-[10px] font-medium font-mono">SYNCHRONIZED</span>
+            <span className="pill rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-[10px] font-bold font-mono text-emerald-700 dark:text-emerald-400">
+              SYNCHRONIZED
+            </span>
           </div>
           <GridDiagram />
         </div>
@@ -277,18 +394,37 @@ function Metric({ icon: Icon, value, label, status }: { icon: typeof Activity; v
       <Icon className="size-4 text-muted-foreground" />
       <p className="mt-4 text-2xl font-bold font-mono text-foreground">{value}</p>
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-2 text-[10px] uppercase font-mono text-foreground">● {status}</p>
+      <p className="mt-2 text-[10px] uppercase font-mono text-foreground flex items-center gap-1.5">
+        <span className="size-1.5 rounded-full bg-signal inline-block" /> {status}
+      </p>
     </div>
   );
 }
 
-function FaultAnalysis() {
-  const factors = [
-    ["Acetylene Arcing Gas (C2H2)", 92],
-    ["Methane Thermal Concentration (CH4)", 78],
-    ["Hydrogen Surge (H2)", 68],
-    ["Dielectric Rigidity Breakdown", 54],
-  ] as const;
+function FaultAnalysis({ topAsset }: { topAsset?: RankedAsset | null }) {
+  const assetId = topAsset?.asset_id || "TX-107";
+  const archetype = topAsset?.archetype || "Electrical Arcing";
+  const substation = topAsset?.substation_name || "GIDC Phase-2 Heavy Industry";
+  const hi = topAsset?.health_index != null ? topAsset.health_index.toFixed(1) : "56.4";
+  const rul = topAsset?.RUL_days != null ? `${topAsset.RUL_days.toFixed(1)}d` : "33.2d";
+  const capacity = topAsset?.mva_rating ? `${topAsset.mva_rating} MVA` : "25 MVA";
+
+  const factors = useMemo(() => {
+    const shap = safeParseShap(topAsset?.top_3_shap);
+    if (shap.length) {
+      const maxVal = Math.max(...shap.map(([, v]) => Math.abs(v)), 1);
+      return shap.map(([name, v]) => [
+        `${name} Driver (SHAP Model 1)`,
+        Math.min(99, Math.max(20, Math.round((Math.abs(v) / maxVal) * 94))),
+      ] as [string, number]);
+    }
+    return [
+      ["Acetylene Arcing Gas (C2H2)", 92],
+      ["Methane Thermal Concentration (CH4)", 78],
+      ["Hydrogen Surge (H2)", 68],
+      ["Dielectric Rigidity Breakdown", 54],
+    ] as [string, number][];
+  }, [topAsset?.top_3_shap]);
 
   return (
     <section className="mx-auto mt-24 w-full max-w-6xl px-6">
@@ -299,21 +435,21 @@ function FaultAnalysis() {
               <AlertTriangle className="size-4 text-danger" />
               <span className="text-danger font-semibold">CRITICAL FAULT DETECTED</span>
             </div>
-            <h2 className="mt-5 text-4xl font-semibold text-cream">TX-107 · Electrical Arcing</h2>
+            <h2 className="mt-5 text-4xl font-semibold text-cream">{assetId} · {archetype}</h2>
             <p className="mt-3 text-sm text-cream/65">
-              DGA sensors detect high-energy electrical discharge (D1/D2) inside the main tank at GIDC Phase-2 Heavy Industry.
+              DGA sensors detect high-energy electrical discharge (D1/D2) inside the main tank at {substation}.
             </p>
             <div className="mt-8 grid grid-cols-3 gap-3">
               <div>
-                <p className="text-3xl font-bold font-mono text-danger">HI 56.4</p>
+                <p className="text-3xl font-bold font-mono text-danger">HI {hi}</p>
                 <p className="text-[10px] text-cream/45 font-mono">DAMAGE SCORE</p>
               </div>
               <div>
-                <p className="text-3xl font-bold font-mono text-cream">33.2d</p>
+                <p className="text-3xl font-bold font-mono text-cream">{rul}</p>
                 <p className="text-[10px] text-cream/45 font-mono">REMAINING LIFE</p>
               </div>
               <div>
-                <p className="text-3xl font-bold font-mono text-signal">25 MVA</p>
+                <p className="text-3xl font-bold font-mono text-signal">{capacity}</p>
                 <p className="text-[10px] text-cream/45 font-mono">RATED CAPACITY</p>
               </div>
             </div>
@@ -343,7 +479,7 @@ function FaultAnalysis() {
   );
 }
 
-function Analytics() {
+function Analytics({ historyData = defaultHistory }: { historyData?: Array<{ time: string; load: number; health: number }> }) {
   return (
     <section className="mx-auto mt-24 w-full max-w-6xl px-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -365,7 +501,7 @@ function Analytics() {
           </div>
           <div className="mt-6 h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={history}>
+              <AreaChart data={historyData}>
                 <defs>
                   <linearGradient id="load" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="var(--color-signal)" stopOpacity={0.45} />

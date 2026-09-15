@@ -4,6 +4,20 @@
  * Endpoints default to http://localhost:8000 with graceful fallback handling.
  */
 
+// Import lazily to avoid a circular dependency (authSession imports API_BASE from here)
+function _getAuthHeaders(): Record<string, string> {
+  try {
+    const raw = typeof window !== "undefined" ? localStorage.getItem("voltra_operator_session") : null;
+    if (!raw) return {};
+    const session = JSON.parse(raw);
+    const token = session?.sessionToken;
+    if (!token) return {};
+    return { Authorization: `Bearer ${token}` };
+  } catch {
+    return {};
+  }
+}
+
 // ─── Incident Reporting Types (POST /events/report) ──────────────────────────
 
 export interface EventReportRequest {
@@ -24,7 +38,7 @@ export interface EventReportResponse {
   message: string;
 }
 
-export const API_BASE = "http://localhost:8000";
+export const API_BASE = (import.meta.env.VITE_API_BASE as string) || "http://localhost:8000";
 
 export interface RankedAsset {
   rank: number;
@@ -32,16 +46,23 @@ export interface RankedAsset {
   substation_name?: string;
   grid_zone?: string;
   criticality_tier?: string;
+  /** Normalised from health_index_score by backend /api/ranked */
   health_index: number;
   RUL_days: number;
   fault_type: string;
+  /** Normalised from fault_confidence by backend */
   fault_prob?: number;
   risk_tier: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
   composite_score: number;
   mva_rating?: number;
   voltage_kv?: string;
   customer_count_served?: number;
+  /** Normalised from top3_shap_features by backend */
   top_3_shap?: [string, number][];
+  archetype?: string;
+  core_temp_c?: number;
+  load_pct?: number;
+  current_load_mw?: number;
 }
 
 export interface RankedResponse {
@@ -58,17 +79,30 @@ export interface RankedResponse {
 
 export interface AssetDetailResponse {
   asset_id: string;
-  /** Renamed from health_index_score in pipeline — normalised by backend */
+  /** Normalised from health_index_score by backend /api/asset/{id} */
   health_index: number;
   RUL_days: number;
   risk_tier: string;
   fault_type: string;
-  /** Renamed from fault_confidence in pipeline */
+  /** Normalised from fault_confidence (0–1 fraction) by backend */
   fault_prob: number;
   fault_probabilities?: Record<string, number>;
-  /** Renamed from top3_shap_features in pipeline */
+  /** Normalised from top3_shap_features by backend */
   top_3_shap: [string, number][];
-  sensor_readings?: Record<string, any>;
+  /** Raw sensor readings from the latest timeseries snapshot — used to pre-fill predict sliders */
+  sensor_readings?: {
+    Hydrogen?: number;
+    Methane?: number;
+    Acethylene?: number;
+    Ethylene?: number;
+    Ethane?: number;
+    CO?: number;
+    CO2?: number;
+    "Dielectric rigidity"?: number;
+    top_oil_temp_c?: number;
+    load_pct?: number;
+    [key: string]: number | null | undefined;
+  };
   advisory_text: string;
   /** "ibm_bob_llm" when Anthropic key present, "deterministic_fallback" otherwise */
   advisory_source: "ibm_bob_llm" | "deterministic_fallback";
@@ -103,6 +137,7 @@ export interface TimeseriesPoint {
   top_oil_temp_c?: number;
   temperature?: number;
   vibration?: number;
+  load_pct?: number;
   load_percentage?: number;
   "Health index"?: number;
   health_index?: number;
@@ -177,8 +212,9 @@ export interface AdhocScoreResponse {
   RUL_days: number;
   risk_tier: string;
   fault_type: string;
-  /** Normalised from fault_confidence by backend */
+  /** Normalised from fault_confidence (0–1) by backend */
   fault_prob: number;
+  fault_probabilities?: Record<string, number>;
   /** Normalised from top3_shap_features by backend */
   top_3_shap: [string, number][];
   advisory_text?: string;
@@ -188,9 +224,23 @@ export interface AdhocScoreResponse {
 async function requestWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 4000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
+  // Merge auth headers into every outgoing request
+  const authHeaders = _getAuthHeaders();
+  const mergedOptions: RequestInit = {
+    ...options,
+    headers: {
+      ...authHeaders,
+      ...(options.headers as Record<string, string> | undefined),
+    },
+    signal: controller.signal,
+  };
   try {
-    const res = await fetch(url, { ...options, signal: controller.signal });
+    const res = await fetch(url, mergedOptions);
     clearTimeout(id);
+    // If server returns 401 the token is expired — clear session so UI re-directs to login
+    if (res.status === 401) {
+      try { localStorage.removeItem("voltra_operator_session"); } catch {}
+    }
     return res;
   } catch (err) {
     clearTimeout(id);
@@ -265,4 +315,166 @@ export const techtonicsApi = {
     if (!res.ok) throw new Error(`HTTP ${res.status} from /events/report`);
     return res.json();
   },
+
+  /**
+   * POST /api/groq-report
+   * Generates live plain-English maintenance directives and trajectory forecasting using Groq LPU API.
+   */
+  async generateGroqReport(payload: {
+    asset_id: string;
+    health_index: number;
+    rul_days: number;
+    fault_type: string;
+    ambient_temp_c: number;
+    load_mw?: number;
+    rated_mva?: number;
+    substation?: string;
+    c2h2_ppm?: number;
+    ch4_ppm?: number;
+    h2_ppm?: number;
+  }): Promise<{
+    status: string;
+    provider: string;
+    asset_id: string;
+    executive_summary: string;
+    thermal_analysis: string;
+    weather_correlation: string;
+    trajectory_forecast?: string;
+    recommended_actions: Array<{
+      priority: "HIGH" | "MEDIUM" | "LOW";
+      action: string;
+      impact: string;
+      timeline: string;
+    }>;
+  }> {
+    const res = await requestWithTimeout(`${API_BASE}/api/groq-report`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }, 15000);
+    if (!res.ok) throw new Error(`HTTP ${res.status} from /api/groq-report`);
+    return res.json();
+  },
+
+  /**
+   * POST /api/events/search
+   * Semantic geospatial area hazard search & dynamic risk multiplier retrieval powered by Google Gemini 3.6 Flash.
+   */
+  async searchPastEvents(query = "", zone = ""): Promise<{
+    status: string;
+    provider?: string;
+    query?: string;
+    zone?: string;
+    search_area?: string;
+    threat_severity?: "CRITICAL" | "ELEVATED" | "NOMINAL";
+    total_matched: number;
+    active_risk_multiplier: number;
+    geospatial_summary?: string;
+    affected_assets?: string[];
+    cascading_risk_assessment?: string;
+    containment_protocols?: string[];
+    events: Array<{
+      incident_id: string;
+      received_at: string;
+      zone_name: string;
+      event_description: string;
+      category: string;
+      risk_multiplier: string;
+      disclaimer: string;
+    }>;
+  }> {
+    const res = await requestWithTimeout(`${API_BASE}/api/events/search`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query, zone }),
+    }, 12000);
+    if (!res.ok) throw new Error(`HTTP ${res.status} from /api/events/search`);
+    return res.json();
+  },
+
+  /**
+   * GET /api/weather/live
+   * Fetches real-time weather from Open-Meteo for coordinates and returns thermal stress index.
+   */
+  async fetchLiveWeather(lat = 22.56, lon = 72.95): Promise<{
+    status: string;
+    latitude: number;
+    longitude: number;
+    temperature_c: number;
+    humidity_pct: number;
+    wind_speed_kmh: number;
+    thermal_stress_pct: number;
+    cooling_efficiency_pct: number;
+    forecast_24h: Array<{ time: string; temp: number; hour: number }>;
+  }> {
+    const res = await requestWithTimeout(`${API_BASE}/api/weather/live?lat=${lat}&lon=${lon}`, {}, 6000);
+    if (!res.ok) throw new Error(`HTTP ${res.status} from /api/weather/live`);
+    return res.json();
+  },
+
+  /**
+   * GET /api/events/stats
+   * Returns real-time security pipeline counts from actual event files.
+   */
+  async getEventStats(): Promise<{
+    processed: number;
+    verified: number;
+    quarantined: number;
+    blocked: number;
+  }> {
+    const res = await requestWithTimeout(`${API_BASE}/api/events/stats`, {}, 4000);
+    if (!res.ok) throw new Error(`HTTP ${res.status} from /api/events/stats`);
+    return res.json();
+  },
+
+  /**
+   * POST /api/score/csv
+   * Upload a CSV of sensor readings → ML pipeline → scored results.
+   */
+  async scoreCSV(file: File): Promise<CsvScoreResponse> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const authHeaders = _getAuthHeaders();
+    const res = await fetch(`${API_BASE}/api/score/csv`, {
+      method: "POST",
+      headers: { ...authHeaders },   // do NOT set Content-Type — browser does multipart boundary
+      body: formData,
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as any)?.detail ?? `HTTP ${res.status} from /api/score/csv`);
+    }
+    return res.json();
+  },
+
+  /** GET /api/sample/csv — returns the URL to trigger a browser download */
+  getSampleCsvUrl(): string {
+    return `${API_BASE}/api/sample/csv`;
+  },
 };
+
+// ─── CSV scoring types ────────────────────────────────────────────────────────
+
+export interface CsvScoreRow {
+  row: number;
+  asset_id: string;
+  health_index: number;
+  RUL_days: number;
+  risk_tier: string;
+  fault_type: string;
+  fault_prob: number;
+  fault_probabilities?: Record<string, number>;
+  top_3_shap?: [string, number][];
+  advisory_text?: string;
+}
+
+export interface CsvScoreResponse {
+  status: string;
+  total_rows: number;
+  scored: number;
+  errors: number;
+  error_details: Array<{ row: number; asset_id: string; error: string }>;
+  results: CsvScoreRow[];
+}
+
