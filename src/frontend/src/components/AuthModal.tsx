@@ -44,10 +44,10 @@ export function AuthModal({ open, onClose, onSuccess }: AuthModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/65 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-[100] flex min-h-screen items-center justify-center overflow-y-auto bg-black/65 backdrop-blur-md p-4 sm:p-6 animate-in fade-in duration-200"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="relative w-full max-w-md rounded-3xl border border-border/80 bg-card p-6 sm:p-8 shadow-glass transition-all">
+      <div className="relative my-auto w-full max-w-md rounded-3xl border border-border/80 bg-card p-6 sm:p-8 shadow-2xl transition-all">
         <button
           type="button"
           onClick={onClose}

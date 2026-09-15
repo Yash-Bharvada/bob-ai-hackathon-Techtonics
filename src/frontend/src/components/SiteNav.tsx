@@ -1,7 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, Zap, CheckCircle2, AlertCircle, Sun, Moon, User } from "lucide-react";
+import { Menu, Sun, Moon, User, ArrowUpRight, X } from "lucide-react";
 import { useState, useEffect } from "react";
-import { techtonicsApi } from "@/lib/techtonicsApi";
 import { VoltraLogo } from "@/components/VoltraLogo";
 import { AuthModal } from "@/components/AuthModal";
 import { authSession, type OperatorProfile } from "@/lib/authSession";
@@ -20,7 +19,6 @@ export function SiteNav() {
   const [open, setOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [profile, setProfile] = useState<OperatorProfile>(authSession.getProfile());
-  const [backendLive, setBackendLive] = useState<boolean | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("light");
 
   useEffect(() => {
@@ -47,149 +45,125 @@ export function SiteNav() {
     }
   };
 
-  useEffect(() => {
-    let mounted = true;
-    const check = async () => {
-      const res = await techtonicsApi.checkHealth();
-      if (mounted) setBackendLive(res.live);
-    };
-    check();
-    const interval = setInterval(check, 10000);
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, []);
-
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/85 backdrop-blur-md transition-colors">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
-        <div className="flex items-center gap-3">
-          <Link to="/" className="flex items-center gap-2.5 transition-opacity hover:opacity-90" onClick={() => setOpen(false)}>
-            <VoltraLogo size={36} showText={true} subtitle="Grid Risk Advisor" />
+    <>
+      <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl transition-all">
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
+          {/* Left: Brand Logo */}
+          <Link
+            to="/"
+            className="flex items-center gap-2.5 transition-transform hover:scale-[1.01]"
+            onClick={() => setOpen(false)}
+          >
+            <VoltraLogo size={34} showText={true} subtitle="Grid Risk Advisor" />
           </Link>
 
-          {/* Backend live status indicator */}
-          <div className="hidden lg:flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-2.5 py-1 text-[11px] shadow-sm">
-            {backendLive === true ? (
-              <>
-                <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="font-semibold text-foreground">FastAPI Online :8000</span>
-                <span className="text-muted-foreground font-mono">(Real ML Models)</span>
-              </>
-            ) : backendLive === false ? (
-              <>
-                <span className="size-2 rounded-full bg-amber-500" />
-                <span className="text-muted-foreground">Local Snapshot Mode</span>
-              </>
-            ) : (
-              <>
-                <span className="size-2 rounded-full bg-muted-foreground animate-ping" />
-                <span className="text-muted-foreground">Connecting…</span>
-              </>
-            )}
+          {/* Center: Clean Capsule Navigation */}
+          <nav className="hidden items-center gap-1 rounded-full border border-border/60 bg-muted/50 p-1 md:flex shadow-xs backdrop-blur-md">
+            {links.map((l) => {
+              const active = l.to === "/" ? path === "/" : path.startsWith(l.to);
+              return (
+                <Link
+                  key={l.to}
+                  to={l.to}
+                  className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
+                    active
+                      ? "bg-card text-foreground shadow-sm font-bold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-background/40"
+                  }`}
+                >
+                  {l.label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Right: Quick Actions */}
+          <div className="flex items-center gap-2">
+            {/* Operator Session Pill */}
+            <button
+              type="button"
+              onClick={() => setAuthOpen(true)}
+              title={`Signed in as ${profile.name} (${profile.zone.split("·")[0]})`}
+              className="hidden items-center gap-2 rounded-full border border-border/70 bg-card/80 px-3 py-1.5 text-xs font-semibold text-foreground shadow-xs transition-all hover:bg-muted hover:border-border sm:inline-flex"
+            >
+              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="max-w-[110px] truncate">{profile.name}</span>
+            </button>
+
+            {/* Primary Console CTA */}
+            <Link
+              to="/grid"
+              className="pill hidden items-center gap-1 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:inline-flex"
+            >
+              Live Grid <ArrowUpRight className="size-3.5 opacity-80" />
+            </Link>
+
+            {/* Glassmorphic Minimal Day/Night Toggle */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === "dark" ? "Switch to Day Mode" : "Switch to Night Mode"}
+              title={theme === "dark" ? "Switch to Day Mode" : "Switch to Night Mode"}
+              className="grid size-9 place-items-center rounded-full border border-border/70 bg-card/80 backdrop-blur-md text-foreground shadow-xs transition-all hover:scale-105 hover:bg-muted active:scale-95"
+            >
+              {theme === "dark" ? (
+                <Sun className="size-4 text-amber-400 transition-transform duration-300 hover:rotate-45" />
+              ) : (
+                <Moon className="size-4 text-slate-700 dark:text-slate-300 transition-transform duration-300 hover:-rotate-12" />
+              )}
+            </button>
+
+            {/* Mobile Hamburger Menu Toggle */}
+            <button
+              type="button"
+              aria-label="Toggle navigation"
+              onClick={() => setOpen((v) => !v)}
+              className="grid size-9 place-items-center rounded-xl border border-border/60 bg-card md:hidden shadow-xs text-foreground"
+            >
+              {open ? <X className="size-4" /> : <Menu className="size-4" />}
+            </button>
           </div>
         </div>
 
-        <nav className="pill hidden items-center gap-1 rounded-full border border-border/60 bg-muted/60 p-1 md:flex">
-          {links.map((l) => {
-            const active = l.to === "/" ? path === "/" : path.startsWith(l.to);
-            return (
+        {/* Mobile Dropdown Menu */}
+        {open && (
+          <nav className="glass absolute inset-x-4 top-16 grid gap-1 rounded-2xl p-3 md:hidden shadow-lg border border-border z-50">
+            {links.map((l) => (
               <Link
                 key={l.to}
                 to={l.to}
-                className={`pill px-4 py-1.5 text-xs font-semibold transition-all ${
-                  active
-                    ? "bg-foreground text-background shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/50"
-                }`}
+                onClick={() => setOpen(false)}
+                className="rounded-xl px-4 py-3 text-sm font-semibold hover:bg-muted text-foreground"
               >
                 {l.label}
               </Link>
-            );
-          })}
-        </nav>
-
-        <div className="flex items-center gap-2.5">
-          <Link
-            to="/predict"
-            className="pill hidden rounded-full border border-border/80 bg-card px-4 py-2 text-xs font-semibold text-foreground shadow-sm transition-colors hover:bg-muted sm:inline-flex"
-          >
-            Run prediction
-          </Link>
-          <Link
-            to="/grid"
-            className="pill hidden items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-transform hover:scale-[1.02] sm:inline-flex"
-          >
-            Open live grid
-          </Link>
-          <button
-            type="button"
-            onClick={() => setAuthOpen(true)}
-            title={`Signed in as ${profile.name} (${profile.zone.split("·")[0]})`}
-            className="pill hidden items-center gap-1.5 rounded-full border border-border/80 bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm transition-all hover:bg-muted lg:inline-flex"
-          >
-            <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="max-w-[100px] truncate">{profile.name}</span>
-          </button>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            aria-label={theme === "dark" ? "Switch to Day Mode" : "Switch to Night Mode"}
-            title={theme === "dark" ? "Switch to Day Mode" : "Switch to Night Mode"}
-            className="grid size-9 place-items-center rounded-full border border-border/80 bg-card/80 backdrop-blur-md text-foreground shadow-sm transition-all hover:scale-105 hover:bg-muted"
-          >
-            {theme === "dark" ? (
-              <Sun className="size-4 text-amber-400 transition-transform duration-300 hover:rotate-45" />
-            ) : (
-              <Moon className="size-4 text-slate-700 transition-transform duration-300 hover:-rotate-12" />
-            )}
-          </button>
-          <button
-            type="button"
-            aria-label="Toggle navigation"
-            onClick={() => setOpen((v) => !v)}
-            className="grid size-10 place-items-center rounded-xl border border-border/60 bg-card md:hidden shadow-sm"
-          >
-            <Menu className="size-4 text-foreground" />
-          </button>
-        </div>
-      </div>
-
-      {open && (
-        <nav className="glass absolute inset-x-4 top-14 grid gap-1 rounded-2xl p-3 md:hidden shadow-lg border border-border">
-          {links.map((l) => (
-            <Link
-              key={l.to}
-              to={l.to}
-              onClick={() => setOpen(false)}
-              className="rounded-xl px-4 py-3 text-sm font-medium hover:bg-muted"
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setAuthOpen(true);
+              }}
+              className="rounded-xl px-4 py-3 text-sm font-semibold hover:bg-muted text-left flex items-center justify-between text-foreground border-t border-border/40 mt-1 pt-3"
             >
-              {l.label}
-            </Link>
-          ))}
-          <button
-            type="button"
-            onClick={() => { setOpen(false); setAuthOpen(true); }}
-            className="rounded-xl px-4 py-3 text-sm font-medium hover:bg-muted text-left flex items-center justify-between text-foreground"
-          >
-            <span>Operator: {profile.name}</span>
-            <span className="text-xs text-muted-foreground">{profile.zone.split("·")[0]}</span>
-          </button>
-          <div className="mt-2 flex items-center justify-between border-t border-border/40 pt-2 text-xs text-muted-foreground px-3">
-            <span>FastAPI Backend</span>
-            <span className={backendLive ? "text-signal font-medium" : "text-warning"}>
-              {backendLive ? "Online (:8000)" : "Snapshot Mode"}
-            </span>
-          </div>
-        </nav>
-      )}
+              <span className="flex items-center gap-2">
+                <span className="size-2 rounded-full bg-emerald-500" />
+                <span>Operator: {profile.name}</span>
+              </span>
+              <span className="text-xs text-muted-foreground font-mono">{profile.zone.split("·")[0]}</span>
+            </button>
+          </nav>
+        )}
+      </header>
 
+      {/* Auth Modal Portaled cleanly */}
       <AuthModal
         open={authOpen}
         onClose={() => setAuthOpen(false)}
         onSuccess={(p) => setProfile(p)}
       />
-    </header>
+    </>
   );
 }
+
