@@ -15,6 +15,7 @@ import { SiteNav } from "@/components/SiteNav";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Toaster } from "@/components/ui/sonner";
 import { CinematicLanding } from "@/cinematic/CinematicLanding.tsx";
+import { GridAdvisorChat } from "@/components/GridAdvisorChat";
 
 function NotFoundComponent() {
   return (
@@ -135,6 +136,7 @@ function RootComponent() {
           <SiteFooter />
         </div>
       </CinematicLanding>
+      <GridAdvisorChat />
       <Toaster />
     </QueryClientProvider>
   );
