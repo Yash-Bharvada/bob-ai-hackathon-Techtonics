@@ -266,7 +266,7 @@ def format_transformer_operational_document(
 
     doc_text = "\n".join(doc_lines)
     today_str = datetime.now().strftime("%Y-%m-%d")
-    doc_id = f"{asset_id}_{today_str}".replace(" ", "_")
+    doc_id = f"{asset_id}_row{row_idx}_{today_str}".replace(" ", "_")
 
     hi_val = None
     try:
