@@ -70,6 +70,16 @@ const LETTERS = [
   { char: "A", x: 2128, y: 610 },
 ];
 
+const MICRO_TASKS = [
+  "measuring oil quality...",
+  "counting amperes...",
+  "sampling dissolved gases...",
+  "evaluating phase impedance...",
+  "calibrating dielectric insulation...",
+  "synchronizing telemetry stream...",
+  "balancing grid state...",
+];
+
 export function CinematicLanding({ children, isHomePage = true }: CinematicLandingProps) {
   if (!isHomePage) {
     return <>{children}</>;
@@ -85,6 +95,24 @@ function CinematicLandingInner({ children }: { children: React.ReactNode }) {
     typeof window !== "undefined" ? window.innerWidth <= 640 : false
   );
 
+  // Preloader telemetry and state
+  const [loadedFrames, setLoadedFrames] = useState(0);
+  const [preloadProgress, setPreloadProgress] = useState(0);
+  const [isReady, setIsReady] = useState(false);
+  const [isLoaderExiting, setIsLoaderExiting] = useState(false);
+  const [isLoaderDismissed, setIsLoaderDismissed] = useState(false);
+  const [loadingTicks, setLoadingTicks] = useState(0);
+
+  useEffect(() => {
+    if (isReady || isLoaderDismissed) return;
+    const interval = setInterval(() => {
+      setLoadingTicks((t) => t + 1);
+    }, 1800);
+    return () => clearInterval(interval);
+  }, [isReady, isLoaderDismissed]);
+
+  const currentMicroTask = MICRO_TASKS[loadingTicks % MICRO_TASKS.length];
+
   // containerRef — the div that receives the canvas from CinematicFrameSequence
   const containerRef = useRef<HTMLDivElement>(null);
   const sliceOverlayRef = useRef<HTMLDivElement>(null);
@@ -95,25 +123,41 @@ function CinematicLandingInner({ children }: { children: React.ReactNode }) {
   const updateTheme = useCallback((newTheme: Theme) => {
     setTheme(newTheme);
     if (typeof document !== "undefined") {
-      if (newTheme === "dark") {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
+      document.documentElement.classList.toggle("dark", newTheme === "dark");
+      document.body.classList.toggle("dark", newTheme === "dark");
     }
     if (typeof localStorage !== "undefined") {
       localStorage.setItem("cinematic-theme", newTheme);
+      localStorage.setItem("blackout-theme", newTheme);
     }
   }, []);
 
+  // Listen to external theme changes (e.g. from SiteNav toggle)
+  useEffect(() => {
+    const handleExternalTheme = (e: any) => {
+      const nextTheme = e.detail?.theme as Theme;
+      if (nextTheme && (nextTheme === "dark" || nextTheme === "light")) {
+        setTheme(nextTheme);
+        if (cinematicRef.current) {
+          try {
+            cinematicRef.current.setTheme(nextTheme);
+          } catch (_) {}
+        }
+      }
+    };
+    window.addEventListener("voltra-theme-changed", handleExternalTheme);
+    return () => window.removeEventListener("voltra-theme-changed", handleExternalTheme);
+  }, []);
+
   const handleOpenSlice = useCallback(() => {
+    if (!isReady) return;
     if (leaveTimerRef.current) {
       clearTimeout(leaveTimerRef.current);
       leaveTimerRef.current = null;
     }
     setIsLeaving(false);
     setIsSliceOpen(true);
-  }, []);
+  }, [isReady]);
 
   const handleCloseSlice = useCallback(() => {
     setIsLeaving(true);
@@ -125,13 +169,14 @@ function CinematicLandingInner({ children }: { children: React.ReactNode }) {
   }, []);
 
   const handleToggleTheme = useCallback(() => {
+    if (!isReady) return;
     if (cinematicRef.current) {
       const nextTheme = cinematicRef.current.toggleTheme();
       updateTheme(nextTheme);
     } else {
       updateTheme(theme === "dark" ? "light" : "dark");
     }
-  }, [theme, updateTheme]);
+  }, [isReady, theme, updateTheme]);
 
   // Track mobile breakpoint
   useEffect(() => {
@@ -161,6 +206,23 @@ function CinematicLandingInner({ children }: { children: React.ReactNode }) {
           initialTheme: savedTheme,
           fit: "cover",
           storageKey: "cinematic-theme",
+          houseClipPath: HOUSE_CLIP_PATH,
+          onPreloadProgress: (loaded, total) => {
+            setLoadedFrames(loaded);
+            const pct = Math.min(100, Math.round((loaded / total) * 100));
+            setPreloadProgress(pct);
+          },
+          onPreloadComplete: () => {
+            setLoadedFrames(169);
+            setPreloadProgress(100);
+            setTimeout(() => {
+              setIsLoaderExiting(true);
+              setTimeout(() => {
+                setIsLoaderDismissed(true);
+                setIsReady(true);
+              }, 850);
+            }, 300);
+          },
           onFrameChange: (state) => {
             if (state.targetTheme !== theme) {
               setTheme(state.targetTheme);
@@ -175,6 +237,8 @@ function CinematicLandingInner({ children }: { children: React.ReactNode }) {
       })
       .catch((err) => {
         console.error("[Cinematic] Failed to load frame transition engine:", err);
+        setIsLoaderDismissed(true);
+        setIsReady(true);
       });
 
     return () => {
@@ -184,7 +248,21 @@ function CinematicLandingInner({ children }: { children: React.ReactNode }) {
         cinematicRef.current = null;
       }
     };
-  }, [updateTheme]);
+  }, [isMobile, updateTheme]);
+
+  // Safety fallback: if network is slow, smoothly release loader if majority of frames are ready
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!isReady && preloadProgress >= 70) {
+        setIsLoaderExiting(true);
+        setTimeout(() => {
+          setIsLoaderDismissed(true);
+          setIsReady(true);
+        }, 850);
+      }
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [isReady, preloadProgress]);
 
   // Window wheel / touch scroll listener for slice transition
   useEffect(() => {
@@ -192,17 +270,10 @@ function CinematicLandingInner({ children }: { children: React.ReactNode }) {
     let wheelTimer: ReturnType<typeof setTimeout> | null = null;
 
     const handleWheel = (e: WheelEvent) => {
-      if (!isSliceOpen && e.deltaY > 20) {
-        wheelAcc += e.deltaY;
-        if (wheelAcc > 40) {
-          handleOpenSlice();
-          wheelAcc = 0;
-        }
-        if (wheelTimer) clearTimeout(wheelTimer);
-        wheelTimer = setTimeout(() => {
-          wheelAcc = 0;
-        }, 350);
-      } else if (isSliceOpen && e.deltaY < -30) {
+      if (!isReady) return;
+      if (!isSliceOpen && e.deltaY > 8) {
+        handleOpenSlice();
+      } else if (isSliceOpen && e.deltaY < -15) {
         const content = sliceContentRef.current;
         if (content && content.scrollTop <= 5) {
           handleCloseSlice();
@@ -215,10 +286,11 @@ function CinematicLandingInner({ children }: { children: React.ReactNode }) {
       touchStartY = e.touches[0].clientY;
     };
     const handleTouchEnd = (e: TouchEvent) => {
+      if (!isReady) return;
       const delta = touchStartY - e.changedTouches[0].clientY;
-      if (!isSliceOpen && delta > 40) {
+      if (!isSliceOpen && delta > 15) {
         handleOpenSlice();
-      } else if (isSliceOpen && delta < -40) {
+      } else if (isSliceOpen && delta < -15) {
         const content = sliceContentRef.current;
         if (content && content.scrollTop <= 5) {
           handleCloseSlice();
@@ -227,6 +299,7 @@ function CinematicLandingInner({ children }: { children: React.ReactNode }) {
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isReady) return;
       if (e.key === "Escape" && isSliceOpen) {
         handleCloseSlice();
       }
@@ -244,7 +317,7 @@ function CinematicLandingInner({ children }: { children: React.ReactNode }) {
       window.removeEventListener("keydown", handleKeyDown);
       if (wheelTimer) clearTimeout(wheelTimer);
     };
-  }, [isSliceOpen, handleOpenSlice, handleCloseSlice]);
+  }, [isReady, isSliceOpen, handleOpenSlice, handleCloseSlice]);
 
   /* ── Shared theme-toggle button ── */
   const themeToggle = (
@@ -254,6 +327,12 @@ function CinematicLandingInner({ children }: { children: React.ReactNode }) {
       aria-label={theme === "dark" ? "Switch to Day Mode" : "Switch to Night Mode"}
       title={theme === "dark" ? "Switch to Day Mode" : "Switch to Night Mode"}
       onClick={handleToggleTheme}
+      disabled={!isReady}
+      style={{
+        opacity: isReady ? 1 : 0.4,
+        cursor: isReady ? "pointer" : "not-allowed",
+        pointerEvents: isReady ? "auto" : "none",
+      }}
     >
       {theme === "dark" ? (
         <svg
@@ -424,8 +503,42 @@ function CinematicLandingInner({ children }: { children: React.ReactNode }) {
   return (
     <div
       id="cinematicLandingLayer"
-      className={`cinematic-landing-root ${isSliceOpen ? "slice-is-active" : ""}`}
+      className={`cinematic-landing-root ${isSliceOpen ? "slice-is-active" : ""} ${isReady ? "is-landing-ready" : ""}`}
     >
+      {/* ── MINIMAL KAVACH PRELOADER ────────────────────────────────────── */}
+      {!isLoaderDismissed && (
+        <div
+          className={`kavach-minimal-loader ${isLoaderExiting ? "loader-exiting" : ""}`}
+          aria-label="Loading KAVACH"
+          role="progressbar"
+          aria-valuenow={preloadProgress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <div className="kavach-brand-title">K A V A C H</div>
+
+          <div className="kavach-loader-block">
+            <div className="kavach-loader-track">
+              <div
+                className="kavach-loader-bar"
+                style={{ width: `${Math.max(2, preloadProgress)}%` }}
+              />
+            </div>
+
+            <div className="kavach-loader-meta">
+              <span className="kavach-loading-label">loading</span>
+              <span className="kavach-percent-label">{preloadProgress}%</span>
+            </div>
+
+            {loadingTicks >= 1 && (
+              <div key={currentMicroTask} className="kavach-micro-status">
+                {currentMicroTask}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── MOBILE shell (≤640 px) ─────────────────────────────────────── */}
       <div className="cinematic-mobile-shell">
         {/* Top branding band */}
@@ -445,9 +558,11 @@ function CinematicLandingInner({ children }: { children: React.ReactNode }) {
         {/* 16:9 framed card with correct layer order */}
         <div className="cinematic-mobile-frame">
           {cinematicScene(true)}
-          <div style={{ position: "absolute", top: 10, right: 10, zIndex: 20 }}>
-            {themeToggle}
-          </div>
+          {!isSliceOpen && (
+            <div style={{ position: "absolute", top: 10, right: 10, zIndex: 20 }}>
+              {themeToggle}
+            </div>
+          )}
           {!isSliceOpen && (
             <div className="cinematic-mobile-swipe">
               <span>swipe up</span>
@@ -486,9 +601,11 @@ function CinematicLandingInner({ children }: { children: React.ReactNode }) {
       {/* ── DESKTOP shell (>640 px) ────────────────────────────────────── */}
       <div className="cinematic-desktop-shell">
         {cinematicScene(false)}
-        <div className={`theme-controls ${isSliceOpen ? "theme-controls-slice-open" : ""}`}>
-          {themeToggle}
-        </div>
+        {!isSliceOpen && (
+          <div className="theme-controls">
+            {themeToggle}
+          </div>
+        )}
       </div>
 
       {sliceOverlay}

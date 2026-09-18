@@ -1,8 +1,8 @@
-@import "tailwindcss" source(none);
+@import "tailwindcss";
 @source "../src";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -21,6 +21,7 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -32,7 +33,12 @@
   --color-signal: var(--signal);
   --color-signal-foreground: var(--signal-foreground);
   --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
   --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-info: var(--info);
   --color-surface: var(--surface);
   --color-ink: var(--ink);
   --color-cream: var(--cream);
@@ -41,83 +47,127 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-overlay: var(--overlay);
 
-  --font-display: "Instrument Serif", "Times New Roman", serif;
-  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-body: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", "Instrument Serif", sans-serif;
+  --font-sans: "Manrope", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-body: "DM Sans", "Manrope", ui-sans-serif, system-ui, sans-serif;
 
+  --shadow-card: var(--shadow-card);
+  --shadow-modal: var(--shadow-modal);
   --shadow-glass: 0 1px 0 0 rgba(255, 255, 255, 0.6) inset,
     0 12px 40px -12px rgba(20, 30, 20, 0.12);
   --shadow-soft: 0 30px 80px -40px rgba(20, 30, 20, 0.25);
 }
 
 :root {
-  --radius: 1rem;
-  --background: oklch(0.985 0.005 240);
-  --foreground: oklch(0.16 0.025 250);
+  --radius: 0.5rem;
+  --background: oklch(0.962 0.006 105);
+  --foreground: oklch(0.18 0.014 105);
   --cream: oklch(0.985 0.005 240);
   --ink: oklch(0.14 0.02 250);
 
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.16 0.025 250);
+  --card: oklch(0.995 0.003 105);
+  --card-foreground: oklch(0.18 0.014 105);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.16 0.025 250);
+  --popover-foreground: oklch(0.18 0.014 105);
 
-  --primary: oklch(0.18 0.025 250);
-  --primary-foreground: oklch(0.99 0.002 240);
+  --primary: oklch(0.69 0.2 128);
+  --primary-foreground: oklch(0.14 0.025 125);
+  --primary-soft: oklch(0.92 0.08 128);
 
-  --secondary: oklch(0.96 0.006 240);
-  --secondary-foreground: oklch(0.2 0.025 250);
+  --secondary: oklch(0.94 0.008 105);
+  --secondary-foreground: oklch(0.22 0.012 105);
 
-  --muted: oklch(0.95 0.006 240);
-  --muted-foreground: oklch(0.48 0.02 250);
+  --muted: oklch(0.93 0.007 105);
+  --muted-foreground: oklch(0.48 0.012 105);
 
-  --accent: oklch(0.94 0.015 220);
-  --accent-foreground: oklch(0.18 0.025 250);
+  --accent: oklch(0.9 0.05 128);
+  --accent-foreground: oklch(0.2 0.025 125);
 
-  /* Semantic Telemetry Colors - Clean, high contrast, non-radioactive */
+  --sidebar: oklch(0.985 0.004 105);
+  --sidebar-foreground: oklch(0.2 0.014 105);
+
+  /* Semantic Telemetry Colors - Clean, high contrast, neon lime accents */
   --signal: oklch(0.55 0.18 220); /* Authoritative Electric Cyan/Blue */
   --signal-foreground: oklch(1 0 0);
-  --lime: oklch(0.52 0.16 145); /* Refined Emerald for Stable/Recovered */
-  --lime-foreground: oklch(1 0 0);
-  --warning: oklch(0.68 0.16 65); /* Rich Amber */
-  --danger: oklch(0.58 0.22 25); /* Crisp Crimson */
-  --surface: oklch(1 0 0); /* Pure White surface in light mode */
+  --lime: oklch(0.69 0.2 128); /* Electric Lime */
+  --lime-foreground: oklch(0.14 0.025 125);
+  --warning: oklch(0.65 0.16 72); /* Rich Amber */
+  --warning-soft: oklch(0.95 0.04 80);
+  --danger: oklch(0.58 0.22 26); /* Crisp Crimson */
+  --danger-soft: oklch(0.94 0.035 26);
+  --success: oklch(0.55 0.15 155);
+  --success-soft: oklch(0.94 0.035 155);
+  --info: oklch(0.6 0.14 240);
+  --surface: oklch(1 0 0);
 
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: oklch(1 0 0);
+  --destructive: oklch(0.58 0.22 26);
+  --destructive-foreground: oklch(0.99 0 0);
 
-  --border: oklch(0.91 0.008 240);
-  --input: oklch(0.93 0.008 240);
-  --ring: oklch(0.55 0.18 220);
+  --border: oklch(0.86 0.01 105);
+  --input: oklch(0.82 0.012 105);
+  --ring: oklch(0.69 0.2 128);
+
+  --overlay: oklch(0.08 0.01 105 / 70%);
+  --chart-grid: oklch(0.87 0.01 105);
+  --chart-hover: oklch(0.92 0.03 128 / 45%);
+  --shadow-card: 0 1px 2px oklch(0.2 0.01 105 / 5%), 0 8px 26px oklch(0.2 0.01 105 / 4%);
+  --shadow-modal: 0 28px 70px oklch(0.08 0.01 105 / 28%);
 }
 
 .dark {
-  --background: oklch(0.12 0.018 250);
-  --foreground: oklch(0.98 0.005 240);
-  --card: oklch(0.16 0.02 250);
-  --card-foreground: oklch(0.98 0.005 240);
-  --popover: oklch(0.16 0.02 250);
-  --popover-foreground: oklch(0.98 0.005 240);
-  --primary: oklch(0.98 0.005 240);
-  --primary-foreground: oklch(0.14 0.02 250);
-  --secondary: oklch(0.2 0.02 250);
-  --secondary-foreground: oklch(0.98 0.005 240);
-  --muted: oklch(0.2 0.02 250);
-  --muted-foreground: oklch(0.68 0.02 240);
-  --accent: oklch(0.22 0.025 240);
-  --accent-foreground: oklch(0.98 0.005 240);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.7 0.15 210);
+  --background: oklch(0.13 0.012 105);
+  --foreground: oklch(0.94 0.008 105);
+  --card: oklch(0.175 0.012 105);
+  --card-foreground: oklch(0.94 0.008 105);
+  --popover: oklch(0.19 0.012 105);
+  --popover-foreground: oklch(0.94 0.008 105);
+
+  --primary: oklch(0.84 0.22 126);
+  --primary-foreground: oklch(0.14 0.035 125);
+  --primary-soft: oklch(0.27 0.065 126);
+
+  --secondary: oklch(0.22 0.012 105);
+  --secondary-foreground: oklch(0.91 0.008 105);
+
+  --muted: oklch(0.215 0.01 105);
+  --muted-foreground: oklch(0.67 0.012 105);
+
+  --accent: oklch(0.25 0.025 126);
+  --accent-foreground: oklch(0.9 0.015 126);
+
+  --sidebar: oklch(0.15 0.012 105);
+  --sidebar-foreground: oklch(0.92 0.008 105);
+
+  --border: oklch(0.27 0.012 105);
+  --input: oklch(0.31 0.014 105);
+  --ring: oklch(0.84 0.22 126);
 
   --signal: oklch(0.78 0.16 200); /* Luminous Tech Cyan in dark mode */
   --signal-foreground: oklch(0.1 0.02 250);
-  --lime: oklch(0.72 0.18 145); /* Luminous Emerald */
-  --lime-foreground: oklch(0.1 0.02 250);
-  --warning: oklch(0.75 0.15 75);
-  --danger: oklch(0.68 0.2 25);
+  --lime: oklch(0.84 0.22 126); /* Luminous Lime */
+  --lime-foreground: oklch(0.14 0.035 125);
+  --warning: oklch(0.78 0.16 78);
+  --warning-soft: oklch(0.25 0.045 78);
+  --danger: oklch(0.7 0.2 26);
+  --danger-soft: oklch(0.24 0.055 26);
+  --success: oklch(0.72 0.17 156);
+  --success-soft: oklch(0.24 0.045 156);
+  --info: oklch(0.72 0.13 240);
   --surface: oklch(0.17 0.02 250);
+
+  --destructive: oklch(0.67 0.21 25);
+  --destructive-foreground: oklch(0.98 0 0);
+
+  --overlay: oklch(0.04 0.005 105 / 78%);
+  --chart-grid: oklch(0.27 0.012 105);
+  --chart-hover: oklch(0.28 0.05 126 / 45%);
+  --shadow-card: 0 1px 1px oklch(0.04 0.01 105 / 45%), 0 12px 35px oklch(0.04 0.01 105 / 18%);
+  --shadow-modal: 0 28px 80px oklch(0.03 0.01 105 / 65%);
 }
 
 @layer base {
@@ -301,7 +351,18 @@
   user-select: none;
 }
 
-/* Layer 4 — house foreground clip (IN FRONT of letters) */
+/* Layer 4 — animated house canvas (appended by CinematicFrameSequence.ts) */
+.fullscreen-cinematic .cinematic-house-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 4;
+  pointer-events: none;
+}
+
+/* Layer 4 fallback — house foreground clip (shown ONLY until canvas is ready) */
 .cinematic-house-layer {
   position: absolute;
   inset: 0;
@@ -311,6 +372,12 @@
   object-position: center 35%;
   display: block;
   z-index: 4;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+.fullscreen-cinematic.canvas-ready .cinematic-house-layer {
+  opacity: 0;
   pointer-events: none;
 }
 
@@ -346,7 +413,7 @@
   filter: drop-shadow(0 4px 32px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 50px rgba(80, 140, 255, 0.10));
 }
 
-/* ── VOLTRA entrance animation — rises from behind the house ── */
+/* ── VOLTRA entrance animation — rises from behind the house once loaded ── */
 @keyframes voltraRiseFromBehind {
   0%   { transform: translateY(200px); opacity: 0; }
   20%  { opacity: 0; }
@@ -356,8 +423,14 @@
 
 .voltra-brand-group {
   transform-box: view-box;
-  animation: voltraRiseFromBehind 3.2s cubic-bezier(0.10, 1, 0.20, 1) 0.15s both;
+  opacity: 0;
+  transform: translateY(200px);
   will-change: transform, opacity;
+}
+
+/* Starts entrance animation only when landing page is ready */
+.cinematic-landing-root.is-landing-ready .voltra-brand-group {
+  animation: voltraRiseFromBehind 3.0s cubic-bezier(0.10, 1, 0.20, 1) 0.1s both;
 }
 
 /* ── Subtitle text ── */
@@ -399,9 +472,11 @@
   transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.theme-controls-slice-open {
-  opacity: 0;
-  pointer-events: none;
+.theme-controls-slice-open,
+.cinematic-landing-root.slice-is-active .theme-controls {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
   transform: translateY(-8px);
 }
 
@@ -459,6 +534,150 @@ html:not(.dark) .theme-toggle-btn:hover {
 }
 
 /* ==========================================================================
+   MINIMAL KAVACH PRELOADER
+   Ultra-minimalist, pure aesthetic
+   ========================================================================== */
+
+.kavach-minimal-loader {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #040608;
+  color: #ffffff;
+  overflow: hidden;
+  user-select: none;
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform, filter;
+}
+
+.kavach-minimal-loader.loader-exiting {
+  opacity: 0;
+  transform: scale(1.02);
+  filter: blur(10px);
+  pointer-events: none;
+}
+
+.kavach-brand-title {
+  font-family: "Space Grotesk", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 1.4rem;
+  font-weight: 400;
+  letter-spacing: 0.8em;
+  text-transform: uppercase;
+  color: #ffffff;
+  padding-left: 0.8em; /* perfectly centers tracked text */
+  margin-bottom: 2.25rem;
+  opacity: 0.92;
+}
+
+.kavach-loader-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 220px;
+  max-width: 75vw;
+}
+
+.kavach-loader-track {
+  position: relative;
+  width: 100%;
+  height: 1.5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.kavach-loader-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background: #a3e635;
+  box-shadow: 0 0 10px rgba(163, 230, 53, 0.8);
+  border-radius: 999px;
+  transition: width 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.kavach-loader-meta {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.6rem;
+  font-family: "IBM Plex Mono", monospace, ui-monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: lowercase;
+}
+
+.kavach-percent-label {
+  font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.kavach-micro-status {
+  margin-top: 0.85rem;
+  font-family: "IBM Plex Mono", monospace, ui-monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.45);
+  text-align: center;
+  min-height: 1rem;
+  animation: microTaskFade 0.4s ease-in-out;
+}
+
+@keyframes microTaskFade {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 640px) {
+  .kavach-brand-title {
+    font-size: 1.15rem;
+    letter-spacing: 0.65em;
+    padding-left: 0.65em;
+    margin-bottom: 2rem;
+  }
+  .kavach-loader-block {
+    width: 180px;
+  }
+}
+
+/* Landing state gating transitions */
+.cinematic-landing-root:not(.is-landing-ready) .theme-controls,
+.cinematic-landing-root:not(.is-landing-ready) .cinematic-mobile-swipe {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.cinematic-landing-root:not(.is-landing-ready) .voltra-subtitles-svg {
+  opacity: 0;
+}
+
+.cinematic-landing-root.is-landing-ready .theme-controls {
+  transition: opacity 0.8s ease 0.25s;
+  opacity: 1;
+}
+
+.cinematic-landing-root.is-landing-ready .cinematic-mobile-swipe {
+  transition: opacity 0.8s ease 0.3s;
+  opacity: 1;
+}
+
+.cinematic-landing-root.is-landing-ready .voltra-subtitles-svg {
+  transition: opacity 1.2s ease 0.4s;
+  opacity: 1;
+}
+
+/* ==========================================================================
    VOLTRA "SLICE & DICER" APPROACHING SYSTEM
    ========================================================================== */
 
@@ -500,42 +719,44 @@ html:not(.dark) .theme-toggle-btn:hover {
 .slice-strip {
   flex: 1;
   height: 100%;
-  transform: translateY(108%) rotateX(8deg);
-  transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+  transform: translate3d(0, 108%, 0);
+  transition: transform 0.52s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
-.slice-approaching .slice-strip               { transform: translateY(0%) rotateX(0deg); }
-.slice-approaching .slice-strip:nth-child(1)  { transition-delay: 0.02s; }
-.slice-approaching .slice-strip:nth-child(2)  { transition-delay: 0.08s; }
-.slice-approaching .slice-strip:nth-child(3)  { transition-delay: 0.14s; }
-.slice-approaching .slice-strip:nth-child(4)  { transition-delay: 0.20s; }
-.slice-approaching .slice-strip:nth-child(5)  { transition-delay: 0.26s; }
+.slice-approaching .slice-strip               { transform: translate3d(0, 0%, 0); }
+.slice-approaching .slice-strip:nth-child(1)  { transition-delay: 0.01s; }
+.slice-approaching .slice-strip:nth-child(2)  { transition-delay: 0.04s; }
+.slice-approaching .slice-strip:nth-child(3)  { transition-delay: 0.07s; }
+.slice-approaching .slice-strip:nth-child(4)  { transition-delay: 0.10s; }
+.slice-approaching .slice-strip:nth-child(5)  { transition-delay: 0.13s; }
 
-.slice-leaving .slice-strip                   { transform: translateY(108%) rotateX(-5deg); }
-.slice-leaving .slice-strip:nth-child(5)      { transition-delay: 0.02s; }
-.slice-leaving .slice-strip:nth-child(4)      { transition-delay: 0.07s; }
-.slice-leaving .slice-strip:nth-child(3)      { transition-delay: 0.12s; }
-.slice-leaving .slice-strip:nth-child(2)      { transition-delay: 0.17s; }
-.slice-leaving .slice-strip:nth-child(1)      { transition-delay: 0.22s; }
+.slice-leaving .slice-strip                   { transform: translate3d(0, 108%, 0); }
+.slice-leaving .slice-strip:nth-child(5)      { transition-delay: 0.01s; }
+.slice-leaving .slice-strip:nth-child(4)      { transition-delay: 0.04s; }
+.slice-leaving .slice-strip:nth-child(3)      { transition-delay: 0.07s; }
+.slice-leaving .slice-strip:nth-child(2)      { transition-delay: 0.10s; }
+.slice-leaving .slice-strip:nth-child(1)      { transition-delay: 0.13s; }
 
 /* Strip fills — Light */
-.slice-theme-light .slice-strip {
-  background: linear-gradient(160deg, #f8fafc 0%, #eef2f9 100%);
-  border-right: 1px solid rgba(15, 23, 42, 0.05);
-  backdrop-filter: blur(40px) saturate(180%);
-  -webkit-backdrop-filter: blur(40px) saturate(180%);
+.slice-theme-light .slice-strip,
+html:not(.dark) #voltraSliceOverlay .slice-strip {
+  background: linear-gradient(160deg, #f8fafc 0%, #eef2f9 100%) !important;
+  border-right: 1px solid rgba(15, 23, 42, 0.06) !important;
 }
-.slice-theme-light .slice-strip:last-child { border-right: none; }
+.slice-theme-light .slice-strip:last-child,
+html:not(.dark) #voltraSliceOverlay .slice-strip:last-child { border-right: none !important; }
 
 /* Strip fills — Dark */
-.slice-theme-dark .slice-strip {
-  background: linear-gradient(160deg, #050c18 0%, #080f1f 100%);
-  border-right: 1px solid rgba(0, 200, 255, 0.07);
-  backdrop-filter: blur(44px) saturate(200%);
-  -webkit-backdrop-filter: blur(44px) saturate(200%);
+.slice-theme-dark .slice-strip,
+html.dark #voltraSliceOverlay .slice-strip {
+  background: linear-gradient(160deg, #050c18 0%, #080f1f 100%) !important;
+  border-right: 1px solid rgba(0, 200, 255, 0.08) !important;
 }
-.slice-theme-dark .slice-strip:last-child { border-right: none; }
+.slice-theme-dark .slice-strip:last-child,
+html.dark #voltraSliceOverlay .slice-strip:last-child { border-right: none !important; }
 
 /* Foreground Content Layer */
 .voltra-slice-content {

@@ -632,7 +632,7 @@ async def generate_groq_report(req: GroqReportRequest):
     )
 
     if groq_key:
-        for model_name in ["openai/gpt-oss-120b", "openai/gpt-oss-20b"]:
+        for model_name in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]:
             try:
                 async with httpx.AsyncClient(timeout=15.0) as client:
                     res = await client.post(
@@ -742,7 +742,7 @@ async def search_events(req: EventSearchRequest):
             '  "events": list of objects [{ "incident_id": str, "received_at": str, "zone_name": str, "event_description": str, "category": str, "risk_multiplier": str, "disclaimer": str }]\n'
             "}"
         )
-        for model_name in ["gemini-3.5-flash-lite", "gemini-3.6-flash"]:
+        for model_name in ["gemini-2.0-flash", "gemini-1.5-flash"]:
             # Try with Google Search Grounding first
             try:
                 async with httpx.AsyncClient(timeout=12.0) as client:
@@ -812,7 +812,7 @@ async def search_events(req: EventSearchRequest):
                     "https://api.groq.com/openai/v1/chat/completions",
                     headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
                     json={
-                        "model": "openai/gpt-oss-120b",
+                        "model": "llama-3.3-70b-versatile",
                         "response_format": {"type": "json_object"},
                         "messages": [
                             {"role": "system", "content": "You are a power grid geospatial intelligence and failure analyst. Output valid JSON only."},

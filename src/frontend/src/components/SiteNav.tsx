@@ -22,17 +22,30 @@ export function SiteNav() {
   const [mounted, setMounted] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("light");
 
-  // Client-side only — localStorage unavailable on server
+  // Client-side only — sync with document & localStorage
   useEffect(() => {
     setProfile(authSession.getProfile());
     setMounted(true);
     if (typeof document !== "undefined") {
       const isDark =
         document.documentElement.classList.contains("dark") ||
+        document.body.classList.contains("dark") ||
         localStorage.getItem("cinematic-theme") === "dark" ||
         localStorage.getItem("blackout-theme") === "dark";
-      setTheme(isDark ? "dark" : "light");
+      const initial = isDark ? "dark" : "light";
+      setTheme(initial);
+      document.documentElement.classList.toggle("dark", isDark);
+      document.body.classList.toggle("dark", isDark);
     }
+
+    const onThemeChanged = (e: any) => {
+      const t = e.detail?.theme;
+      if (t === "dark" || t === "light") {
+        setTheme(t);
+      }
+    };
+    window.addEventListener("voltra-theme-changed", onThemeChanged);
+    return () => window.removeEventListener("voltra-theme-changed", onThemeChanged);
   }, []);
 
   // Re-sync profile when route changes (handles post-login redirect)
@@ -71,71 +84,88 @@ export function SiteNav() {
   }, [navigate]);
 
   const toggleTheme = useCallback(() => {
-    const next = theme === "dark" ? "light" : "dark";
+    if (typeof document === "undefined") return;
+    const isCurrentlyDark =
+      document.documentElement.classList.contains("dark") ||
+      document.body.classList.contains("dark");
+    const next = isCurrentlyDark ? "light" : "dark";
+
     setTheme(next);
-    if (typeof document !== "undefined") {
-      if (next === "dark") {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-      localStorage.setItem("cinematic-theme", next);
-      localStorage.setItem("blackout-theme", next);
+    document.documentElement.classList.toggle("dark", next === "dark");
+    document.body.classList.toggle("dark", next === "dark");
+
+    const sliceEl = document.getElementById("voltraSliceOverlay");
+    if (sliceEl) {
+      sliceEl.classList.remove("slice-theme-light", "slice-theme-dark");
+      sliceEl.classList.add(next === "dark" ? "slice-theme-dark" : "slice-theme-light");
     }
-  }, [theme]);
+
+    localStorage.setItem("cinematic-theme", next);
+    localStorage.setItem("blackout-theme", next);
+    window.dispatchEvent(new CustomEvent("voltra-theme-changed", { detail: { theme: next } }));
+  }, []);
 
   return (
     <>
-      {/* ── Sticky top bar ─────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/80 backdrop-blur-xl transition-all">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
+      {/* ── Floating Premium Compact Glassmorphic Top Bar ─────────────────────────────────────────────── */}
+      <header className="sticky top-2 sm:top-3 z-50 mx-auto w-[calc(100%-1rem)] max-w-5xl rounded-full border border-white/[0.12] bg-[#0c0d11]/90 shadow-[0_12px_36px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.15)] backdrop-blur-2xl transition-all mb-3 sm:mb-4">
+        <div className="flex h-11 sm:h-12 w-full items-center justify-between px-3 sm:px-5 gap-3">
 
-          {/* Left: Brand */}
+          {/* Left: Brand - Voltra Logo with Name */}
           <Link
             to="/"
-            className="flex items-center gap-2.5 transition-transform hover:scale-[1.01]"
+            aria-label="Voltra Home"
+            className="flex items-center transition-transform hover:scale-105 shrink-0"
           >
-            <VoltraLogo size={34} showText={true} subtitle="Grid Risk Advisor" />
+            <VoltraLogo size={28} showText={true} />
           </Link>
 
           {/* Center: Capsule Nav (desktop only) */}
-          <nav className="hidden items-center gap-1 rounded-full border border-border/60 bg-muted/50 p-1 md:flex shadow-xs backdrop-blur-md">
+          <nav className="hidden items-center gap-1 rounded-full border border-white/[0.08] bg-white/[0.04] p-1 md:flex shadow-inner backdrop-blur-md">
             {NAV_LINKS.map((l) => {
               const active = l.to === "/" ? path === "/" : path.startsWith(l.to);
+              const isLiveGrid = l.to === "/grid";
               return (
                 <Link
                   key={l.to}
                   to={l.to}
-                  className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
+                  className={`rounded-full px-3.5 py-1.5 text-xs transition-all ${
                     active
-                      ? "bg-card text-foreground shadow-sm font-bold"
-                      : "text-muted-foreground hover:text-foreground hover:bg-background/40"
+                      ? "bg-white/[0.12] text-white shadow-sm font-bold border border-white/[0.08]"
+                      : isLiveGrid
+                      ? "text-[#d2f831] font-bold hover:bg-white/[0.06] hover:text-[#e4ff54]"
+                      : "text-neutral-400 hover:text-white hover:bg-white/[0.06] font-semibold"
                   }`}
                 >
-                  {l.label}
+                  <span className="inline-flex items-center gap-1.5">
+                    {isLiveGrid && (
+                      <span className="size-1.5 rounded-full bg-[#d2f831] shadow-[0_0_8px_#d2f831] animate-pulse" />
+                    )}
+                    {l.label}
+                  </span>
                 </Link>
               );
             })}
           </nav>
 
           {/* Right: Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
 
             {/* Auth Pill — signed in (desktop) */}
             {isAuthenticated && (
               <div className="hidden items-center gap-1 sm:flex">
                 <span
                   title={`${profile!.role} · ${profile!.zone}`}
-                  className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/80 px-3 py-1.5 text-xs font-semibold text-foreground shadow-xs cursor-default"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/[0.1] bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-white shadow-xs backdrop-blur-md cursor-default"
                 >
-                  <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="size-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)] animate-pulse" />
                   <span className="max-w-[120px] truncate">{profile!.name}</span>
                 </span>
                 <button
                   type="button"
                   onClick={handleSignOut}
                   title="Sign out"
-                  className="grid size-8 place-items-center rounded-full border border-border/60 bg-card/80 text-muted-foreground hover:text-foreground hover:bg-red-500/10 hover:border-red-500/30 transition-all"
+                  className="grid size-8 place-items-center rounded-full border border-white/[0.08] bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-rose-500/15 hover:border-rose-500/30 transition-all cursor-pointer"
                 >
                   <LogOut className="size-3.5" />
                 </button>
@@ -146,32 +176,24 @@ export function SiteNav() {
             {mounted && !isAuthenticated && (
               <Link
                 to="/login"
-                className="hidden items-center gap-1.5 rounded-full border border-border/70 bg-card/80 px-3.5 py-1.5 text-xs font-semibold text-foreground shadow-xs transition-all hover:bg-muted hover:border-border sm:inline-flex"
+                className="hidden items-center gap-1.5 rounded-full border border-white/[0.1] bg-white/[0.06] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition-all hover:bg-white/[0.12] hover:border-white/20 sm:inline-flex"
               >
                 <LogIn className="size-3.5" />
                 Sign In
               </Link>
             )}
 
-            {/* Live Grid CTA (desktop) */}
-            <Link
-              to="/grid"
-              className="pill hidden items-center gap-1 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-transform hover:scale-[1.02] active:scale-[0.98] sm:inline-flex"
-            >
-              Live Grid <ArrowUpRight className="size-3.5 opacity-80" />
-            </Link>
-
             {/* Day/Night Toggle */}
             <button
               type="button"
               onClick={toggleTheme}
               aria-label={theme === "dark" ? "Switch to Day Mode" : "Switch to Night Mode"}
-              className="grid size-9 place-items-center rounded-full border border-border/70 bg-card/80 backdrop-blur-md text-foreground shadow-xs transition-all hover:scale-105 hover:bg-muted active:scale-95"
+              className="grid size-8.5 place-items-center rounded-full border border-white/[0.1] bg-white/[0.05] backdrop-blur-md text-white shadow-xs transition-all hover:scale-105 hover:bg-white/[0.1] active:scale-95 cursor-pointer"
             >
               {theme === "dark" ? (
                 <Sun className="size-4 text-amber-400" />
               ) : (
-                <Moon className="size-4 text-slate-700 dark:text-slate-300" />
+                <Moon className="size-4 text-neutral-300" />
               )}
             </button>
 
@@ -181,7 +203,7 @@ export function SiteNav() {
               aria-label={open ? "Close navigation" : "Open navigation"}
               aria-expanded={open}
               onClick={() => setOpen((v) => !v)}
-              className="grid size-9 place-items-center rounded-xl border border-border/60 bg-card md:hidden shadow-xs text-foreground transition-colors hover:bg-muted"
+              className="grid size-8.5 place-items-center rounded-full border border-white/[0.1] bg-white/[0.05] md:hidden shadow-xs text-white transition-colors hover:bg-white/[0.1] cursor-pointer"
             >
               {open ? <X className="size-4" /> : <Menu className="size-4" />}
             </button>
@@ -204,7 +226,7 @@ export function SiteNav() {
         role="dialog"
         aria-modal="true"
         aria-label="Navigation menu"
-        className={`fixed inset-x-0 top-16 z-50 md:hidden transition-all duration-300 ease-out ${
+        className={`fixed inset-x-0 top-20 z-50 md:hidden transition-all duration-300 ease-out ${
           open
             ? "opacity-100 translate-y-0 pointer-events-auto"
             : "opacity-0 -translate-y-3 pointer-events-none"
@@ -234,8 +256,29 @@ export function SiteNav() {
             })}
           </div>
 
+          {/* Theme row in mobile drawer */}
+          <div className="px-3 py-1">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="flex w-full items-center justify-between rounded-xl border border-border/60 bg-card/60 px-4 py-2.5 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
+            >
+              <span className="flex items-center gap-2">
+                {theme === "dark" ? (
+                  <Sun className="size-4 text-amber-400" />
+                ) : (
+                  <Moon className="size-4 text-slate-700 dark:text-slate-300" />
+                )}
+                <span>{theme === "dark" ? "Switch to Day Mode" : "Switch to Night Mode"}</span>
+              </span>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-mono uppercase text-muted-foreground">
+                {theme}
+              </span>
+            </button>
+          </div>
+
           {/* Divider */}
-          <div className="mx-3 border-t border-border/60" />
+          <div className="mx-3 my-1 border-t border-border/60" />
 
           {/* Auth + Live Grid section */}
           <div className="p-2 pt-2">

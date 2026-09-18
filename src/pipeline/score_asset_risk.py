@@ -142,7 +142,7 @@ def generate_advisory_text(
                 ctx = ssl.create_default_context()
 
             req_data = json.dumps({
-                "model": "openai/gpt-oss-120b",
+                "model": "llama-3.3-70b-versatile",
                 "messages": [
                     {"role": "system", "content": "You are an expert power transformer maintenance engineer and SCADA reliability advisor. Provide concise, professional 2-3 sentence advisory."},
                     {"role": "user", "content": prompt}

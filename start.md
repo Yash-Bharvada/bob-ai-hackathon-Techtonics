@@ -1,0 +1,1 @@
+Server: uvicorn src.backend.main:app --port 8000 & (cd src/frontend && npm run dev)

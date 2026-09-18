@@ -1,4 +1,4 @@
-import { Wrench, CheckCircle2, AlertTriangle, ArrowRight, ShieldCheck } from "lucide-react";
+import { PieChart, Lightbulb, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Props {
@@ -7,98 +7,127 @@ interface Props {
 
 export function TX115InterventionBanner({ onSelectTx115 }: Props) {
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-card p-6 shadow-sm transition-all sm:p-8">
-      <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-        {/* Left narrative & badge */}
-        <div className="max-w-2xl">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span className="pill inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-              <CheckCircle2 className="size-3.5" />
-              KEY DEMO · INTERVENTION SUCCESS
-            </span>
-            <span className="pill inline-flex items-center gap-1 rounded-full bg-foreground px-3 py-1 text-[11px] font-mono font-semibold text-background">
-              TX-115 · 100 MVA Bulk
-            </span>
-            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 font-mono">
-              +89 Days Remaining Life Recovered
-            </span>
+    <section className="relative w-full py-2 sm:py-4">
+      {/* ── Top Header Section ── */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5 sm:mb-6">
+        <div className="flex items-center gap-3">
+          <div className="inline-flex items-center gap-2 text-[11px] font-mono font-medium tracking-[0.18em] text-foreground/80 uppercase shrink-0">
+            <span className="size-1.5 rounded-full bg-foreground" />
+            GRID RELIABILITY
           </div>
-
-          <h3 className="mt-3 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-            TX-115: Imminent Outage Prevented by Predictive Maintenance
-          </h3>
-
-          <p className="mt-2 text-xs leading-relaxed text-muted-foreground sm:text-sm">
-            At Day 78, TX-115 reached a critical health index of <strong className="text-red-600 dark:text-red-400 font-semibold">71.3</strong> with remaining useful life collapsing to <strong className="text-red-600 dark:text-red-400 font-semibold">7.7 days</strong>. A timely cooling fan motor replacement and 20% load curtailment halted the thermal cascade — returning RUL to <strong className="text-emerald-600 dark:text-emerald-400 font-semibold">97 days</strong>. VOLTRA explicitly distinguishes stabilized assets from active hazards.
-          </p>
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-foreground leading-snug">
+            Next-generation grid intelligence keeping power{" "}
+            <span className="inline-flex items-center justify-center size-6 sm:size-7 rounded-full bg-[#0ea5e9] text-white mx-1 align-middle shadow-xs">
+              <PieChart className="size-3.5" />
+            </span>{" "}
+            <span className="font-extrabold text-foreground">resilient</span> and{" "}
+            <span className="inline-flex items-center justify-center size-6 sm:size-7 rounded-full bg-[#ccff00] text-black mx-1 align-middle shadow-xs">
+              <Lightbulb className="size-3.5 fill-black text-black" />
+            </span>{" "}
+            <span className="text-muted-foreground font-normal">fail-safe</span>
+          </h2>
         </div>
 
-        {/* Action Button */}
         {onSelectTx115 && (
           <div className="shrink-0">
             <Button
               onClick={onSelectTx115}
-              className="pill h-11 rounded-full bg-primary px-6 text-xs font-semibold text-primary-foreground shadow-sm transition-transform hover:scale-[1.02]"
+              size="sm"
+              variant="outline"
+              className="pill h-8 rounded-full border border-border/80 bg-card px-3.5 text-xs font-semibold text-foreground shadow-xs hover:bg-muted"
             >
-              Inspect TX-115 Telemetry <ArrowRight className="ml-1 size-4" />
+              Inspect TX-115 <ArrowRight className="ml-1.5 size-3.5" />
             </Button>
           </div>
         )}
       </div>
 
-      {/* 4-Step Trajectory Timeline */}
-      <div className="relative mt-6 grid grid-cols-2 gap-3.5 sm:grid-cols-4">
-        {/* Step 1 */}
-        <div className="rounded-2xl border border-border/80 bg-muted/30 p-4 transition-colors">
-          <div className="flex items-center justify-between text-[11px] font-mono text-muted-foreground">
-            <span>Day 65</span>
-            <span className="size-2 rounded-full bg-emerald-500" />
+      {/* ── 4-Card Grid Section ── */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
+        
+        {/* Card 1: Floating tags + Sub-Zones 04 */}
+        <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-[#f1f3f5] dark:bg-[#161a22] p-4 flex flex-col justify-between min-h-[190px] shadow-xs">
+          {/* Floating Pill Badges */}
+          <div className="relative flex flex-wrap gap-1.5 pt-0.5">
+            <span className="rounded-full bg-white dark:bg-[#212631] px-2.5 py-0.5 text-[10px] font-medium text-foreground/80 shadow-xs border border-black/5 dark:border-white/10 opacity-70">
+              DGA Sensors
+            </span>
+            <span className="rounded-full bg-white dark:bg-[#212631] px-2.5 py-0.5 text-[10px] font-semibold text-foreground shadow-xs border border-black/5 dark:border-white/10">
+              IEEE C57.104
+            </span>
+            <span className="rounded-full bg-white dark:bg-[#212631] px-2.5 py-0.5 text-[10px] font-medium text-foreground/80 shadow-xs border border-black/5 dark:border-white/10">
+              Dual ML
+            </span>
+            <span className="rounded-full bg-white dark:bg-[#212631] px-2.5 py-0.5 text-[10px] font-medium text-foreground/80 shadow-xs border border-black/5 dark:border-white/10">
+              IEC 60599
+            </span>
+            <span className="rounded-full bg-white dark:bg-[#212631] px-2.5 py-0.5 text-[10px] font-medium text-foreground/80 shadow-xs border border-black/5 dark:border-white/10 opacity-80">
+              Oil Telemetry
+            </span>
+            <span className="rounded-full bg-white dark:bg-[#212631] px-2.5 py-0.5 text-[10px] font-medium text-foreground/80 shadow-xs border border-black/5 dark:border-white/10">
+              SCADA Live
+            </span>
           </div>
-          <p className="mt-1.5 text-xs font-bold text-foreground">Degradation Onset</p>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="font-mono text-base font-bold text-foreground">HI 13.7</span>
-            <span className="text-[10px] text-muted-foreground">Pristine baseline</span>
+
+          {/* Bottom Sub-Zones Metric */}
+          <div className="mt-4">
+            <p className="text-[11px] font-medium text-muted-foreground">Sub-Zones</p>
+            <p className="mt-0.5 text-3xl font-bold tracking-tight text-foreground font-display">04</p>
           </div>
         </div>
 
-        {/* Step 2 - Peak */}
-        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 transition-colors">
-          <div className="flex items-center justify-between text-[11px] font-mono font-semibold text-red-600 dark:text-red-400">
-            <span>Day 78 · PEAK</span>
-            <AlertTriangle className="size-3.5" />
+        {/* Card 2: Electric Neon Lime Card (100%) */}
+        <div className="rounded-2xl bg-[#ccff00] text-black p-4 flex flex-col justify-between min-h-[190px] shadow-xs border border-[#b8f000]">
+          <div>
+            <p className="text-[11px] font-semibold text-black/75">Commitment to zero outages</p>
           </div>
-          <p className="mt-1.5 text-xs font-bold text-red-600 dark:text-red-400">Imminent Failure Alarm</p>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="font-mono text-base font-bold text-red-600 dark:text-red-400">HI 71.3</span>
-            <span className="font-mono text-xs font-bold text-red-600 dark:text-red-400">RUL 7.7d</span>
+          <div className="my-1">
+            <p className="text-4xl font-bold tracking-tight text-black font-display">100%</p>
+          </div>
+          <div>
+            <p className="text-[11px] leading-snug text-black/80 font-medium">
+              Real-time early warning coverage across Anand District distribution nodes.
+            </p>
           </div>
         </div>
 
-        {/* Step 3 - Maintenance */}
-        <div className="rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 transition-colors">
-          <div className="flex items-center justify-between text-[11px] font-mono font-semibold text-blue-600 dark:text-blue-400">
-            <span>Day 78–79</span>
-            <Wrench className="size-3.5" />
+        {/* Card 3: Photographic Macro Dew Leaf Card (120+) */}
+        <div className="relative overflow-hidden rounded-2xl p-4 flex flex-col justify-between min-h-[190px] shadow-xs text-white border border-border/60">
+          <img
+            src="/assets/macro-dew-leaf.jpg"
+            alt="Macro green leaf with morning dew"
+            className="absolute inset-0 size-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-black/10" />
+
+          {/* Space filler at top */}
+          <div className="relative z-10" />
+
+          {/* Bottom 120+ and copy */}
+          <div className="relative z-10">
+            <p className="text-3xl sm:text-4xl font-bold tracking-tight text-white font-display mb-1">120+</p>
+            <p className="text-[11px] leading-snug text-white/90 font-medium">
+              Days advance notice on accelerated dielectric oil degradation.
+            </p>
           </div>
-          <p className="mt-1.5 text-xs font-bold text-foreground">Targeted Intervention</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            Fan repair + 20% load shed
-          </p>
         </div>
 
-        {/* Step 4 - Recovery */}
-        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 transition-colors">
-          <div className="flex items-center justify-between text-[11px] font-mono font-semibold text-emerald-600 dark:text-emerald-400">
-            <span>Day 89 · CURRENT</span>
-            <ShieldCheck className="size-3.5" />
+        {/* Card 4: Clean Data Points Card (520k+) */}
+        <div className="rounded-2xl border border-border/70 bg-[#f1f3f5] dark:bg-[#161a22] p-4 flex flex-col justify-between min-h-[190px] shadow-xs">
+          <div>
+            <p className="text-[11px] font-medium text-muted-foreground">Telemetry Points</p>
           </div>
-          <p className="mt-1.5 text-xs font-bold text-foreground">Stabilized & Monitored</p>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="font-mono text-base font-bold text-emerald-600 dark:text-emerald-400">HI 36.1</span>
-            <span className="font-mono text-xs font-semibold text-emerald-600 dark:text-emerald-400">RUL 97d (+89d)</span>
+          <div className="my-1">
+            <p className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground font-display">520k+</p>
+          </div>
+          <div>
+            <p className="text-[11px] leading-snug text-muted-foreground font-medium">
+              Continuous dissolved gas, load, and ambient temperature readings.
+            </p>
           </div>
         </div>
+
       </div>
-    </div>
+    </section>
   );
 }

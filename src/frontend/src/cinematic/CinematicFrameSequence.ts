@@ -12,10 +12,15 @@ import {
   getStaticFrameUrl,
 } from "./config.ts";
 
+// Global in-memory cache of frames to avoid re-fetching on component re-mounts or viewport switches
+const globalFrameCache = new Map<string, HTMLImageElement>();
+
 export class CinematicFrameSequence {
   private container: HTMLElement;
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
+  private houseCanvas: HTMLCanvasElement | null = null;
+  private houseCtx: CanvasRenderingContext2D | null = null;
   private options: CinematicPlayerOptions;
   private metadata: CinematicMetadata;
   private basePath: string;
@@ -42,6 +47,7 @@ export class CinematicFrameSequence {
   private onFrameChange?: (state: PlaybackState) => void;
   private onTransitionComplete?: (theme: Theme) => void;
   private onPreloadProgress?: (loaded: number, total: number) => void;
+  private onPreloadComplete?: () => void;
 
   constructor(container: HTMLElement, options: CinematicPlayerOptions = {}) {
     this.container = container;
@@ -56,16 +62,20 @@ export class CinematicFrameSequence {
     this.onFrameChange = options.onFrameChange;
     this.onTransitionComplete = options.onTransitionComplete;
     this.onPreloadProgress = options.onPreloadProgress;
+    this.onPreloadComplete = options.onPreloadComplete;
 
     // Allocate frame cache slots
     this.frames = new Array(this.metadata.totalFrames).fill(null);
 
-    // Setup Canvas
+    // Setup Main Background Canvas (Layer 1)
     this.canvas = document.createElement("canvas");
     this.canvas.className = "cinematic-canvas";
     this.canvas.style.display = "block";
+    this.canvas.style.position = "absolute";
+    this.canvas.style.inset = "0";
     this.canvas.style.width = "100%";
     this.canvas.style.height = "100%";
+    this.canvas.style.zIndex = "1";
     this.canvas.style.objectFit = options.fit || "cover";
 
     const context = this.canvas.getContext("2d", { alpha: false });
@@ -73,8 +83,28 @@ export class CinematicFrameSequence {
       throw new Error("Unable to obtain 2D rendering context for Cinematic canvas.");
     }
     this.ctx = context;
-
     this.container.appendChild(this.canvas);
+
+    // Setup Foreground House Canvas (Layer 4) if houseClipPath provided
+    if (this.options.houseClipPath) {
+      this.houseCanvas = document.createElement("canvas");
+      this.houseCanvas.className = "cinematic-house-canvas";
+      this.houseCanvas.style.display = "block";
+      this.houseCanvas.style.position = "absolute";
+      this.houseCanvas.style.inset = "0";
+      this.houseCanvas.style.width = "100%";
+      this.houseCanvas.style.height = "100%";
+      this.houseCanvas.style.zIndex = "4";
+      this.houseCanvas.style.pointerEvents = "none";
+      this.houseCanvas.style.objectFit = options.fit || "cover";
+      this.houseCanvas.style.clipPath = this.options.houseClipPath;
+
+      const houseContext = this.houseCanvas.getContext("2d", { alpha: true });
+      if (houseContext) {
+        this.houseCtx = houseContext;
+      }
+      this.container.appendChild(this.houseCanvas);
+    }
 
     // Handle high-DPI and responsive layout
     this.setupResizeObserver();
@@ -135,36 +165,44 @@ export class CinematicFrameSequence {
     const firstUrl = getStaticFrameUrl(this.basePath, "first", this.metadata);
     const lastUrl = getStaticFrameUrl(this.basePath, "last", this.metadata);
 
-    const firstImg = new Image();
-    firstImg.src = firstUrl;
-    const handleFirstLoad = () => {
-      this.frames[0] = firstImg;
-      this.loadedCount++;
+    const loadOrGet = (url: string, index: number, onLoaded?: () => void) => {
+      const cached = globalFrameCache.get(url);
+      if (cached && cached.complete && cached.naturalWidth > 0) {
+        this.frames[index] = cached;
+        this.loadedCount++;
+        onLoaded?.();
+        return;
+      }
+
+      const img = new Image();
+      img.src = url;
+      const handleLoad = () => {
+        if (img.naturalWidth > 0) {
+          globalFrameCache.set(url, img);
+          this.frames[index] = img;
+          this.loadedCount++;
+          onLoaded?.();
+        }
+      };
+      if (img.complete && img.naturalWidth > 0) {
+        handleLoad();
+      } else {
+        img.onload = handleLoad;
+      }
+    };
+
+    loadOrGet(firstUrl, 0, () => {
       if (this._currentFrame === 0) {
         this.renderFrame(0);
       }
       this.options.onReady?.();
-    };
-    if (firstImg.complete) {
-      handleFirstLoad();
-    } else {
-      firstImg.onload = handleFirstLoad;
-    }
+    });
 
-    const lastImg = new Image();
-    lastImg.src = lastUrl;
-    const handleLastLoad = () => {
-      this.frames[this.metadata.lastIndex] = lastImg;
-      this.loadedCount++;
+    loadOrGet(lastUrl, this.metadata.lastIndex, () => {
       if (this._currentFrame === this.metadata.lastIndex) {
         this.renderFrame(this.metadata.lastIndex);
       }
-    };
-    if (lastImg.complete) {
-      handleLastLoad();
-    } else {
-      lastImg.onload = handleLastLoad;
-    }
+    });
 
     // Begin background preloading of full sequence
     this.startBackgroundPreload();
@@ -177,31 +215,86 @@ export class CinematicFrameSequence {
     if (this.isPreloading) return;
     this.isPreloading = true;
 
-    const concurrency = 6;
-    let nextIndex = 0;
     const total = this.metadata.totalFrames;
 
+    // Check frames against global cache first
+    for (let i = 0; i < total; i++) {
+      if (!this.frames[i]) {
+        const url = formatFrameUrl(this.basePath, this.metadata.framesPattern, i);
+        const cached = globalFrameCache.get(url);
+        if (cached && cached.complete && cached.naturalWidth > 0) {
+          this.frames[i] = cached;
+        }
+      }
+    }
+
+    // Count already loaded frames
+    let initiallyLoaded = 0;
+    for (let i = 0; i < total; i++) {
+      if (this.frames[i]?.complete && (this.frames[i]?.naturalWidth || 0) > 0) {
+        initiallyLoaded++;
+      }
+    }
+    this.loadedCount = initiallyLoaded;
+    this.onPreloadProgress?.(this.loadedCount, total);
+
+    const checkCompletion = () => {
+      if (this.loadedCount >= total) {
+        this.onPreloadComplete?.();
+        this.options.onPreloadComplete?.();
+      }
+    };
+
+    // If already fully cached, complete immediately
+    if (this.loadedCount >= total) {
+      checkCompletion();
+      return;
+    }
+
+    const concurrency = 8;
+    let nextIndex = 0;
+
     const loadNext = () => {
-      if (nextIndex >= total) return;
+      if (nextIndex >= total) {
+        checkCompletion();
+        return;
+      }
       const index = nextIndex++;
-      if (this.frames[index]) {
+      if (this.frames[index]?.complete && (this.frames[index]?.naturalWidth || 0) > 0) {
         loadNext();
         return;
       }
 
-      const img = new Image();
-      img.decoding = "async";
-      img.src = formatFrameUrl(this.basePath, this.metadata.framesPattern, index);
-      img.onload = () => {
-        this.frames[index] = img;
-        this.loadedCount++;
-        this.onPreloadProgress?.(this.loadedCount, total);
-        loadNext();
+      const frameUrl = formatFrameUrl(this.basePath, this.metadata.framesPattern, index);
+      const attemptLoad = (retriesLeft: number) => {
+        const img = new Image();
+        img.decoding = "async";
+        img.src = frameUrl;
+        img.onload = () => {
+          if (img.naturalWidth > 0) {
+            globalFrameCache.set(frameUrl, img);
+            this.frames[index] = img;
+          }
+          this.loadedCount++;
+          this.onPreloadProgress?.(this.loadedCount, total);
+          checkCompletion();
+          loadNext();
+        };
+        img.onerror = () => {
+          if (retriesLeft > 0) {
+            setTimeout(() => attemptLoad(retriesLeft - 1), 250);
+          } else {
+            this.log(`Failed to load frame ${index} after retries: ${frameUrl}`);
+            // Count towards loaded so progress bar does not freeze on a dropped frame
+            this.loadedCount++;
+            this.onPreloadProgress?.(this.loadedCount, total);
+            checkCompletion();
+            loadNext();
+          }
+        };
       };
-      img.onerror = () => {
-        this.log(`Failed to load frame ${index}`);
-        loadNext();
-      };
+
+      attemptLoad(2);
     };
 
     for (let i = 0; i < concurrency; i++) {
@@ -287,7 +380,8 @@ export class CinematicFrameSequence {
     const elapsed = timestamp - this.lastTime;
 
     if (elapsed >= this.frameDurationMs) {
-      const framesToAdvance = Math.floor(elapsed / this.frameDurationMs);
+      // Cap framesToAdvance to 4 so tab switching doesn't jump the animation abruptly
+      const framesToAdvance = Math.min(Math.floor(elapsed / this.frameDurationMs), 4);
       this.lastTime = timestamp - (elapsed % this.frameDurationMs);
 
       if (this._direction === "forward") {
@@ -335,11 +429,11 @@ export class CinematicFrameSequence {
     let img = this.frames[clampedIndex];
 
     // Fallback search to nearest cached frame if current frame hasn't finished loading
-    if (!img || !img.complete) {
+    if (!img || !img.complete || !img.naturalWidth || !img.naturalHeight) {
       img = this.findNearestLoadedFrame(clampedIndex);
     }
 
-    if (!img || !img.complete) return;
+    if (!img || !img.complete || !img.naturalWidth || !img.naturalHeight) return;
 
     const canvasWidth = this.canvas.width;
     const canvasHeight = this.canvas.height;
@@ -347,6 +441,7 @@ export class CinematicFrameSequence {
 
     const imgWidth = img.naturalWidth || this.metadata.width;
     const imgHeight = img.naturalHeight || this.metadata.height;
+    if (imgWidth <= 0 || imgHeight <= 0) return;
 
     // Cover math: center crop while maintaining aspect ratio
     const scale = Math.max(canvasWidth / imgWidth, canvasHeight / imgHeight);
@@ -356,30 +451,36 @@ export class CinematicFrameSequence {
     const offsetY = (canvasHeight - drawHeight) / 2;
 
     this.ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+    if (this.houseCtx) {
+      this.houseCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+      this.houseCtx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+    }
     this.container.classList.add("canvas-ready");
   }
 
   private findNearestLoadedFrame(target: number): HTMLImageElement | null {
     // Check first/last frame first
-    if (this.frames[0]?.complete) {
+    if (this.frames[0]?.complete && (this.frames[0]?.naturalWidth || 0) > 0) {
       if (target <= 20) return this.frames[0];
     }
-    if (this.frames[this.metadata.lastIndex]?.complete) {
+    if (this.frames[this.metadata.lastIndex]?.complete && (this.frames[this.metadata.lastIndex]?.naturalWidth || 0) > 0) {
       if (target >= this.metadata.lastIndex - 20) return this.frames[this.metadata.lastIndex];
     }
 
     // Search outwards from target
     let radius = 1;
     while (target - radius >= 0 || target + radius < this.metadata.totalFrames) {
-      if (target - radius >= 0 && this.frames[target - radius]?.complete) {
+      if (target - radius >= 0 && this.frames[target - radius]?.complete && (this.frames[target - radius]?.naturalWidth || 0) > 0) {
         return this.frames[target - radius];
       }
-      if (target + radius < this.metadata.totalFrames && this.frames[target + radius]?.complete) {
+      if (target + radius < this.metadata.totalFrames && this.frames[target + radius]?.complete && (this.frames[target + radius]?.naturalWidth || 0) > 0) {
         return this.frames[target + radius];
       }
       radius++;
     }
-    return this.frames[0] || this.frames[this.metadata.lastIndex] || null;
+    const fallbackFirst = (this.frames[0]?.naturalWidth || 0) > 0 ? this.frames[0] : null;
+    const fallbackLast = (this.frames[this.metadata.lastIndex]?.naturalWidth || 0) > 0 ? this.frames[this.metadata.lastIndex] : null;
+    return fallbackFirst || fallbackLast || null;
   }
 
   private setupResizeObserver(): void {
@@ -392,6 +493,10 @@ export class CinematicFrameSequence {
       if (this.canvas.width !== newWidth || this.canvas.height !== newHeight) {
         this.canvas.width = newWidth || 1280;
         this.canvas.height = newHeight || 720;
+        if (this.houseCanvas) {
+          this.houseCanvas.width = newWidth || 1280;
+          this.houseCanvas.height = newHeight || 720;
+        }
         this.renderFrame(this._currentFrame);
       }
     };
@@ -419,6 +524,11 @@ export class CinematicFrameSequence {
     }
     if (this.canvas.parentElement) {
       this.canvas.parentElement.removeChild(this.canvas);
+    }
+    if (this.houseCanvas && this.houseCanvas.parentElement) {
+      this.houseCanvas.parentElement.removeChild(this.houseCanvas);
+      this.houseCanvas = null;
+      this.houseCtx = null;
     }
     this.frames = [];
   }

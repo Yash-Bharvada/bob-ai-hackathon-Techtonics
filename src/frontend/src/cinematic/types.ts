@@ -34,8 +34,10 @@ export interface CinematicPlayerOptions {
   fps?: number;
   debug?: boolean;
   fit?: "cover" | "contain";
+  houseClipPath?: string;
   onFrameChange?: (state: PlaybackState) => void;
   onTransitionComplete?: (theme: Theme) => void;
   onPreloadProgress?: (loaded: number, total: number) => void;
+  onPreloadComplete?: () => void;
   onReady?: () => void;
 }

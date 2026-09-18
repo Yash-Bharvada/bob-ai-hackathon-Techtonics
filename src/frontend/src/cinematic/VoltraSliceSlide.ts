@@ -118,7 +118,7 @@ export class VoltraSliceSlide {
             </button>
             <div class="slice-live-badge">
               <span class="slice-live-dot"></span>
-              FastAPI :8000 Ready
+              Dual ML Pipeline Active
             </div>
           </div>
         </section>
