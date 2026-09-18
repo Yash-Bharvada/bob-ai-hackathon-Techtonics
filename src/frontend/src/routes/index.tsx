@@ -103,6 +103,7 @@ function Home() {
       <Dashboard metrics={gridMetrics} />
       <FaultAnalysis topAsset={topAsset} />
       <Analytics historyData={txHistory} />
+      <PlatformModules />
       <Action />
     </div>
   );
@@ -460,7 +461,7 @@ const KAVACH_STAGES: KavachStage[] = [
     emphasisClass:
       "font-display italic font-normal text-lime-500 dark:text-lime-400 drop-shadow-[0_0_25px_rgba(132,204,22,0.4)]",
     description:
-      "KAVACH acts as an impenetrable digital armor over the power grid. Streaming dissolved gas telemetry at sub-second frequency, it isolates dielectric stress and winding arcing weeks before heat or smoke appear.",
+      "VOLTRA Blackout Defense acts as an impenetrable digital armor over the power grid. Streaming dissolved gas telemetry at sub-second frequency, it isolates dielectric stress and winding arcing weeks before heat or smoke appear.",
     meta: {
       label: "TELEMETRY PULSE",
       value: "Sub-Second DGA Stream",
@@ -1189,6 +1190,78 @@ function Analytics({ historyData = defaultHistory }: { historyData?: Array<{ tim
             Timely fan overhaul and 20% load curtailment on Day 78 prevented a blackout on TX-115, returning RUL from 7.7 to 97 days.
           </p>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function PlatformModules() {
+  const modules = [
+    {
+      to: "/grid",
+      badge: "LIVE GRID & BLACKOUT SHIELD",
+      title: "Grid Corridor Inspector",
+      desc: "Interactive SCADA telemetry map, DGA gas ratios, Duval pentagons, and real-time consumer blackout estimator for all 18 Anand transformers.",
+      accent: "text-emerald-700 dark:text-[#d2f831] border-emerald-500/30 bg-emerald-500/10",
+    },
+    {
+      to: "/dashboard",
+      badge: "EXECUTIVE DASHBOARD",
+      title: "Grid Command Operations",
+      desc: "High-level fleet health index analytics, RUL degradation distributions, risk breakdown, and live event ticker.",
+      accent: "text-blue-600 dark:text-blue-400 border-blue-500/30 bg-blue-500/10",
+    },
+    {
+      to: "/predict",
+      badge: "ML RISK PREDICTION ENGINE",
+      title: "Ad-hoc Telemetry Risk Scoring",
+      desc: "Upload custom CSV readings or test synthetic transformer parameters to run our dual ML models (HI Regression + DGA Fault Classifier).",
+      accent: "text-purple-600 dark:text-purple-400 border-purple-500/30 bg-purple-500/10",
+    },
+    {
+      to: "/technology",
+      badge: "SYSTEM ARCHITECTURE",
+      title: "ML Pipeline & Science Deep Dive",
+      desc: "Technical post-mortem on dataset features, XGBoost/RandomForest model specs, Duval triangle ratio math, and SHAP explainability.",
+      accent: "text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10",
+    },
+  ];
+
+  return (
+    <section className="mx-auto mt-20 max-w-6xl px-4 sm:px-6">
+      <div className="text-center max-w-2xl mx-auto space-y-2 mb-10">
+        <p className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-700 dark:text-[#d2f831]">
+          Explore Full VOLTRA Console
+        </p>
+        <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground dark:text-white font-display">
+          All 5 Platform Views
+        </h2>
+        <p className="text-sm text-muted-foreground dark:text-neutral-400">
+          Switch seamlessly across live grid corridor telemetry, executive fleet analytics, ad-hoc ML scoring, and architecture documentation.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {modules.map((m, idx) => (
+          <Link
+            key={idx}
+            to={m.to}
+            className="group relative rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card dark:bg-[#121318] p-6 shadow-xs hover:border-emerald-500/40 dark:hover:border-[#d2f831]/40 hover:shadow-lg transition-all duration-300"
+          >
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-mono font-bold ${m.accent}`}>
+                {m.badge}
+              </span>
+              <ArrowUpRight className="size-4 text-muted-foreground group-hover:text-foreground dark:group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+            </div>
+            <h3 className="text-lg font-bold text-foreground dark:text-white group-hover:text-emerald-700 dark:group-hover:text-[#d2f831] transition-colors">
+              {m.title}
+            </h3>
+            <p className="mt-2 text-xs text-muted-foreground dark:text-neutral-400 leading-relaxed">
+              {m.desc}
+            </p>
+          </Link>
+        ))}
       </div>
     </section>
   );

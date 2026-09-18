@@ -961,23 +961,36 @@ def update_contractor_permit(body: ContractorPermitRequest):
 @app.get("/api/blackout/estimate/{asset_id}")
 def get_blackout_estimate(asset_id: str):
     _load_cache()
+    clean_id = asset_id.strip().upper()
     registry = _cache.get("registry", [])
     
-    # Find target asset from live registry
-    asset_row = next((r for r in registry if str(r.get("asset_id", "")).strip() == asset_id), None)
+    # Case-insensitive lookup in asset registry
+    asset_row = next((r for r in registry if str(r.get("asset_id", "")).strip().upper() == clean_id), None)
     
-    # Score asset if needed or pull risk features
-    scores = _cache.get("scores", {})
-    score_data = scores.get(asset_id, {})
+    # Query scored snapshot DataFrame
+    scored_df = _cache.get("scored", pd.DataFrame())
+    score_data = {}
+    if not scored_df.empty and "asset_id" in scored_df.columns:
+        matches = scored_df[scored_df["asset_id"].astype(str).str.strip().str.upper() == clean_id]
+        if not matches.empty:
+            score_data = matches.iloc[0].to_dict()
+            
+    # Also check ranked assets if score_data is missing
+    if not score_data:
+        ranked_df = _cache.get("ranked", pd.DataFrame())
+        if not ranked_df.empty and "asset_id" in ranked_df.columns:
+            matches = ranked_df[ranked_df["asset_id"].astype(str).str.strip().str.upper() == clean_id]
+            if not matches.empty:
+                score_data = matches.iloc[0].to_dict()
+                
+    # Retrieve telemetry parameters from ML models
+    hi_score = float(score_data.get("health_index_score", score_data.get("health_index", 35.0)))
+    dga_prob = float(score_data.get("fault_confidence", score_data.get("fault_prob", 0.15)))
+    fault_type = str(score_data.get("fault_type", "Normal"))
     
-    # Retrieve telemetry parameters
-    hi_score = float(score_data.get("health_index_score", 35.0) if score_data else 35.0)
-    dga_prob = float(score_data.get("fault_confidence", 0.15) if score_data else 0.15)
-    fault_type = str(score_data.get("fault_type", "Normal") if score_data else "Normal")
-    
-    mva_rating = float(asset_row.get("mva_rating", 25.0) if asset_row else 25.0)
-    substation = str(asset_row.get("substation_name", "Anand District Main Substation") if asset_row else "Anand District Substation")
-    voltage_kv = str(asset_row.get("voltage_kv", "66 kV") if asset_row else "66 kV")
+    mva_rating = float(asset_row.get("mva_rating", score_data.get("mva_rating", 25.0)) if asset_row else 25.0)
+    substation = str(asset_row.get("substation_name", score_data.get("substation_name", "Anand District Main Substation")) if asset_row else "Anand District Substation")
+    voltage_kv = str(asset_row.get("voltage_kv", score_data.get("voltage_kv", "66 kV")) if asset_row else "66 kV")
     
     # Mathematical derivation of Blackout Risk metrics from live data
     # 1. Blackout Probability: weighted composite of Health Index score + fault probability
