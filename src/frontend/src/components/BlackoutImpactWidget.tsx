@@ -142,7 +142,14 @@ export function BlackoutImpactWidget({
     }
     setSendingSingleId(consumer.consumer_id);
     try {
-      const res = await techtonicsApi.broadcastOutageSms(assetId);
+      const res = await techtonicsApi.sendSingleConsumerSms({
+        consumer_id: consumer.consumer_id,
+        consumer_name: consumer.consumer_name,
+        mobile_number: consumer.mobile_number,
+        category: consumer.category,
+        asset_id: assetId,
+        address_area: consumer.address_area,
+      });
       toast.success(`Personalized SMS sent directly to ${consumer.consumer_name} (${consumer.mobile_number})!`);
       setSmsDispatchedMap((prev) => ({ ...prev, [consumer.consumer_id]: true }));
       setRecentLogs((prev) => [res.dispatch, ...prev]);
@@ -211,14 +218,20 @@ export function BlackoutImpactWidget({
 
   const consumersList = consumerData?.consumers || [];
   const filteredConsumers = consumersList.filter((c) => {
+    const catStr = (c.category || "").toLowerCase();
+    const nameStr = (c.consumer_name || "").toLowerCase();
+    const idStr = (c.consumer_id || "").toLowerCase();
+    const mobileStr = String(c.mobile_number || "");
+    const searchStr = (searchConsumer || "").toLowerCase();
+
     const matchesCat =
       categoryFilter === "ALL" ||
-      c.category.toLowerCase().includes(categoryFilter.toLowerCase());
+      catStr.includes(categoryFilter.toLowerCase());
     const matchesSearch =
       !searchConsumer ||
-      c.consumer_name.toLowerCase().includes(searchConsumer.toLowerCase()) ||
-      c.consumer_id.toLowerCase().includes(searchConsumer.toLowerCase()) ||
-      c.mobile_number.includes(searchConsumer);
+      nameStr.includes(searchStr) ||
+      idStr.includes(searchStr) ||
+      mobileStr.includes(searchConsumer);
     return matchesCat && matchesSearch;
   });
 
@@ -585,8 +598,8 @@ export function BlackoutImpactWidget({
                 ) : (
                   filteredConsumers.map((c) => {
                     const isDispatched = smsDispatchedMap[c.consumer_id] || c.sms_alert_status === "DISPATCHED";
-                    const isHospital = c.category.includes("Hospital") || c.category.includes("Critical");
-                    const isIndustrial = c.category.includes("Industrial");
+                    const isHospital = (c.category || "").includes("Hospital") || (c.category || "").includes("Critical");
+                    const isIndustrial = (c.category || "").includes("Industrial");
                     const isSendingThis = sendingSingleId === c.consumer_id;
 
                     return (

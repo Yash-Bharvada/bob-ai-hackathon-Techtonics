@@ -556,6 +556,32 @@ export const techtonicsApi = {
     return res.json();
   },
 
+  /** POST /api/blackout/send-single-sms */
+  async sendSingleConsumerSms(params: {
+    consumer_id: string;
+    consumer_name: string;
+    mobile_number: string;
+    category: string;
+    asset_id: string;
+    address_area?: string;
+  }): Promise<{ status: string; dispatch: SmsDispatchRecord; message: string }> {
+    const authHeaders = _getAuthHeaders();
+    const res = await fetch(`${API_BASE}/api/blackout/send-single-sms`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders,
+      },
+      body: JSON.stringify(params),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as any)?.detail || `HTTP ${res.status} dispatching SMS`);
+    }
+    return res.json();
+  },
+
   /** GET /api/blackout/sms-logs */
   async getSmsLogs(): Promise<SmsLogsResponse> {
     const authHeaders = _getAuthHeaders();

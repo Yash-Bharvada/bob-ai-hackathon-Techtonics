@@ -99,6 +99,8 @@ function LiveStreamPage() {
 
   const logsEndRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const currentDayRef = useRef<number>(0);
+  currentDayRef.current = currentDay;
 
   // Load initial assets
   useEffect(() => {
@@ -116,9 +118,11 @@ function LiveStreamPage() {
   useEffect(() => {
     let isCancelled = false;
     setLoading(true);
+    setCurrentDay(0);
+    currentDayRef.current = 0;
 
     Promise.all([
-      techtonicsApi.getStreamTick(selectedAssetId, currentDay),
+      techtonicsApi.getStreamTick(selectedAssetId, 0),
       techtonicsApi.getStreamHistory(selectedAssetId, 89),
     ])
       .then(([tickRes, histRes]) => {
@@ -142,20 +146,21 @@ function LiveStreamPage() {
   }, [selectedAssetId]);
 
   const addLogEntry = (tick: StreamTickResponse) => {
+    if (!tick || !tick.sensor_telemetry || !tick.live_ml_output) return;
     const timeStr = new Date().toLocaleTimeString("en-GB", { hour12: false });
     const entry: InferenceLogEntry = {
       id: `${tick.asset_id}-${tick.day}-${Date.now()}`,
       day: tick.day,
       timestamp: timeStr,
       assetId: tick.asset_id,
-      h2: tick.sensor_telemetry.hydrogen,
-      c2h2: tick.sensor_telemetry.acetylene,
-      temp: tick.sensor_telemetry.top_oil_temp_c,
-      healthIndex: tick.live_ml_output.health_index,
-      faultType: tick.live_ml_output.fault_type,
-      confidence: tick.live_ml_output.fault_confidence_pct,
-      blackoutProb: tick.live_ml_output.blackout_probability_pct,
-      etrMins: tick.live_ml_output.etr_mins,
+      h2: tick.sensor_telemetry.hydrogen ?? 0,
+      c2h2: tick.sensor_telemetry.acetylene ?? 0,
+      temp: tick.sensor_telemetry.top_oil_temp_c ?? 0,
+      healthIndex: tick.live_ml_output.health_index ?? 0,
+      faultType: tick.live_ml_output.fault_type ?? "NF",
+      confidence: tick.live_ml_output.fault_confidence_pct ?? 0,
+      blackoutProb: tick.live_ml_output.blackout_probability_pct ?? 0,
+      etrMins: tick.live_ml_output.etr_mins ?? 0,
     };
     setLogs((prev) => [entry, ...prev.slice(0, 49)]);
   };
@@ -168,11 +173,10 @@ function LiveStreamPage() {
     }
 
     timerRef.current = setInterval(() => {
-      setCurrentDay((prevDay) => {
-        const nextDay = prevDay >= 89 ? 0 : prevDay + 1;
-        fetchTickForDay(nextDay);
-        return nextDay;
-      });
+      const nextDay = currentDayRef.current >= 89 ? 0 : currentDayRef.current + 1;
+      currentDayRef.current = nextDay;
+      setCurrentDay(nextDay);
+      fetchTickForDay(nextDay);
     }, speedMs);
 
     return () => {
@@ -192,6 +196,7 @@ function LiveStreamPage() {
 
   const handleSeek = (day: number) => {
     const clamped = Math.max(0, Math.min(89, day));
+    currentDayRef.current = clamped;
     setCurrentDay(clamped);
     fetchTickForDay(clamped);
   };
@@ -207,6 +212,7 @@ function LiveStreamPage() {
   };
 
   const handleReset = () => {
+    currentDayRef.current = 0;
     setCurrentDay(0);
     fetchTickForDay(0);
     toast.info(`Stream reset to Day 0 (2026-06-15) for ${selectedAssetId}`);

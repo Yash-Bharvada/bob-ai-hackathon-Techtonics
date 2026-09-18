@@ -946,6 +946,14 @@ class ContractorPermitRequest(BaseModel):
 class SmsBroadcastRequest(BaseModel):
     asset_id: str
 
+class SingleSmsRequest(BaseModel):
+    consumer_id: str
+    consumer_name: str
+    mobile_number: str
+    category: str
+    asset_id: str
+    address_area: Optional[str] = "Anand Feeder Corridor"
+
 @app.get("/api/blackout/permit")
 def get_contractor_permit():
     return _contractor_permit_state
@@ -985,7 +993,8 @@ def get_blackout_estimate(asset_id: str):
                 
     # Retrieve telemetry parameters from ML models
     hi_score = float(score_data.get("health_index_score", score_data.get("health_index", 35.0)))
-    dga_prob = float(score_data.get("fault_confidence", score_data.get("fault_prob", 0.15)))
+    raw_dga = float(score_data.get("fault_confidence", score_data.get("fault_prob", 0.15)))
+    dga_prob = raw_dga / 100.0 if raw_dga > 1.0 else raw_dga
     fault_type = str(score_data.get("fault_type", "Normal"))
     
     mva_rating = float(asset_row.get("mva_rating", score_data.get("mva_rating", 25.0)) if asset_row else 25.0)
@@ -1096,7 +1105,7 @@ def send_exotel_sms(to_mobile: str, message_body: str) -> bool:
         return True
         
     url = f"https://{EXOTEL_SUBDOMAIN}/v1/Accounts/{EXOTEL_ACCOUNT_SID}/Sms/send.json"
-    clean_mobile = re.sub(r"[^\d]", "", to_mobile)
+    clean_mobile = re.sub(r"[^\d]", "", str(to_mobile or ""))
     if not clean_mobile.startswith("91") and len(clean_mobile) == 10:
         clean_mobile = "91" + clean_mobile
         
@@ -1121,12 +1130,15 @@ def send_exotel_sms(to_mobile: str, message_body: str) -> bool:
 
 def build_personalized_sms(consumer_name: str, category: str, asset_id: str, substation: str, predicted_time: str, etr_mins: int, address_area: str) -> str:
     """Builds a structured, professional, personalized SMS advisory."""
-    is_hospital = "Hospital" in category or "Critical" in category
+    category_str = str(category or "Residential")
+    consumer_name_str = str(consumer_name or "Valued Consumer")
+    address_area_str = str(address_area or "Anand Feeder Corridor")
+    is_hospital = "Hospital" in category_str or "Critical" in category_str
     
     if is_hospital:
         return (
             f"VOLTRA CRITICAL INFRASTRUCTURE ALERT\n"
-            f"Attention: {consumer_name} ({category})\n\n"
+            f"Attention: {consumer_name_str} ({category_str})\n\n"
             f"Emergency Grid Warning: Feeder line ({substation}) has breached thermal safety threshold on Transformer {asset_id}.\n\n"
             f"• Predicted Interruption: {predicted_time}\n"
             f"• Target ETR: {etr_mins} mins\n"
@@ -1137,12 +1149,12 @@ def build_personalized_sms(consumer_name: str, category: str, asset_id: str, sub
     else:
         return (
             f"VOLTRA POWER ADVISORY\n"
-            f"Dear {consumer_name},\n\n"
+            f"Dear {consumer_name_str},\n\n"
             f"MGVCL Grid Alert: Emergency maintenance scheduled on feeder ({substation}) due to insulation stabilization on Transformer {asset_id}.\n\n"
             f"• Expected Outage: {predicted_time}\n"
             f"• Est. Time to Restore (ETR): {etr_mins} mins\n"
-            f"• Location: {address_area}\n"
-            f"• Priority Level: {category}\n\n"
+            f"• Location: {address_area_str}\n"
+            f"• Priority Level: {category_str}\n\n"
             f"Grid crews are deployed to minimize downtime. Thank you for your cooperation.\n"
             f"- MGVCL Power Operations Center"
         )
@@ -1228,6 +1240,54 @@ def broadcast_outage_sms(body: SmsBroadcastRequest):
         "message": f"Personalized Outage Warning SMS broadcast successfully dispatched to {estimate['affected_households']:,} households {gateway_note}."
     }
 
+@app.post("/api/blackout/send-single-sms")
+def send_single_consumer_sms(body: SingleSmsRequest):
+    if not _contractor_permit_state["permitted"]:
+        raise HTTPException(
+            status_code=403,
+            detail="Contractor authorization permit is required before dispatching emergency SMS warnings."
+        )
+    estimate = get_blackout_estimate(body.asset_id)
+    sms_text = build_personalized_sms(
+        consumer_name=body.consumer_name,
+        category=body.category,
+        asset_id=body.asset_id,
+        substation=estimate["substation"],
+        predicted_time=estimate["predicted_outage_time"],
+        etr_mins=estimate["estimated_time_to_restore_mins"],
+        address_area=body.address_area or estimate["substation"]
+    )
+    exotel_active = bool(EXOTEL_ACCOUNT_SID and EXOTEL_API_KEY and EXOTEL_API_TOKEN)
+    if exotel_active:
+        send_exotel_sms(body.mobile_number, sms_text)
+        
+    dispatch_id = f"SMS-{datetime.now().strftime('%Y%m%d%H%M%S')}-{body.consumer_id}"
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    record = {
+        "dispatch_id": dispatch_id,
+        "asset_id": body.asset_id,
+        "consumer_id": body.consumer_id,
+        "substation": estimate["substation"],
+        "affected_households": 1,
+        "predicted_outage_time": estimate["predicted_outage_time"],
+        "etr_mins": estimate["estimated_time_to_restore_mins"],
+        "sms_preview": sms_text,
+        "status": "DISPATCHED",
+        "exotel_active": exotel_active,
+        "delivered_pct": 100.0,
+        "authorized_by": _contractor_permit_state["authorized_by"],
+        "timestamp": now_iso
+    }
+    _sms_broadcast_logs.insert(0, record)
+    if len(_sms_broadcast_logs) > 50:
+        _sms_broadcast_logs.pop()
+    gateway_note = "(Live Exotel SMS API)" if exotel_active else "(VOLTRA Dispatch Gateway)"
+    return {
+        "status": "success",
+        "dispatch": record,
+        "message": f"Personalized emergency warning SMS dispatched to {body.consumer_name} ({body.mobile_number}) {gateway_note}."
+    }
+
 @app.get("/api/blackout/sms-logs")
 def get_sms_broadcast_logs():
     return {"logs": _sms_broadcast_logs, "total": len(_sms_broadcast_logs)}
@@ -1241,7 +1301,9 @@ def _generate_feeder_consumer_directory():
     csv_file = DATA_DIR / "feeder_consumer_directory.csv"
     if csv_file.exists():
         try:
-            return pd.read_csv(csv_file)
+            df = pd.read_csv(csv_file, dtype={"mobile_number": str})
+            df["mobile_number"] = df["mobile_number"].fillna("").astype(str).str.replace(r"\.0$", "", regex=True)
+            return df
         except Exception:
             pass
             
@@ -1298,6 +1360,23 @@ def _generate_feeder_consumer_directory():
     df.to_csv(csv_file, index=False)
     return df
 
+@app.get("/api/blackout/consumers/sample-template")
+def download_sample_consumer_template():
+    sample_csv = """consumer_name,mobile_number,category,address_area,peak_load_kw,asset_id
+Anand General Hospital & Emergency Unit,9825014210,Hospital / Critical,Phase-2 Main Gate,120.0,TX-107
+Patel Precision Tooling Industries,9898033412,Industrial,Shed #14 GIDC,85.0,TX-107
+Sh. Vikrambhai Parmar (Residency),9426055109,Residential,Flat 402 GIDC Towers,0.75,TX-107
+Anand Water Supply Pumping Station #4,9824088901,Water Supply,Sector 3 Water Works,45.0,TX-107
+Shreeji Cold Storage & Logistics,9712044211,Commercial,Plot 88 GIDC Phase-2,35.0,TX-107
+Smt. Hansaben Patel,9898122340,Residential,House #12 GIDC Colony,0.65,TX-107
+GIDC Fire Station & Control Room,9825011100,Public Safety,Central GIDC Complex,12.0,TX-107
+"""
+    return StreamingResponse(
+        io.BytesIO(sample_csv.encode("utf-8")),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="sample_feeder_consumers_template.csv"'}
+    )
+
 @app.get("/api/blackout/consumers/{asset_id}")
 def get_feeder_consumers(asset_id: str):
     clean_id = asset_id.strip().upper()
@@ -1307,6 +1386,7 @@ def get_feeder_consumers(asset_id: str):
     if matches.empty:
         matches = df[df["asset_id"] == "TX-107"]
         
+    matches = matches.fillna("")
     consumers = matches.to_dict(orient="records")
     
     estimate = get_blackout_estimate(clean_id)
@@ -1339,24 +1419,6 @@ def download_feeder_consumer_csv(asset_id: str):
         iter([stream.getvalue()]),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'}
-    )
-
-
-@app.get("/api/blackout/consumers/sample-template")
-def download_sample_consumer_template():
-    sample_csv = """consumer_name,mobile_number,category,address_area,peak_load_kw,asset_id
-Anand General Hospital & Emergency Unit,9825014210,Hospital / Critical,Phase-2 Main Gate,120.0,TX-107
-Patel Precision Tooling Industries,9898033412,Industrial,Shed #14 GIDC,85.0,TX-107
-Sh. Vikrambhai Parmar (Residency),9426055109,Residential,Flat 402 GIDC Towers,0.75,TX-107
-Anand Water Supply Pumping Station #4,9824088901,Water Supply,Sector 3 Water Works,45.0,TX-107
-Shreeji Cold Storage & Logistics,9712044211,Commercial,Plot 88 GIDC Phase-2,35.0,TX-107
-Smt. Hansaben Patel,9898122340,Residential,House #12 GIDC Colony,0.65,TX-107
-GIDC Fire Station & Control Room,9825011100,Public Safety,Central GIDC Complex,12.0,TX-107
-"""
-    return StreamingResponse(
-        io.BytesIO(sample_csv.encode("utf-8")),
-        media_type="text/csv",
-        headers={"Content-Disposition": 'attachment; filename="sample_feeder_consumers_template.csv"'}
     )
 
 
@@ -1393,14 +1455,29 @@ async def upload_feeder_consumers_csv(file: UploadFile = File(...), default_asse
         target_asset = default_asset_id.strip().upper()
         if "consumer_name" not in df_upload.columns:
             df_upload["consumer_name"] = "Valued Consumer"
+        else:
+            df_upload["consumer_name"] = df_upload["consumer_name"].fillna("Valued Consumer").astype(str)
+
         if "mobile_number" not in df_upload.columns:
             df_upload["mobile_number"] = "+91 98250 00000"
+        else:
+            df_upload["mobile_number"] = df_upload["mobile_number"].fillna("").astype(str).str.replace(r"\.0$", "", regex=True)
+
         if "category" not in df_upload.columns:
             df_upload["category"] = "Residential"
+        else:
+            df_upload["category"] = df_upload["category"].fillna("Residential").astype(str)
+
         if "address_area" not in df_upload.columns:
             df_upload["address_area"] = "Anand Grid Sector"
+        else:
+            df_upload["address_area"] = df_upload["address_area"].fillna("Anand Grid Sector").astype(str)
+
         if "peak_load_kw" not in df_upload.columns:
             df_upload["peak_load_kw"] = 0.75
+        else:
+            df_upload["peak_load_kw"] = pd.to_numeric(df_upload["peak_load_kw"], errors="coerce").fillna(0.75)
+
         if "asset_id" not in df_upload.columns:
             df_upload["asset_id"] = target_asset
             
@@ -1437,6 +1514,9 @@ async def upload_feeder_consumers_csv(file: UploadFile = File(...), default_asse
         }
     except Exception as e:
         logger.error(f"Error processing CSV upload: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to process CSV file: {str(e)}")
+
+
 # ---------------------------------------------------------------------------
 # Real-Time Telemetry Streaming & On-the-Fly ML Inference (2 Focus Assets)
 # ---------------------------------------------------------------------------
@@ -1461,6 +1541,17 @@ STREAM_ASSETS = {
     }
 }
 
+_timeseries_cache: Optional[pd.DataFrame] = None
+
+def _get_timeseries_df() -> pd.DataFrame:
+    global _timeseries_cache
+    if _timeseries_cache is None:
+        ts_file = DATA_DIR / "transformer_timeseries.csv"
+        if not ts_file.exists():
+            raise HTTPException(status_code=404, detail="Time-series dataset file not found.")
+        _timeseries_cache = pd.read_csv(ts_file)
+    return _timeseries_cache
+
 @app.get("/api/stream/assets")
 def get_streaming_assets():
     return {"assets": list(STREAM_ASSETS.values())}
@@ -1471,11 +1562,7 @@ def get_stream_tick(asset_id: str, day: int):
     if clean_id not in STREAM_ASSETS:
         clean_id = "TX-107"
         
-    ts_file = DATA_DIR / "transformer_timeseries.csv"
-    if not ts_file.exists():
-        raise HTTPException(status_code=404, detail="Time-series dataset file not found.")
-        
-    df = pd.read_csv(ts_file)
+    df = _get_timeseries_df()
     sub = df[(df["asset_id"].str.strip().str.upper() == clean_id)].sort_values("day")
     if sub.empty:
         raise HTTPException(status_code=404, detail=f"Asset {clean_id} not found in time-series.")
@@ -1494,7 +1581,8 @@ def get_stream_tick(asset_id: str, day: int):
     
     hi_score = float(ml_score.get("health_index_score", 30.0))
     fault_type = str(ml_score.get("fault_type", "Normal"))
-    fault_confidence = float(ml_score.get("fault_confidence", 10.0)) / 100.0
+    raw_conf = float(ml_score.get("fault_confidence", 0.10))
+    fault_confidence = raw_conf / 100.0 if raw_conf > 1.0 else raw_conf
     rul_days_val = float(ml_score.get("RUL_days", 100.0))
     risk_tier_val = str(ml_score.get("risk_tier", "LOW"))
     
@@ -1574,11 +1662,7 @@ def get_stream_history(asset_id: str, up_to_day: int = 89):
     if clean_id not in STREAM_ASSETS:
         clean_id = "TX-107"
         
-    ts_file = DATA_DIR / "transformer_timeseries.csv"
-    if not ts_file.exists():
-        raise HTTPException(status_code=404, detail="Time-series dataset file not found.")
-        
-    df = pd.read_csv(ts_file)
+    df = _get_timeseries_df()
     sub = df[(df["asset_id"].str.strip().str.upper() == clean_id) & (df["day"] <= up_to_day)].sort_values("day")
     
     history = []

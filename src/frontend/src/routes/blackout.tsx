@@ -64,7 +64,13 @@ function BlackoutDefensePage() {
     (a) => a.risk_tier === "CRITICAL" || a.risk_tier === "HIGH"
   ).length;
   const totalMonitored = rankedAssets.length || 18;
-  const totalProtectedHouseholds = totalMonitored * 6580; // Estimated district coverage
+  const totalProtectedHouseholds =
+    rankedAssets.length > 0
+      ? rankedAssets.reduce(
+          (sum, a) => sum + Math.round(((a.mva_rating || 25) * 0.70 * 0.90 * 0.45 * 1000) / 0.70),
+          0
+        )
+      : 114500;
 
   return (
     <div className="min-h-screen bg-background text-foreground pt-6 pb-20 font-sans">

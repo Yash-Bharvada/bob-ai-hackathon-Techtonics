@@ -23,6 +23,16 @@ CONS-TX-106-001,TX-106,Anand Substation #6,Feeder Line-6,Central Anand Clinic #6
 CONS-TX-106-002,TX-106,Anand Substation #6,Feeder Line-6,Residential Cluster #6 (240 Homes),Residential,+91 94260 22000,Anand Sector A,0.7,QUEUED
 CONS-TX-106-003,TX-106,Anand Substation #6,Feeder Line-6,Substation Pump Station #6,Water Supply,+91 98240 33000,Water Works Road,30.0,QUEUED
 CONS-TX-106-004,TX-106,Anand Substation #6,Feeder Line-6,Commercial Complex #6,Commercial,+91 97120 44000,Main Bazaar,22.0,QUEUED
+CONS-TX-107-001,TX-107,GIDC Industrial Phase-2,Line-B Feeder,GIDC General Hospital & Emergency Unit,Hospital / Critical,+91 98250 14210,Phase-2 Main Gate,120.0,QUEUED
+CONS-TX-107-002,TX-107,GIDC Industrial Phase-2,Line-B Feeder,Patel Precision Tooling Industries,Industrial,+91 98980 33412,"Shed #14, GIDC",85.0,QUEUED
+CONS-TX-107-003,TX-107,GIDC Industrial Phase-2,Line-B Feeder,Sh. Vikrambhai Parmar (Residency),Residential,+91 94260 55109,"Flat 402, GIDC Towers",0.75,QUEUED
+CONS-TX-107-004,TX-107,GIDC Industrial Phase-2,Line-B Feeder,Anand Water Supply Pumping Station #4,Water Supply,+91 98240 88901,Sector 3 Water Works,45.0,QUEUED
+CONS-TX-107-005,TX-107,GIDC Industrial Phase-2,Line-B Feeder,Shreeji Cold Storage & Logistics,Commercial,+91 97120 44211,"Plot 88, GIDC Phase-2",35.0,QUEUED
+CONS-TX-107-006,TX-107,GIDC Industrial Phase-2,Line-B Feeder,Smt. Hansaben Patel,Residential,+91 98981 22340,"House #12, GIDC Colony",0.65,QUEUED
+CONS-TX-107-007,TX-107,GIDC Industrial Phase-2,Line-B Feeder,Anand Dairy Collection Center #3,Commercial,+91 94270 99012,Feeder Junction B,18.0,QUEUED
+CONS-TX-107-008,TX-107,GIDC Industrial Phase-2,Line-B Feeder,GIDC Fire Station & Control Room,Public Safety,+91 98250 11100,Central GIDC Complex,12.0,QUEUED
+CONS-TX-107-009,TX-107,GIDC Industrial Phase-2,Line-B Feeder,Er. Rajesh Shah (Substation Engg),Grid Personnel,+91 98251 00982,Staff Quarters B1,0.8,QUEUED
+CONS-TX-107-010,TX-107,GIDC Industrial Phase-2,Line-B Feeder,Sh. Rameshchandra Joshi,Residential,+91 94263 77123,"House #44, GIDC Colony",0.7,QUEUED
 CONS-TX-108-001,TX-108,Anand Substation #8,Feeder Line-8,Central Anand Clinic #8,Hospital / Critical,+91 98250 11000,Hospital Road,50.0,QUEUED
 CONS-TX-108-002,TX-108,Anand Substation #8,Feeder Line-8,Residential Cluster #8 (240 Homes),Residential,+91 94260 22000,Anand Sector A,0.7,QUEUED
 CONS-TX-108-003,TX-108,Anand Substation #8,Feeder Line-8,Substation Pump Station #8,Water Supply,+91 98240 33000,Water Works Road,30.0,QUEUED
@@ -68,5 +78,3 @@ CONS-TX-118-001,TX-118,Anand Substation #18,Feeder Line-18,Central Anand Clinic 
 CONS-TX-118-002,TX-118,Anand Substation #18,Feeder Line-18,Residential Cluster #18 (240 Homes),Residential,+91 94260 22000,Anand Sector A,0.7,QUEUED
 CONS-TX-118-003,TX-118,Anand Substation #18,Feeder Line-18,Substation Pump Station #18,Water Supply,+91 98240 33000,Water Works Road,30.0,QUEUED
 CONS-TX-118-004,TX-118,Anand Substation #18,Feeder Line-18,Commercial Complex #18,Commercial,+91 97120 44000,Main Bazaar,22.0,QUEUED
-CONS-TX-107-001,TX-107,Substation Feeder (TX-107),Custom Uploaded Feeder Line,Anand Multi-Specialty Emergency Hospital,Hospital / Critical,9825099999,GIDC Gate 1,150.0,QUEUED
-CONS-TX-107-002,TX-107,Substation Feeder (TX-107),Custom Uploaded Feeder Line,Smt. Meenaben Patel,Residential,9426011111,Colony House #5,0.85,QUEUED

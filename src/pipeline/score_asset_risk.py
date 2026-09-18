@@ -319,6 +319,9 @@ def score_asset_risk(
                           ch4_h2, c2h2_c2h4, c2h4_c2h6]])
 
     proba = m2["model"].predict_proba(feat_m2)[0]
+    proba_sum = float(np.sum(proba))
+    if proba_sum > 0:
+        proba = proba / proba_sum
     classes = m2["classes"]
     pred_idx = int(np.argmax(proba))
     fault_type = classes[pred_idx]
