@@ -15,13 +15,23 @@ export function SiteFooter() {
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Platform</p>
           <ul className="mt-4 space-y-2 text-sm">
             <li>
-              <Link to="/grid" className="hover:underline">
-                Live Grid
+              <Link to="/" className="hover:underline">
+                Home
+              </Link>
+            </li>
+            <li>
+              <Link to="/dashboard" className="hover:underline">
+                Dashboard
+              </Link>
+            </li>
+            <li>
+              <Link to="/grid" className="hover:underline text-[#d2f831]">
+                Live Grid & Blackout Shield
               </Link>
             </li>
             <li>
               <Link to="/predict" className="hover:underline">
-                Prediction
+                Prediction Engine
               </Link>
             </li>
             <li>

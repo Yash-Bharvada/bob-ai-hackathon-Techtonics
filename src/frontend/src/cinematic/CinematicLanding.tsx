@@ -509,13 +509,13 @@ function CinematicLandingInner({ children }: { children: React.ReactNode }) {
       {!isLoaderDismissed && (
         <div
           className={`kavach-minimal-loader ${isLoaderExiting ? "loader-exiting" : ""}`}
-          aria-label="Loading KAVACH"
+          aria-label="Loading VOLTRA"
           role="progressbar"
           aria-valuenow={preloadProgress}
           aria-valuemin={0}
           aria-valuemax={100}
         >
-          <div className="kavach-brand-title">K A V A C H</div>
+          <div className="kavach-brand-title">V O L T R A</div>
 
           <div className="kavach-loader-block">
             <div className="kavach-loader-track">

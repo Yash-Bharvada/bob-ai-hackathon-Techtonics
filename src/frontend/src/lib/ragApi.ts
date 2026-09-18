@@ -85,7 +85,7 @@ export async function chatWithGridAdvisor(
     if (err.name === "AbortError" || err.name === "TimeoutError") {
       throw new Error("The request timed out. Please try again.");
     }
-    throw new Error("Grid Advisor is currently unavailable. Please try again.");
+    throw new Error("Voltrics AI is currently unavailable. Please try again.");
   }
 
   if (!res.ok) {
@@ -100,7 +100,7 @@ export async function chatWithGridAdvisor(
     if (res.status === 503) {
       throw new Error(errorDetail || "RAG retrieval or inference service is temporarily unavailable.");
     }
-    throw new Error(errorDetail || "Grid Advisor is currently unavailable. Please try again.");
+    throw new Error(errorDetail || "Voltrics AI is currently unavailable. Please try again.");
   }
 
   return res.json();

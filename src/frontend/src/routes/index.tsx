@@ -103,6 +103,7 @@ function Home() {
       <Dashboard metrics={gridMetrics} />
       <FaultAnalysis topAsset={topAsset} />
       <Analytics historyData={txHistory} />
+      <PlatformModules />
       <Action />
     </div>
   );
@@ -460,7 +461,7 @@ const KAVACH_STAGES: KavachStage[] = [
     emphasisClass:
       "font-display italic font-normal text-lime-500 dark:text-lime-400 drop-shadow-[0_0_25px_rgba(132,204,22,0.4)]",
     description:
-      "KAVACH acts as an impenetrable digital armor over the power grid. Streaming dissolved gas telemetry at sub-second frequency, it isolates dielectric stress and winding arcing weeks before heat or smoke appear.",
+      "VOLTRA Blackout Defense acts as an impenetrable digital armor over the power grid. Streaming dissolved gas telemetry at sub-second frequency, it isolates dielectric stress and winding arcing weeks before heat or smoke appear.",
     meta: {
       label: "TELEMETRY PULSE",
       value: "Sub-Second DGA Stream",
@@ -798,11 +799,11 @@ function CinematicGrid() {
     <section className="mx-auto mt-24 w-full max-w-6xl px-4 sm:px-6">
       <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-[#d2f831] font-mono flex items-center gap-2">
-            <span className="size-1.5 rounded-full bg-[#d2f831] animate-pulse" /> A fault, caught upstream
+          <p className="text-xs uppercase tracking-[0.18em] text-emerald-700 dark:text-[#d2f831] font-mono flex items-center gap-2">
+            <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-[#d2f831] animate-pulse" /> A fault, caught upstream
           </p>
           <h2 className="mt-3 text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-foreground">
-            Power is still flowing. <span className="font-display font-normal italic text-[#d2f831]">VOLTRA is already watching.</span>
+            Power is still flowing. <span className="font-display font-normal italic text-emerald-700 dark:text-[#d2f831]">VOLTRA is already watching.</span>
           </h2>
         </div>
         <p className="max-w-sm text-sm text-muted-foreground leading-relaxed">
@@ -899,11 +900,11 @@ function Dashboard({
         {/* Left Column: Heading & Sleek Compact Stat Cards */}
         <div className="lg:col-span-5 flex flex-col justify-between space-y-6 lg:space-y-0">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-[#d2f831] font-mono flex items-center gap-2">
-              <span className="size-1.5 rounded-full bg-[#d2f831] animate-pulse" /> Live Grid Topology
+            <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 dark:text-[#d2f831] font-mono flex items-center gap-2">
+              <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-[#d2f831] animate-pulse" /> Live Grid Topology
             </p>
             <h2 className="mt-3 text-3xl sm:text-4xl font-semibold tracking-tight text-foreground leading-[1.15]">
-              A clear view of <span className="font-display font-normal italic text-[#d2f831]">what changes next.</span>
+              A clear view of <span className="font-display font-normal italic text-emerald-700 dark:text-[#d2f831]">what changes next.</span>
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
               Healthy substations stay quiet. Emerging equipment risks rise into view with SHAP feature explainability and IBM Bob plain-English advisories.
@@ -913,76 +914,76 @@ function Dashboard({
           {/* 4 Sleek Compact Stat Cards */}
           <div className="grid grid-cols-2 gap-3 sm:gap-3.5">
             {/* Box 1: Fleet Assets Monitored */}
-            <div className="group relative flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-[#111215]/85 hover:bg-[#15161a] backdrop-blur-xl p-3.5 sm:p-4 shadow-xs transition-all duration-300 hover:border-white/20">
+            <div className="group relative flex flex-col justify-between rounded-2xl border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/85 hover:bg-muted/50 dark:hover:bg-[#15161a] backdrop-blur-xl p-3.5 sm:p-4 shadow-xs transition-all duration-300 hover:border-border/80 dark:hover:border-white/20">
               <div className="flex items-center justify-between">
-                <ShieldCheck className="size-4 text-neutral-400 stroke-[1.75]" />
-                <div className="flex items-center gap-1.5 text-[10px] font-mono text-neutral-400">
-                  <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
+                <ShieldCheck className="size-4 text-muted-foreground dark:text-neutral-400 stroke-[1.75]" />
+                <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground dark:text-neutral-400">
+                  <span className="size-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
                   <span className="uppercase tracking-wider">ONLINE</span>
                 </div>
               </div>
               <div className="mt-2.5">
-                <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white">
+                <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground dark:text-white">
                   {metrics.assetsMonitored}
                 </p>
-                <p className="text-xs font-medium text-neutral-400 mt-0.5 truncate">
+                <p className="text-xs font-medium text-muted-foreground dark:text-neutral-400 mt-0.5 truncate">
                   Assets Monitored
                 </p>
               </div>
             </div>
 
             {/* Box 2: Critical High Risk */}
-            <div className="group relative flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-[#111215]/85 hover:bg-[#15161a] backdrop-blur-xl p-3.5 sm:p-4 shadow-xs transition-all duration-300 hover:border-white/20">
+            <div className="group relative flex flex-col justify-between rounded-2xl border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/85 hover:bg-muted/50 dark:hover:bg-[#15161a] backdrop-blur-xl p-3.5 sm:p-4 shadow-xs transition-all duration-300 hover:border-border/80 dark:hover:border-white/20">
               <div className="flex items-center justify-between">
-                <AlertTriangle className="size-4 text-rose-400 stroke-[1.75]" />
-                <div className="flex items-center gap-1.5 text-[10px] font-mono text-neutral-400 truncate max-w-[105px]">
+                <AlertTriangle className="size-4 text-rose-500 dark:text-rose-400 stroke-[1.75]" />
+                <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground dark:text-neutral-400 truncate max-w-[105px]">
                   <span className="size-1.5 shrink-0 rounded-full bg-rose-500 animate-pulse shadow-[0_0_6px_rgba(244,63,94,0.8)]" />
                   <span className="truncate">{metrics.criticalAssets || "TX-107, TX-112"}</span>
                 </div>
               </div>
               <div className="mt-2.5">
-                <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white">
+                <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground dark:text-white">
                   {metrics.criticalCount}
                 </p>
-                <p className="text-xs font-medium text-neutral-400 mt-0.5 truncate">
+                <p className="text-xs font-medium text-muted-foreground dark:text-neutral-400 mt-0.5 truncate">
                   Critical High Risk
                 </p>
               </div>
             </div>
 
             {/* Box 3: Watch Tier */}
-            <div className="group relative flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-[#111215]/85 hover:bg-[#15161a] backdrop-blur-xl p-3.5 sm:p-4 shadow-xs transition-all duration-300 hover:border-white/20">
+            <div className="group relative flex flex-col justify-between rounded-2xl border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/85 hover:bg-muted/50 dark:hover:bg-[#15161a] backdrop-blur-xl p-3.5 sm:p-4 shadow-xs transition-all duration-300 hover:border-border/80 dark:hover:border-white/20">
               <div className="flex items-center justify-between">
-                <Activity className="size-4 text-amber-400 stroke-[1.75]" />
-                <div className="flex items-center gap-1.5 text-[10px] font-mono text-neutral-400">
-                  <span className="size-1.5 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]" />
+                <Activity className="size-4 text-amber-500 dark:text-amber-400 stroke-[1.75]" />
+                <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground dark:text-neutral-400">
+                  <span className="size-1.5 rounded-full bg-amber-500 dark:bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]" />
                   <span className="uppercase tracking-wider">ELEVATED</span>
                 </div>
               </div>
               <div className="mt-2.5">
-                <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white">
+                <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground dark:text-white">
                   {metrics.watchCount}
                 </p>
-                <p className="text-xs font-medium text-neutral-400 mt-0.5 truncate">
+                <p className="text-xs font-medium text-muted-foreground dark:text-neutral-400 mt-0.5 truncate">
                   Watch Tier
                 </p>
               </div>
             </div>
 
             {/* Box 4: Mean RUL */}
-            <div className="group relative flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-[#111215]/85 hover:bg-[#15161a] backdrop-blur-xl p-3.5 sm:p-4 shadow-xs transition-all duration-300 hover:border-white/20">
+            <div className="group relative flex flex-col justify-between rounded-2xl border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/85 hover:bg-muted/50 dark:hover:bg-[#15161a] backdrop-blur-xl p-3.5 sm:p-4 shadow-xs transition-all duration-300 hover:border-border/80 dark:hover:border-white/20">
               <div className="flex items-center justify-between">
-                <Clock3 className="size-4 text-neutral-400 stroke-[1.75]" />
-                <div className="flex items-center gap-1.5 text-[10px] font-mono text-neutral-400">
-                  <span className="size-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
+                <Clock3 className="size-4 text-muted-foreground dark:text-neutral-400 stroke-[1.75]" />
+                <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground dark:text-neutral-400">
+                  <span className="size-1.5 rounded-full bg-cyan-500 dark:bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
                   <span className="uppercase tracking-wider">FLEET WIDE</span>
                 </div>
               </div>
               <div className="mt-2.5">
-                <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white">
+                <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground dark:text-white">
                   {metrics.meanRul}
                 </p>
-                <p className="text-xs font-medium text-neutral-400 mt-0.5 truncate">
+                <p className="text-xs font-medium text-muted-foreground dark:text-neutral-400 mt-0.5 truncate">
                   Mean RUL
                 </p>
               </div>
@@ -1189,6 +1190,78 @@ function Analytics({ historyData = defaultHistory }: { historyData?: Array<{ tim
             Timely fan overhaul and 20% load curtailment on Day 78 prevented a blackout on TX-115, returning RUL from 7.7 to 97 days.
           </p>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function PlatformModules() {
+  const modules = [
+    {
+      to: "/grid",
+      badge: "LIVE GRID & BLACKOUT SHIELD",
+      title: "Grid Corridor Inspector",
+      desc: "Interactive SCADA telemetry map, DGA gas ratios, Duval pentagons, and real-time consumer blackout estimator for all 18 Anand transformers.",
+      accent: "text-emerald-700 dark:text-[#d2f831] border-emerald-500/30 bg-emerald-500/10",
+    },
+    {
+      to: "/dashboard",
+      badge: "EXECUTIVE DASHBOARD",
+      title: "Grid Command Operations",
+      desc: "High-level fleet health index analytics, RUL degradation distributions, risk breakdown, and live event ticker.",
+      accent: "text-blue-600 dark:text-blue-400 border-blue-500/30 bg-blue-500/10",
+    },
+    {
+      to: "/predict",
+      badge: "ML RISK PREDICTION ENGINE",
+      title: "Ad-hoc Telemetry Risk Scoring",
+      desc: "Upload custom CSV readings or test synthetic transformer parameters to run our dual ML models (HI Regression + DGA Fault Classifier).",
+      accent: "text-purple-600 dark:text-purple-400 border-purple-500/30 bg-purple-500/10",
+    },
+    {
+      to: "/technology",
+      badge: "SYSTEM ARCHITECTURE",
+      title: "ML Pipeline & Science Deep Dive",
+      desc: "Technical post-mortem on dataset features, XGBoost/RandomForest model specs, Duval triangle ratio math, and SHAP explainability.",
+      accent: "text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10",
+    },
+  ];
+
+  return (
+    <section className="mx-auto mt-20 max-w-6xl px-4 sm:px-6">
+      <div className="text-center max-w-2xl mx-auto space-y-2 mb-10">
+        <p className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-700 dark:text-[#d2f831]">
+          Explore Full VOLTRA Console
+        </p>
+        <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground dark:text-white font-display">
+          All 5 Platform Views
+        </h2>
+        <p className="text-sm text-muted-foreground dark:text-neutral-400">
+          Switch seamlessly across live grid corridor telemetry, executive fleet analytics, ad-hoc ML scoring, and architecture documentation.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {modules.map((m, idx) => (
+          <Link
+            key={idx}
+            to={m.to}
+            className="group relative rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card dark:bg-[#121318] p-6 shadow-xs hover:border-emerald-500/40 dark:hover:border-[#d2f831]/40 hover:shadow-lg transition-all duration-300"
+          >
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-mono font-bold ${m.accent}`}>
+                {m.badge}
+              </span>
+              <ArrowUpRight className="size-4 text-muted-foreground group-hover:text-foreground dark:group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+            </div>
+            <h3 className="text-lg font-bold text-foreground dark:text-white group-hover:text-emerald-700 dark:group-hover:text-[#d2f831] transition-colors">
+              {m.title}
+            </h3>
+            <p className="mt-2 text-xs text-muted-foreground dark:text-neutral-400 leading-relaxed">
+              {m.desc}
+            </p>
+          </Link>
+        ))}
       </div>
     </section>
   );

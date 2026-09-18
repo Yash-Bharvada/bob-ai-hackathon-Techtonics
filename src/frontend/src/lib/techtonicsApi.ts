@@ -514,6 +514,82 @@ export const techtonicsApi = {
     return `${API_BASE}/api/sample/csv`;
   },
 
+  /** GET /api/blackout/estimate/{asset_id} */
+  async getBlackoutEstimate(assetId: string): Promise<BlackoutEstimateResponse> {
+    const authHeaders = _getAuthHeaders();
+    const res = await fetch(`${API_BASE}/api/blackout/estimate/${encodeURIComponent(assetId)}`, {
+      headers: { ...authHeaders },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status} fetching blackout estimate for ${assetId}`);
+    }
+    return res.json();
+  },
+
+  /** GET /api/blackout/permit */
+  async getContractorPermit(): Promise<ContractorPermitState> {
+    const authHeaders = _getAuthHeaders();
+    const res = await fetch(`${API_BASE}/api/blackout/permit`, {
+      headers: { ...authHeaders },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status} fetching contractor permit`);
+    }
+    return res.json();
+  },
+
+  /** POST /api/blackout/permit */
+  async updateContractorPermit(permitted: boolean, authorizedBy?: string): Promise<ContractorPermitState> {
+    const authHeaders = _getAuthHeaders();
+    const res = await fetch(`${API_BASE}/api/blackout/permit`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders,
+      },
+      body: JSON.stringify({ permitted, authorized_by: authorizedBy }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status} updating contractor permit`);
+    }
+    return res.json();
+  },
+
+  /** POST /api/blackout/broadcast-sms */
+  async broadcastOutageSms(assetId: string): Promise<SmsBroadcastResponse> {
+    const authHeaders = _getAuthHeaders();
+    const res = await fetch(`${API_BASE}/api/blackout/broadcast-sms`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders,
+      },
+      body: JSON.stringify({ asset_id: assetId }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as any)?.detail || `HTTP ${res.status} broadcasting SMS`);
+    }
+    return res.json();
+  },
+
+  /** GET /api/blackout/sms-logs */
+  async getSmsLogs(): Promise<SmsLogsResponse> {
+    const authHeaders = _getAuthHeaders();
+    const res = await fetch(`${API_BASE}/api/blackout/sms-logs`, {
+      headers: { ...authHeaders },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status} fetching SMS logs`);
+    }
+    return res.json();
+  },
+
   /** RAG Chatbot Integration: chatWithGridAdvisor & dynamic ingestion */
   chatWithGridAdvisor,
   checkRagHealth,
@@ -554,4 +630,57 @@ export interface CsvScoreResponse {
   error_details: Array<{ row: number; asset_id: string; error: string }>;
   results: CsvScoreRow[];
 }
+
+// ─── Blackout Estimator & Contractor SMS Dispatch Types ────────────────────────
+
+export interface BlackoutEstimateResponse {
+  asset_id: string;
+  substation: string;
+  voltage_kv: string;
+  health_index: number;
+  fault_type: string;
+  blackout_probability_pct: number;
+  predicted_outage_time: string;
+  time_to_failure_hours: number;
+  estimated_time_to_restore_mins: number;
+  current_load_mw: number;
+  mva_rating: number;
+  affected_households: number;
+  estimated_residents: number;
+  critical_facilities: string[];
+  contractor_permitted: boolean;
+  recommended_action: string;
+}
+
+export interface ContractorPermitState {
+  permitted: boolean;
+  authorized_by?: string;
+  updated_at: string;
+}
+
+export interface SmsDispatchRecord {
+  dispatch_id: string;
+  asset_id: string;
+  substation: string;
+  affected_households: number;
+  predicted_outage_time: string;
+  etr_mins: number;
+  sms_preview: string;
+  status: string;
+  delivered_pct: number;
+  authorized_by: string;
+  timestamp: string;
+}
+
+export interface SmsBroadcastResponse {
+  status: string;
+  dispatch: SmsDispatchRecord;
+  message: string;
+}
+
+export interface SmsLogsResponse {
+  logs: SmsDispatchRecord[];
+  total: number;
+}
+
 

@@ -12,7 +12,7 @@ export function VoltraLogo({
   className = "size-9",
   size = 36,
   showText = false,
-  subtitle = "Grid Risk Advisor",
+  subtitle,
   variant = "auto",
 }: VoltraLogoProps) {
   const dimension = typeof size === "number" ? `${size}px` : size;

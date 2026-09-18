@@ -111,13 +111,16 @@ export function SiteNav() {
       <header className="sticky top-2 sm:top-3 z-50 mx-auto w-[calc(100%-1rem)] max-w-5xl rounded-full border border-white/[0.12] bg-[#0c0d11]/90 shadow-[0_12px_36px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.15)] backdrop-blur-2xl transition-all mb-3 sm:mb-4">
         <div className="flex h-11 sm:h-12 w-full items-center justify-between px-3 sm:px-5 gap-3">
 
-          {/* Left: Brand - Voltra Logo with Name */}
+          {/* Left: Brand - Voltra Logo with Name (Only VOLTRA, white text) */}
           <Link
             to="/"
             aria-label="Voltra Home"
-            className="flex items-center transition-transform hover:scale-105 shrink-0"
+            className="flex items-center gap-2.5 transition-transform hover:scale-105 shrink-0"
           >
-            <VoltraLogo size={28} showText={true} />
+            <VoltraLogo size={28} showText={false} variant="dark" />
+            <span className="text-base font-bold leading-none tracking-tight text-white font-mono">
+              VOLTRA
+            </span>
           </Link>
 
           {/* Center: Capsule Nav (desktop only) */}
