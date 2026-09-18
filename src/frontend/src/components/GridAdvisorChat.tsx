@@ -275,10 +275,10 @@ export function GridAdvisorChat() {
                 {messages.length > 0 && (
                   <Button
                     variant="ghost"
-                    size="icon-xs"
+                    size="icon"
                     onClick={handleClearHistory}
                     title="Clear conversation"
-                    className="text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                    className="size-7 text-muted-foreground hover:text-foreground hover:bg-muted/60"
                   >
                     <Trash2 className="size-3.5" />
                   </Button>
