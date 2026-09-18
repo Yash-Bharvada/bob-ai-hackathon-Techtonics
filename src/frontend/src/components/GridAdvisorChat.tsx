@@ -470,12 +470,14 @@ export function GridAdvisorChat() {
                                   <div className="flex items-center gap-1.5 font-mono font-bold text-foreground">
                                     {src.asset_type?.toLowerCase().includes("wind") ? (
                                       <Wind className="size-3 text-signal" />
+                                    ) : src.asset_type?.toLowerCase().includes("transformer") ? (
+                                      <Zap className="size-3 text-amber-400" />
                                     ) : (
                                       <Sun className="size-3 text-amber-500" />
                                     )}
                                     <span>{src.asset_id || "Asset"}</span>
                                   </div>
-                                  {typeof dev === "number" && (
+                                  {typeof dev === "number" ? (
                                     <span
                                       className={`font-mono font-semibold px-1.5 py-0.2 rounded ${
                                         isNeg
@@ -485,7 +487,19 @@ export function GridAdvisorChat() {
                                     >
                                       Dev: {dev > 0 ? `+${dev.toFixed(1)}` : dev.toFixed(1)}%
                                     </span>
-                                  )}
+                                  ) : src.risk_tier ? (
+                                    <span
+                                      className={`font-mono font-semibold px-1.5 py-0.2 rounded text-[10px] ${
+                                        String(src.risk_tier).toUpperCase().includes("CRIT")
+                                          ? "bg-danger/15 text-danger"
+                                          : String(src.risk_tier).toUpperCase().includes("HIGH")
+                                          ? "bg-amber-500/15 text-amber-500"
+                                          : "bg-lime/15 text-lime"
+                                      }`}
+                                    >
+                                      {String(src.risk_tier)}
+                                    </span>
+                                  ) : null}
                                 </div>
 
                                 <div className="text-muted-foreground flex flex-wrap gap-x-2">
@@ -501,6 +515,14 @@ export function GridAdvisorChat() {
                                     {src.expected_kwh !== undefined && (
                                       <span>Exp: {Number(src.expected_kwh).toLocaleString()} kWh</span>
                                     )}
+                                  </div>
+                                )}
+
+                                {(src.health_index !== undefined || src.fault_type !== undefined) && (
+                                  <div className="text-[10px] text-muted-foreground flex gap-2 font-mono">
+                                    {src.health_index !== undefined && <span>HI: {Number(src.health_index)}</span>}
+                                    {src.fault_type && <span>Fault: {String(src.fault_type)}</span>}
+                                    {src.rul_days !== undefined && <span>RUL: {Number(src.rul_days)}d</span>}
                                   </div>
                                 )}
 
