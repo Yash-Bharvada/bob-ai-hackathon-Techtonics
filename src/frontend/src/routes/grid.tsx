@@ -2073,16 +2073,16 @@ function AssetInspectorModal({
                     new CustomEvent("open-grid-advisor", {
                       detail: {
                         assetId: asset.id,
-                        prompt: `Why is ${asset.id} underperforming?`,
+                        prompt: `Provide a detailed health index analysis and maintenance recommendation for ${asset.id} (${asset.substation}, HI: ${safeHi.toFixed(1)}, Fault Class: ${faultType}).`,
                       },
                     })
                   );
                 }}
                 variant="outline"
-                className="h-8 rounded-lg border-signal/40 bg-signal/10 px-3 text-xs font-semibold text-signal hover:bg-signal/20"
+                className="h-8 rounded-lg border-emerald-500/30 bg-emerald-500/10 px-3 text-xs font-semibold text-emerald-700 dark:text-[#d2f831] hover:bg-emerald-500/20"
               >
-                <Sparkles className="size-3 mr-1.5 text-signal" />
-                Ask Grid Advisor
+                <Sparkles className="size-3 mr-1.5 text-emerald-700 dark:text-[#d2f831]" />
+                Ask Voltrics AI
               </Button>
             </div>
             <Button asChild className="h-8 rounded-lg bg-foreground px-3 text-xs text-background hover:bg-foreground/90">
