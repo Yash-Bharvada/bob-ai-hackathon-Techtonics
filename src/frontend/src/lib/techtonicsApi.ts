@@ -8,8 +8,10 @@ import {
   chatWithGridAdvisor,
   checkRagHealth,
   getRagApiBase,
+  ingestCsvFile,
   type RagChatResponse,
   type RagChatSource,
+  type IngestResponse,
 } from "./ragApi";
 
 // Import lazily to avoid a circular dependency (authSession imports API_BASE from here)
@@ -485,7 +487,26 @@ export const techtonicsApi = {
       const err = await res.json().catch(() => ({}));
       throw new Error((err as any)?.detail ?? `HTTP ${res.status} from /api/score/csv`);
     }
-    return res.json();
+    const data: CsvScoreResponse = await res.json();
+
+    // Automatically sync system uploaded CSV to the RAG vector database in background
+    ingestCsvFile(file).then((ragRes) => {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("voltra-system-csv-ingested", {
+            detail: {
+              filename: file.name,
+              assets: ragRes.assets || [],
+              count: ragRes.documents_indexed || 0,
+            },
+          })
+        );
+      }
+    }).catch((err) => {
+      console.warn("[RAG] Background system CSV sync skipped:", err?.message);
+    });
+
+    return data;
   },
 
   /** GET /api/sample/csv — returns the URL to trigger a browser download */
@@ -493,18 +514,21 @@ export const techtonicsApi = {
     return `${API_BASE}/api/sample/csv`;
   },
 
-  /** RAG Chatbot Integration: chatWithGridAdvisor */
+  /** RAG Chatbot Integration: chatWithGridAdvisor & dynamic ingestion */
   chatWithGridAdvisor,
   checkRagHealth,
   getRagApiBase,
+  ingestCsvFile,
 };
 
 export {
   chatWithGridAdvisor,
   checkRagHealth,
   getRagApiBase,
+  ingestCsvFile,
   type RagChatResponse,
   type RagChatSource,
+  type IngestResponse,
 };
 
 // ─── CSV scoring types ────────────────────────────────────────────────────────
