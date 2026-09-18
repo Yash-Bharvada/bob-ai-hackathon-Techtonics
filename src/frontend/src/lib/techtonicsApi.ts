@@ -4,6 +4,14 @@
  * Endpoints default to http://localhost:8000 with graceful fallback handling.
  */
 
+import {
+  chatWithGridAdvisor,
+  checkRagHealth,
+  getRagApiBase,
+  type RagChatResponse,
+  type RagChatSource,
+} from "./ragApi";
+
 // Import lazily to avoid a circular dependency (authSession imports API_BASE from here)
 function _getAuthHeaders(): Record<string, string> {
   try {
@@ -484,6 +492,19 @@ export const techtonicsApi = {
   getSampleCsvUrl(): string {
     return `${API_BASE}/api/sample/csv`;
   },
+
+  /** RAG Chatbot Integration: chatWithGridAdvisor */
+  chatWithGridAdvisor,
+  checkRagHealth,
+  getRagApiBase,
+};
+
+export {
+  chatWithGridAdvisor,
+  checkRagHealth,
+  getRagApiBase,
+  type RagChatResponse,
+  type RagChatSource,
 };
 
 // ─── CSV scoring types ────────────────────────────────────────────────────────

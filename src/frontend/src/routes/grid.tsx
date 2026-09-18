@@ -1482,6 +1482,11 @@ function AssetInspectorModal({
 
   useEffect(() => {
     let active = true;
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("voltra-grid-asset-focused", { detail: { assetId: asset.id } })
+      );
+    }
     setLoadingDetail(true);
     setLoadingTimeseries(true);
     setDetail(null);
@@ -2060,6 +2065,23 @@ function AssetInspectorModal({
               </Button>
               <Button onClick={onReportHazard} variant="outline" className="h-8 rounded-lg border-amber-500/40 bg-amber-500/10 px-3 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:bg-amber-500/20">
                 <ShieldAlert className="size-3 mr-1.5" /> Report Hazard
+              </Button>
+              <Button
+                onClick={() => {
+                  window.dispatchEvent(
+                    new CustomEvent("open-grid-advisor", {
+                      detail: {
+                        assetId: asset.id,
+                        prompt: `Why is ${asset.id} underperforming?`,
+                      },
+                    })
+                  );
+                }}
+                variant="outline"
+                className="h-8 rounded-lg border-signal/40 bg-signal/10 px-3 text-xs font-semibold text-signal hover:bg-signal/20"
+              >
+                <Sparkles className="size-3 mr-1.5 text-signal" />
+                Ask Grid Advisor
               </Button>
             </div>
             <Button asChild className="h-8 rounded-lg bg-foreground px-3 text-xs text-background hover:bg-foreground/90">

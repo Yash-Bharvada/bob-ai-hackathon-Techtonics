@@ -1,0 +1,29 @@
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python caches and bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local Qdrant vector database persistence
+data/processed/qdrant/
+data/processed/
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

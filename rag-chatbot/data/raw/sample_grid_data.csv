@@ -1,0 +1,37 @@
+asset_id,asset_type,site_name,timestamp,actual_kwh,expected_kwh,grid_load_mw,weather
+SOL-001,Solar,Kutch Solar Park,2026-09-15 06:00:00,120.0,200.0,310.5,Hazy
+SOL-001,Solar,Kutch Solar Park,2026-09-15 09:00:00,850.0,1200.0,380.2,Partly Cloudy
+SOL-001,Solar,Kutch Solar Park,2026-09-15 12:00:00,2100.0,2800.0,445.0,Partly Cloudy / Inverter Derating
+SOL-001,Solar,Kutch Solar Park,2026-09-15 15:00:00,1600.0,2100.0,410.8,Partly Cloudy
+SOL-001,Solar,Kutch Solar Park,2026-09-15 18:00:00,310.0,450.0,365.1,Clear Sky
+SOL-001,Solar,Kutch Solar Park,2026-09-16 06:00:00,210.0,205.0,295.0,Clear Sky
+SOL-001,Solar,Kutch Solar Park,2026-09-16 09:00:00,1250.0,1220.0,370.0,Clear Sky
+SOL-001,Solar,Kutch Solar Park,2026-09-16 12:00:00,2850.0,2800.0,430.5,Clear Sky / High Irradiance
+SOL-001,Solar,Kutch Solar Park,2026-09-16 15:00:00,2150.0,2100.0,405.0,Clear Sky
+SOL-001,Solar,Kutch Solar Park,2026-09-16 18:00:00,440.0,430.0,350.2,Clear Sky
+SOL-002,Solar,Pavagada Solar Plant,2026-09-15 06:00:00,240.0,220.0,310.5,Clear Sky
+SOL-002,Solar,Pavagada Solar Plant,2026-09-15 09:00:00,1380.0,1300.0,380.2,Clear Sky
+SOL-002,Solar,Pavagada Solar Plant,2026-09-15 12:00:00,3100.0,2900.0,445.0,Clear Sky / High Irradiance
+SOL-002,Solar,Pavagada Solar Plant,2026-09-15 15:00:00,2280.0,2150.0,410.8,Clear Sky
+SOL-002,Solar,Pavagada Solar Plant,2026-09-15 18:00:00,480.0,450.0,365.1,Clear Sky
+SOL-002,Solar,Pavagada Solar Plant,2026-09-16 06:00:00,210.0,220.0,295.0,Scattered Clouds
+SOL-002,Solar,Pavagada Solar Plant,2026-09-16 09:00:00,1260.0,1300.0,370.0,Scattered Clouds
+SOL-002,Solar,Pavagada Solar Plant,2026-09-16 12:00:00,2840.0,2900.0,430.5,Scattered Clouds
+SOL-002,Solar,Pavagada Solar Plant,2026-09-16 15:00:00,2110.0,2150.0,405.0,Scattered Clouds
+SOL-002,Solar,Pavagada Solar Plant,2026-09-16 18:00:00,430.0,450.0,350.2,Clear Sky
+WND-101,Wind,Jaisalmer Wind Farm,2026-09-15 00:00:00,3200.0,2800.0,280.0,High Wind (11 m/s)
+WND-101,Wind,Jaisalmer Wind Farm,2026-09-15 06:00:00,3450.0,3000.0,310.5,High Wind (12 m/s)
+WND-101,Wind,Jaisalmer Wind Farm,2026-09-15 12:00:00,3900.0,3400.0,445.0,Strong Gusts (13 m/s)
+WND-101,Wind,Jaisalmer Wind Farm,2026-09-15 18:00:00,3650.0,3200.0,365.1,High Wind (11.5 m/s)
+WND-101,Wind,Jaisalmer Wind Farm,2026-09-16 00:00:00,2900.0,2850.0,275.0,Moderate Wind (8.5 m/s)
+WND-101,Wind,Jaisalmer Wind Farm,2026-09-16 06:00:00,3050.0,3000.0,295.0,Moderate Wind (8.8 m/s)
+WND-101,Wind,Jaisalmer Wind Farm,2026-09-16 12:00:00,3480.0,3400.0,430.5,Moderate Wind (9.0 m/s)
+WND-101,Wind,Jaisalmer Wind Farm,2026-09-16 18:00:00,3280.0,3200.0,350.2,Moderate Wind (8.6 m/s)
+WND-102,Wind,Muppandal Wind Farm,2026-09-16 00:00:00,1800.0,3100.0,275.0,Turbulent Gusts / Grid Curtailment
+WND-102,Wind,Muppandal Wind Farm,2026-09-16 06:00:00,1950.0,3200.0,295.0,Turbulent Gusts / Grid Curtailment
+WND-102,Wind,Muppandal Wind Farm,2026-09-16 12:00:00,2100.0,3500.0,485.0,Grid Congestion / Feeder Trip
+WND-102,Wind,Muppandal Wind Farm,2026-09-16 18:00:00,1980.0,3300.0,350.2,High Wind / Curtailed Output
+WND-102,Wind,Muppandal Wind Farm,2026-09-17 00:00:00,1500.0,2900.0,260.0,Calm (2.5 m/s)
+WND-102,Wind,Muppandal Wind Farm,2026-09-17 06:00:00,1650.0,3000.0,285.0,Calm (2.8 m/s)
+WND-102,Wind,Muppandal Wind Farm,2026-09-17 12:00:00,1800.0,3200.0,410.0,Low Wind (3.0 m/s)
+WND-102,Wind,Muppandal Wind Farm,2026-09-17 18:00:00,1620.0,3100.0,340.0,Calm (2.4 m/s)
