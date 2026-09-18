@@ -22,6 +22,7 @@ import {
 import { GridDiagram, anandDistrictGridNodes } from "@/components/GridDiagram";
 import { TX115InterventionBanner } from "@/components/TX115InterventionBanner";
 import { IncidentReportModal } from "@/components/IncidentReportModal";
+import { BlackoutImpactWidget } from "@/components/BlackoutImpactWidget";
 import { EmptyWorkspaceChoice } from "@/components/EmptyWorkspaceChoice";
 import { DataSourceBadge } from "@/components/DataSourceBadge";
 import { gridDataSource, type DataSourceType } from "@/lib/gridDataSource";
@@ -2023,6 +2024,11 @@ function AssetInspectorModal({
               </div>
             </div>
           ) : null}
+
+          {/* ── Blackout Risk & Emergency Consumer SMS Dispatch Widget ── */}
+          <div className="px-5 py-2">
+            <BlackoutImpactWidget assetId={asset.id} substationName={asset.substation} />
+          </div>
 
           {/* ── Operator Actions ── */}
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
