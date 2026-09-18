@@ -798,11 +798,11 @@ function CinematicGrid() {
     <section className="mx-auto mt-24 w-full max-w-6xl px-4 sm:px-6">
       <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-[#d2f831] font-mono flex items-center gap-2">
-            <span className="size-1.5 rounded-full bg-[#d2f831] animate-pulse" /> A fault, caught upstream
+          <p className="text-xs uppercase tracking-[0.18em] text-emerald-700 dark:text-[#d2f831] font-mono flex items-center gap-2">
+            <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-[#d2f831] animate-pulse" /> A fault, caught upstream
           </p>
           <h2 className="mt-3 text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-foreground">
-            Power is still flowing. <span className="font-display font-normal italic text-[#d2f831]">VOLTRA is already watching.</span>
+            Power is still flowing. <span className="font-display font-normal italic text-emerald-700 dark:text-[#d2f831]">VOLTRA is already watching.</span>
           </h2>
         </div>
         <p className="max-w-sm text-sm text-muted-foreground leading-relaxed">
@@ -899,11 +899,11 @@ function Dashboard({
         {/* Left Column: Heading & Sleek Compact Stat Cards */}
         <div className="lg:col-span-5 flex flex-col justify-between space-y-6 lg:space-y-0">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-[#d2f831] font-mono flex items-center gap-2">
-              <span className="size-1.5 rounded-full bg-[#d2f831] animate-pulse" /> Live Grid Topology
+            <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 dark:text-[#d2f831] font-mono flex items-center gap-2">
+              <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-[#d2f831] animate-pulse" /> Live Grid Topology
             </p>
             <h2 className="mt-3 text-3xl sm:text-4xl font-semibold tracking-tight text-foreground leading-[1.15]">
-              A clear view of <span className="font-display font-normal italic text-[#d2f831]">what changes next.</span>
+              A clear view of <span className="font-display font-normal italic text-emerald-700 dark:text-[#d2f831]">what changes next.</span>
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
               Healthy substations stay quiet. Emerging equipment risks rise into view with SHAP feature explainability and IBM Bob plain-English advisories.
@@ -913,76 +913,76 @@ function Dashboard({
           {/* 4 Sleek Compact Stat Cards */}
           <div className="grid grid-cols-2 gap-3 sm:gap-3.5">
             {/* Box 1: Fleet Assets Monitored */}
-            <div className="group relative flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-[#111215]/85 hover:bg-[#15161a] backdrop-blur-xl p-3.5 sm:p-4 shadow-xs transition-all duration-300 hover:border-white/20">
+            <div className="group relative flex flex-col justify-between rounded-2xl border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/85 hover:bg-muted/50 dark:hover:bg-[#15161a] backdrop-blur-xl p-3.5 sm:p-4 shadow-xs transition-all duration-300 hover:border-border/80 dark:hover:border-white/20">
               <div className="flex items-center justify-between">
-                <ShieldCheck className="size-4 text-neutral-400 stroke-[1.75]" />
-                <div className="flex items-center gap-1.5 text-[10px] font-mono text-neutral-400">
-                  <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
+                <ShieldCheck className="size-4 text-muted-foreground dark:text-neutral-400 stroke-[1.75]" />
+                <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground dark:text-neutral-400">
+                  <span className="size-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
                   <span className="uppercase tracking-wider">ONLINE</span>
                 </div>
               </div>
               <div className="mt-2.5">
-                <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white">
+                <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground dark:text-white">
                   {metrics.assetsMonitored}
                 </p>
-                <p className="text-xs font-medium text-neutral-400 mt-0.5 truncate">
+                <p className="text-xs font-medium text-muted-foreground dark:text-neutral-400 mt-0.5 truncate">
                   Assets Monitored
                 </p>
               </div>
             </div>
 
             {/* Box 2: Critical High Risk */}
-            <div className="group relative flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-[#111215]/85 hover:bg-[#15161a] backdrop-blur-xl p-3.5 sm:p-4 shadow-xs transition-all duration-300 hover:border-white/20">
+            <div className="group relative flex flex-col justify-between rounded-2xl border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/85 hover:bg-muted/50 dark:hover:bg-[#15161a] backdrop-blur-xl p-3.5 sm:p-4 shadow-xs transition-all duration-300 hover:border-border/80 dark:hover:border-white/20">
               <div className="flex items-center justify-between">
-                <AlertTriangle className="size-4 text-rose-400 stroke-[1.75]" />
-                <div className="flex items-center gap-1.5 text-[10px] font-mono text-neutral-400 truncate max-w-[105px]">
+                <AlertTriangle className="size-4 text-rose-500 dark:text-rose-400 stroke-[1.75]" />
+                <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground dark:text-neutral-400 truncate max-w-[105px]">
                   <span className="size-1.5 shrink-0 rounded-full bg-rose-500 animate-pulse shadow-[0_0_6px_rgba(244,63,94,0.8)]" />
                   <span className="truncate">{metrics.criticalAssets || "TX-107, TX-112"}</span>
                 </div>
               </div>
               <div className="mt-2.5">
-                <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white">
+                <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground dark:text-white">
                   {metrics.criticalCount}
                 </p>
-                <p className="text-xs font-medium text-neutral-400 mt-0.5 truncate">
+                <p className="text-xs font-medium text-muted-foreground dark:text-neutral-400 mt-0.5 truncate">
                   Critical High Risk
                 </p>
               </div>
             </div>
 
             {/* Box 3: Watch Tier */}
-            <div className="group relative flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-[#111215]/85 hover:bg-[#15161a] backdrop-blur-xl p-3.5 sm:p-4 shadow-xs transition-all duration-300 hover:border-white/20">
+            <div className="group relative flex flex-col justify-between rounded-2xl border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/85 hover:bg-muted/50 dark:hover:bg-[#15161a] backdrop-blur-xl p-3.5 sm:p-4 shadow-xs transition-all duration-300 hover:border-border/80 dark:hover:border-white/20">
               <div className="flex items-center justify-between">
-                <Activity className="size-4 text-amber-400 stroke-[1.75]" />
-                <div className="flex items-center gap-1.5 text-[10px] font-mono text-neutral-400">
-                  <span className="size-1.5 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]" />
+                <Activity className="size-4 text-amber-500 dark:text-amber-400 stroke-[1.75]" />
+                <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground dark:text-neutral-400">
+                  <span className="size-1.5 rounded-full bg-amber-500 dark:bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]" />
                   <span className="uppercase tracking-wider">ELEVATED</span>
                 </div>
               </div>
               <div className="mt-2.5">
-                <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white">
+                <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground dark:text-white">
                   {metrics.watchCount}
                 </p>
-                <p className="text-xs font-medium text-neutral-400 mt-0.5 truncate">
+                <p className="text-xs font-medium text-muted-foreground dark:text-neutral-400 mt-0.5 truncate">
                   Watch Tier
                 </p>
               </div>
             </div>
 
             {/* Box 4: Mean RUL */}
-            <div className="group relative flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-[#111215]/85 hover:bg-[#15161a] backdrop-blur-xl p-3.5 sm:p-4 shadow-xs transition-all duration-300 hover:border-white/20">
+            <div className="group relative flex flex-col justify-between rounded-2xl border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/85 hover:bg-muted/50 dark:hover:bg-[#15161a] backdrop-blur-xl p-3.5 sm:p-4 shadow-xs transition-all duration-300 hover:border-border/80 dark:hover:border-white/20">
               <div className="flex items-center justify-between">
-                <Clock3 className="size-4 text-neutral-400 stroke-[1.75]" />
-                <div className="flex items-center gap-1.5 text-[10px] font-mono text-neutral-400">
-                  <span className="size-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
+                <Clock3 className="size-4 text-muted-foreground dark:text-neutral-400 stroke-[1.75]" />
+                <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground dark:text-neutral-400">
+                  <span className="size-1.5 rounded-full bg-cyan-500 dark:bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
                   <span className="uppercase tracking-wider">FLEET WIDE</span>
                 </div>
               </div>
               <div className="mt-2.5">
-                <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white">
+                <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground dark:text-white">
                   {metrics.meanRul}
                 </p>
-                <p className="text-xs font-medium text-neutral-400 mt-0.5 truncate">
+                <p className="text-xs font-medium text-muted-foreground dark:text-neutral-400 mt-0.5 truncate">
                   Mean RUL
                 </p>
               </div>

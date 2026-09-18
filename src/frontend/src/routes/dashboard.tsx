@@ -135,7 +135,7 @@ function Card({
     <section
       id={id}
       className={cn(
-        "rounded-xl border border-white/[0.08] bg-[#0c0d12]/90 shadow-xl backdrop-blur-md transition-all",
+        "rounded-xl border border-border bg-card shadow-sm backdrop-blur-md transition-all dark:border-white/[0.08] dark:bg-[#0c0d12]/90 dark:shadow-xl",
         className,
       )}
     >
@@ -156,19 +156,19 @@ function SectionHead({
   action?: ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-white/[0.08] px-4 sm:px-5 py-3.5">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-border px-4 sm:px-5 py-3.5 dark:border-white/[0.08]">
       <div className="flex min-w-0 items-center gap-2.5">
         {React.isValidElement(icon) ? (
           icon
         ) : typeof icon === "function" ? (
           React.createElement(icon as React.ComponentType<{ className?: string }>, {
-            className: "size-4 shrink-0 text-[#d2f831]",
+            className: "size-4 shrink-0 text-emerald-700 dark:text-[#d2f831]",
           })
         ) : null}
         <div className="min-w-0">
-          <h2 className="truncate text-sm font-bold text-white tracking-tight">{title}</h2>
+          <h2 className="truncate text-sm font-bold text-foreground tracking-tight dark:text-white">{title}</h2>
           {meta && (
-            <p className="mt-0.5 truncate text-[10px] uppercase tracking-wider text-neutral-400 font-mono font-semibold">
+            <p className="mt-0.5 truncate text-[10px] uppercase tracking-wider text-muted-foreground font-mono font-semibold dark:text-neutral-400">
               {meta}
             </p>
           )}
@@ -257,18 +257,18 @@ function ModalShell({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-[2rem] border border-white/[0.12] bg-[#0d0e12]/95 backdrop-blur-2xl shadow-2xl shadow-black/80"
+        className="max-h-[90vh] w-full max-w-lg overflow-auto rounded-[2rem] border border-border bg-card text-foreground shadow-2xl backdrop-blur-2xl dark:border-white/[0.12] dark:bg-[#0d0e12]/95 dark:shadow-black/80"
       >
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 border-b border-white/[0.08] p-6">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 border-b border-border p-6 dark:border-white/[0.08]">
           <div>
-            <h2 className="font-sans text-xl font-bold text-white tracking-tight">{title}</h2>
-            <p className="mt-1 text-xs text-neutral-400 leading-relaxed">{subtitle}</p>
+            <h2 className="font-sans text-xl font-bold text-foreground tracking-tight dark:text-white">{title}</h2>
+            <p className="mt-1 text-xs text-muted-foreground leading-relaxed dark:text-neutral-400">{subtitle}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex size-8.5 items-center justify-center rounded-full bg-white/[0.06] border border-white/[0.08] text-neutral-400 hover:text-white hover:bg-white/[0.12] transition-colors cursor-pointer"
+            className="flex size-8.5 items-center justify-center rounded-full bg-muted border border-border text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer dark:bg-white/[0.06] dark:border-white/[0.08] dark:text-neutral-400 dark:hover:text-white dark:hover:bg-white/[0.12]"
           >
             <X className="size-4" />
           </button>
@@ -889,15 +889,15 @@ function DashboardPage() {
           {/* Subheader: Operator Greeting & Data Source Controls */}
           <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-[#d2f831] font-mono">
+              <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-[#d2f831] font-mono">
                 Anand District Transmission Network
               </p>
-              <h1 className="font-display text-2xl font-bold tracking-tight text-white sm:text-3xl lg:text-4xl">
+              <h1 className="font-display text-2xl font-bold tracking-tight text-foreground dark:text-white sm:text-3xl lg:text-4xl">
                 Welcome back, {profile.name.split(" ")[0]}
               </h1>
-              <p className="mt-1 text-xs text-neutral-400 font-mono flex items-center gap-2">
+              <p className="mt-1 text-xs text-muted-foreground dark:text-neutral-400 font-mono flex items-center gap-2">
                 <span>{profile.substation}</span>
-                <span className="text-neutral-600">/</span>
+                <span className="text-muted-foreground/60 dark:text-neutral-600">/</span>
                 <span>{profile.zone} · Bulk Transmission Corridor</span>
               </p>
             </div>
@@ -906,12 +906,12 @@ function DashboardPage() {
               <button
                 type="button"
                 onClick={() => setModal("dataset")}
-                className="rounded-lg border border-white/[0.1] bg-[#111216]/90 px-3.5 py-2 text-left hover:border-white/20 transition-all cursor-pointer shadow-sm"
+                className="rounded-lg border border-border bg-card px-3.5 py-2 text-left hover:border-primary/40 transition-all cursor-pointer shadow-sm dark:border-white/[0.1] dark:bg-[#111216]/90 dark:hover:border-white/20"
               >
-                <p className="text-[9px] font-bold uppercase tracking-wider text-neutral-400 font-mono">
+                <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground dark:text-neutral-400 font-mono">
                   Data source · {displayAssets.length} assets
                 </p>
-                <p className="mt-0.5 text-xs font-semibold text-white">
+                <p className="mt-0.5 text-xs font-semibold text-foreground dark:text-white">
                   {dataSource === "anand"
                     ? "Anand Corridor (Sample)"
                     : dataSource === "custom"
@@ -923,7 +923,7 @@ function DashboardPage() {
               <button
                 type="button"
                 onClick={() => setModal("dataset")}
-                className="flex items-center gap-2 h-10 rounded-lg border border-white/[0.12] bg-white/[0.06] hover:bg-white/[0.12] px-4 text-xs font-semibold text-white transition-all cursor-pointer shadow-sm"
+                className="flex items-center gap-2 h-10 rounded-lg border border-border bg-muted/60 hover:bg-muted px-4 text-xs font-semibold text-foreground transition-all cursor-pointer shadow-sm dark:border-white/[0.12] dark:bg-white/[0.06] dark:text-white dark:hover:bg-white/[0.12]"
               >
                 <Upload className="size-3.5" />
                 <span>Upload CSV</span>
@@ -938,45 +938,45 @@ function DashboardPage() {
               {/* 1. Four Fleet KPI Cards */}
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {/* Fleet Health */}
-                <div className="rounded-xl border border-white/[0.08] bg-[#0c0d12]/90 p-4 sm:p-5 shadow-xl backdrop-blur-md flex flex-col justify-between min-h-[172px]">
+                <div className="rounded-xl border border-border bg-card p-4 sm:p-5 shadow-sm backdrop-blur-md flex flex-col justify-between min-h-[172px] dark:border-white/[0.08] dark:bg-[#0c0d12]/90 dark:shadow-xl">
                   <div>
                     <div className="flex items-start justify-between">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 font-mono">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground dark:text-neutral-400 font-mono">
                         Fleet Health
                       </p>
-                      <div className="size-8 rounded-full border border-lime-500/25 bg-lime-500/10 text-[#d2f831] flex items-center justify-center">
+                      <div className="size-8 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:border-lime-500/25 dark:bg-lime-500/10 dark:text-[#d2f831] flex items-center justify-center">
                         <Gauge className="size-4" />
                       </div>
                     </div>
                     <div className="mt-2 flex items-baseline gap-1">
-                      <span className="font-mono text-3xl sm:text-4xl font-bold tracking-tight text-white">
+                      <span className="font-mono text-3xl sm:text-4xl font-bold tracking-tight text-foreground dark:text-white">
                         {fleetHealth}
                       </span>
-                      <span className="text-sm font-mono text-neutral-400">%</span>
+                      <span className="text-sm font-mono text-muted-foreground dark:text-neutral-400">%</span>
                     </div>
                   </div>
 
                   <div>
-                    <div className="inline-flex items-center rounded border border-lime-500/30 bg-lime-500/15 px-2 py-0.5 text-[10px] font-mono font-bold text-[#d2f831]">
+                    <div className="inline-flex items-center rounded border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-mono font-bold text-emerald-700 dark:border-lime-500/30 dark:bg-lime-500/15 dark:text-[#d2f831]">
                       MODEL 1
                     </div>
-                    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-neutral-800">
+                    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted dark:bg-neutral-800">
                       <div
-                        className="h-full rounded-full bg-[#d2f831] shadow-[0_0_8px_#d2f831] transition-all duration-500"
+                        className="h-full rounded-full bg-emerald-600 dark:bg-[#d2f831] shadow-[0_0_8px_rgba(5,150,105,0.4)] dark:shadow-[0_0_8px_#d2f831] transition-all duration-500"
                         style={{ width: `${Math.min(100, Math.max(fleetHealth, 0))}%` }}
                       />
                     </div>
-                    <p className="mt-2.5 text-[10px] text-neutral-400 font-mono">
-                      Avg Health Index <b className="text-white font-mono">{avgHI.toFixed(1)}</b> · RF regression
+                    <p className="mt-2.5 text-[10px] text-muted-foreground dark:text-neutral-400 font-mono">
+                      Avg Health Index <b className="text-foreground dark:text-white font-mono">{avgHI.toFixed(1)}</b> · RF regression
                     </p>
                   </div>
                 </div>
 
                 {/* High-Risk Assets */}
-                <div className="rounded-xl border border-white/[0.08] bg-[#0c0d12]/90 p-4 sm:p-5 shadow-xl backdrop-blur-md flex flex-col justify-between min-h-[172px]">
+                <div className="rounded-xl border border-border bg-card p-4 sm:p-5 shadow-sm backdrop-blur-md flex flex-col justify-between min-h-[172px] dark:border-white/[0.08] dark:bg-[#0c0d12]/90 dark:shadow-xl">
                   <div>
                     <div className="flex items-start justify-between">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 font-mono">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground dark:text-neutral-400 font-mono">
                         High-Risk Assets
                       </p>
                       <div className="size-8 rounded-full border border-red-500/25 bg-red-500/10 text-red-500 flex items-center justify-center">
@@ -992,7 +992,7 @@ function DashboardPage() {
 
                   <div>
                     <div className="flex items-center justify-end">
-                      <span className="text-[11px] font-mono text-neutral-400">
+                      <span className="text-[11px] font-mono text-muted-foreground dark:text-neutral-400">
                         {String(watchCount).padStart(2, "0")} watch
                       </span>
                     </div>
@@ -1003,10 +1003,10 @@ function DashboardPage() {
                 </div>
 
                 {/* Grid Risk Index */}
-                <div className="rounded-xl border border-white/[0.08] bg-[#0c0d12]/90 p-4 sm:p-5 shadow-xl backdrop-blur-md flex flex-col justify-between min-h-[172px]">
+                <div className="rounded-xl border border-border bg-card p-4 sm:p-5 shadow-sm backdrop-blur-md flex flex-col justify-between min-h-[172px] dark:border-white/[0.08] dark:bg-[#0c0d12]/90 dark:shadow-xl">
                   <div>
                     <div className="flex items-start justify-between">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 font-mono">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground dark:text-neutral-400 font-mono">
                         Grid Risk Index
                       </p>
                       <div className="size-8 rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-400 flex items-center justify-center">
@@ -1014,49 +1014,49 @@ function DashboardPage() {
                       </div>
                     </div>
                     <div className="mt-2 flex items-baseline gap-1">
-                      <span className="font-mono text-3xl sm:text-4xl font-bold tracking-tight text-amber-400">
+                      <span className="font-mono text-3xl sm:text-4xl font-bold tracking-tight text-amber-500 dark:text-amber-400">
                         {avgRiskScore}
                       </span>
-                      <span className="text-sm font-mono text-neutral-500">/100</span>
+                      <span className="text-sm font-mono text-muted-foreground dark:text-neutral-500">/100</span>
                     </div>
                   </div>
 
                   <div>
-                    <div className="inline-flex items-center rounded border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-mono font-bold text-amber-400 uppercase">
+                    <div className="inline-flex items-center rounded border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-mono font-bold text-amber-600 dark:text-amber-400 uppercase">
                       {avgRiskScore >= 70 ? "High Risk" : avgRiskScore >= 40 ? "Moderate" : "Nominal"}
                     </div>
-                    <div className="mt-3 flex h-1.5 w-full overflow-hidden rounded-full bg-neutral-800">
+                    <div className="mt-3 flex h-1.5 w-full overflow-hidden rounded-full bg-muted dark:bg-neutral-800">
                       <span className="w-[45%] bg-[#22c55e]" />
                       <span className="w-[30%] bg-[#f59e0b]" />
                       <span className="flex-1 bg-[#ef4444]" />
                     </div>
-                    <p className="mt-2.5 text-[10px] text-neutral-400 font-mono">
+                    <p className="mt-2.5 text-[10px] text-muted-foreground dark:text-neutral-400 font-mono">
                       Composite infrastructure risk
                     </p>
                   </div>
                 </div>
 
                 {/* Predictive Failures */}
-                <div className="rounded-xl border border-white/[0.08] bg-[#0c0d12]/90 p-4 sm:p-5 shadow-xl backdrop-blur-md flex flex-col justify-between min-h-[172px]">
+                <div className="rounded-xl border border-border bg-card p-4 sm:p-5 shadow-sm backdrop-blur-md flex flex-col justify-between min-h-[172px] dark:border-white/[0.08] dark:bg-[#0c0d12]/90 dark:shadow-xl">
                   <div>
                     <div className="flex items-start justify-between">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 font-mono">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground dark:text-neutral-400 font-mono">
                         Predictive Failures
                       </p>
-                      <div className="size-8 rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                      <div className="size-8 rounded-full border border-amber-500/25 bg-amber-500/10 text-amber-500 dark:text-amber-400 flex items-center justify-center">
                         <Zap className="size-4" />
                       </div>
                     </div>
                     <div className="mt-2 flex items-baseline gap-1">
-                      <span className="font-mono text-3xl sm:text-4xl font-bold tracking-tight text-amber-400">
+                      <span className="font-mono text-3xl sm:text-4xl font-bold tracking-tight text-amber-500 dark:text-amber-400">
                         {String(predictedFailures).padStart(2, "0")}
                       </span>
                     </div>
                   </div>
 
                   <div>
-                    <p className="text-[11px] font-mono text-neutral-400">within 40d</p>
-                    <p className="mt-2.5 text-[10px] text-neutral-400 font-mono">
+                    <p className="text-[11px] font-mono text-muted-foreground dark:text-neutral-400">within 40d</p>
+                    <p className="mt-2.5 text-[10px] text-muted-foreground dark:text-neutral-400 font-mono">
                       Predictive decay model (Model 1)
                     </p>
                   </div>
@@ -1244,11 +1244,11 @@ function DashboardPage() {
                     </div>
                   ) : (
                     <div className="p-8 text-center flex flex-col items-center justify-center min-h-[292px]">
-                      <div className="size-12 rounded-full border border-white/[0.08] bg-white/[0.03] flex items-center justify-center mb-3">
-                        <ShieldCheck className="size-6 text-neutral-500" />
+                      <div className="size-12 rounded-full border border-border bg-muted/40 flex items-center justify-center mb-3 dark:border-white/[0.08] dark:bg-white/[0.03]">
+                        <ShieldCheck className="size-6 text-muted-foreground dark:text-neutral-500" />
                       </div>
-                      <p className="text-sm font-bold text-white">No Critical Assets Active</p>
-                      <p className="text-xs text-neutral-400 mt-1 max-w-[280px] leading-relaxed">
+                      <p className="text-sm font-bold text-foreground dark:text-white">No Critical Assets Active</p>
+                      <p className="text-xs text-muted-foreground mt-1 max-w-[280px] leading-relaxed dark:text-neutral-400">
                         All monitored assets are operating within nominal thermal envelopes.
                       </p>
                     </div>
@@ -1260,7 +1260,7 @@ function DashboardPage() {
               <Card className="overflow-hidden">
                 <SectionHead
                   icon={
-                    <div className="size-6 rounded border border-lime-500/30 bg-lime-500/10 flex items-center justify-center text-[#d2f831]">
+                    <div className="size-6 rounded border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-center text-emerald-700 dark:border-lime-500/30 dark:bg-lime-500/10 dark:text-[#d2f831]">
                       <Grid2X2 className="size-3.5" />
                     </div>
                   }
@@ -1270,7 +1270,7 @@ function DashboardPage() {
                     <button
                       type="button"
                       onClick={exportMatrixCsv}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-white hover:bg-white/[0.08] hover:border-white/20 transition-all cursor-pointer"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/60 px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted dark:border-white/[0.1] dark:bg-white/[0.04] dark:text-white dark:hover:bg-white/[0.08] hover:border-border transition-all cursor-pointer shadow-sm"
                     >
                       <Download className="size-3.5" />
                       Export
@@ -1279,7 +1279,7 @@ function DashboardPage() {
                 />
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[860px] text-left text-xs">
-                    <thead className="bg-[#111216] border-b border-white/[0.06] text-[9px] uppercase tracking-wider text-neutral-400 font-mono">
+                    <thead className="bg-muted/70 border-b border-border text-[9px] uppercase tracking-wider text-muted-foreground font-mono dark:bg-[#111216] dark:border-white/[0.06] dark:text-neutral-400">
                       <tr>
                         {[
                           ["id", "Asset ID"],
@@ -1294,22 +1294,22 @@ function DashboardPage() {
                           <th key={key} className="px-4 py-3 font-bold">
                             <button
                               type="button"
-                              className="inline-flex items-center gap-1 hover:text-white transition-colors cursor-pointer"
+                              className="inline-flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer dark:hover:text-white"
                               onClick={() => sortBy(key as SortKey)}
                             >
                               {label}
-                              <ChevronDown className="size-3 text-neutral-500" />
+                              <ChevronDown className="size-3 text-muted-foreground dark:text-neutral-500" />
                             </button>
                           </th>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/[0.06]">
+                    <tbody className="divide-y divide-border dark:divide-white/[0.06]">
                       {sortedAssets.length === 0 ? (
                         <tr>
                           <td colSpan={8} className="py-14 text-center">
-                            <p className="text-sm font-bold text-white">No Assets Loaded</p>
-                            <p className="text-xs text-neutral-400 mt-1">
+                            <p className="text-sm font-bold text-foreground dark:text-white">No Assets Loaded</p>
+                            <p className="text-xs text-muted-foreground mt-1 dark:text-neutral-400">
                               Choose Anand sample corridor or upload a custom CSV dataset.
                             </p>
                           </td>
@@ -1565,7 +1565,7 @@ function DashboardPage() {
               <Card className="overflow-hidden">
                 <SectionHead
                   icon={
-                    <div className="size-6 rounded-full border border-lime-500/30 bg-lime-500/10 flex items-center justify-center text-[#d2f831]">
+                    <div className="size-6 rounded-full border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-center text-emerald-700 dark:border-lime-500/30 dark:bg-lime-500/10 dark:text-[#d2f831]">
                       <MapPin className="size-3.5" />
                     </div>
                   }
@@ -1575,35 +1575,35 @@ function DashboardPage() {
                     <button
                       type="button"
                       onClick={() => setModal("incident")}
-                      className="grid size-7.5 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer"
+                      className="grid size-7.5 place-items-center rounded-lg border border-border bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-neutral-400 dark:hover:text-white dark:hover:bg-white/[0.08] transition-all cursor-pointer shadow-sm"
                       title="Report Hazard"
                     >
                       <HardHat className="size-3.5" />
                     </button>
                   }
                 />
-                <div className="divide-y divide-white/[0.06]">
+                <div className="divide-y divide-border dark:divide-white/[0.06]">
                   {incidents.length === 0 ? (
                     <div className="p-6 text-center text-muted-foreground">
                       <CheckCircle2 className="size-8 text-[#22c55e]/60 mx-auto mb-2" />
-                      <p className="text-xs font-semibold text-white">No Recent Incidents</p>
-                      <p className="text-[10px] text-neutral-400 mt-0.5">Your grid zone is clear</p>
+                      <p className="text-xs font-semibold text-foreground dark:text-white">No Recent Incidents</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5 dark:text-neutral-400">Your grid zone is clear</p>
                     </div>
                   ) : (
                     incidents.map((inc, i) => (
                       <article key={inc.incident_id || i} className="p-4">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="inline-flex items-center rounded border border-white/[0.12] bg-white/[0.04] px-2 py-0.5 text-[9px] font-mono font-bold text-neutral-300 uppercase">
+                          <span className="inline-flex items-center rounded border border-border bg-muted/60 px-2 py-0.5 text-[9px] font-mono font-bold text-foreground uppercase dark:border-white/[0.12] dark:bg-white/[0.04] dark:text-neutral-300">
                             {inc.category?.replace("_", " ") || "FIELD REPORT"}
                           </span>
-                          <time className="font-mono text-[10px] text-neutral-500">
+                          <time className="font-mono text-[10px] text-muted-foreground dark:text-neutral-500">
                             {inc.received_at?.slice(11, 16) || "Recent"}
                           </time>
                         </div>
-                        <p className="mt-2 text-xs font-semibold text-neutral-200 leading-relaxed">
+                        <p className="mt-2 text-xs font-semibold text-foreground leading-relaxed dark:text-neutral-200">
                           {inc.event_description}
                         </p>
-                        <p className="mt-2 flex items-center gap-1.5 text-[10px] text-neutral-400 font-mono">
+                        <p className="mt-2 flex items-center gap-1.5 text-[10px] text-muted-foreground font-mono dark:text-neutral-400">
                           <MapPin className="size-3 text-[#22c55e] shrink-0" />
                           <span>{inc.zone_name || profile.zone}</span>
                         </p>
@@ -1611,8 +1611,8 @@ function DashboardPage() {
                     ))
                   )}
                 </div>
-                <div className="border-t border-emerald-500/20 bg-[#0a2217]/90 py-2.5 px-4 text-center rounded-b-xl">
-                  <p className="text-xs font-mono font-medium text-[#22c55e]">
+                <div className="border-t border-emerald-500/20 bg-emerald-50/80 py-2.5 px-4 text-center rounded-b-xl dark:bg-[#0a2217]/90">
+                  <p className="text-xs font-mono font-medium text-emerald-800 dark:text-[#22c55e]">
                     No uncleared emergency corridor blocks
                   </p>
                 </div>
@@ -1625,7 +1625,7 @@ function DashboardPage() {
                   title="AI Input Security"
                   meta="PROMPT & TELEMETRY DEFENSE"
                   action={
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-mono font-bold text-[#22c55e] uppercase">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-mono font-bold text-emerald-700 dark:text-[#22c55e] uppercase">
                       <span className="size-1.5 rounded-full bg-[#22c55e] animate-pulse" />
                       PROTECTED / ACTIVE
                     </span>
@@ -1639,9 +1639,9 @@ function DashboardPage() {
                       [securityStats?.quarantined ?? 2, "QUARANTINED"],
                       [securityStats?.blocked ?? 1, "BLOCKED"],
                     ].map(([value, label]) => (
-                      <div key={label} className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2">
-                        <p className="font-mono text-sm font-bold text-white">{value}</p>
-                        <p className="mt-0.5 text-[8px] uppercase tracking-wider text-neutral-500 font-mono font-semibold">
+                      <div key={label} className="rounded-lg border border-border bg-muted/40 p-2 dark:border-white/[0.06] dark:bg-white/[0.02]">
+                        <p className="font-mono text-sm font-bold text-foreground dark:text-white">{value}</p>
+                        <p className="mt-0.5 text-[8px] uppercase tracking-wider text-muted-foreground font-mono font-semibold dark:text-neutral-500">
                           {label}
                         </p>
                       </div>
@@ -1653,11 +1653,11 @@ function DashboardPage() {
                       (layer) => (
                         <div
                           key={layer}
-                          className="flex items-center gap-2 text-xs text-neutral-300"
+                          className="flex items-center gap-2 text-xs text-foreground/90 dark:text-neutral-300"
                         >
                           <CheckCircle2 className="size-3.5 text-[#22c55e] shrink-0" />
                           <span>{layer}</span>
-                          <span className="ml-auto font-mono text-[9px] font-bold text-[#22c55e]">
+                          <span className="ml-auto font-mono text-[9px] font-bold text-emerald-700 dark:text-[#22c55e]">
                             ACTIVE
                           </span>
                         </div>
@@ -1665,7 +1665,7 @@ function DashboardPage() {
                     )}
                   </div>
 
-                  <div className="mt-4 rounded-lg border border-white/[0.08] bg-black/40 p-2 font-mono text-[9px] text-neutral-400 text-center">
+                  <div className="mt-4 rounded-lg border border-border bg-muted/50 p-2 font-mono text-[9px] text-muted-foreground text-center dark:border-white/[0.08] dark:bg-black/40 dark:text-neutral-400">
                     POST /events/report · signed payloads only
                   </div>
                 </div>
@@ -1682,14 +1682,14 @@ function DashboardPage() {
                       type="button"
                       onClick={handleRunPrediction}
                       disabled={predictionBusy}
-                      className="grid size-7.5 place-items-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer"
+                      className="grid size-7.5 place-items-center rounded-lg border border-border bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-neutral-400 dark:hover:text-white dark:hover:bg-white/[0.08] transition-all cursor-pointer shadow-sm"
                       title="Refresh Predictions"
                     >
                       <RefreshCw className={cn("size-3.5", predictionBusy && "animate-spin")} />
                     </button>
                   }
                 />
-                <div className="divide-y divide-white/[0.06]">
+                <div className="divide-y divide-border dark:divide-white/[0.06]">
                   {recommendations.length === 0 ? (
                     <div className="p-6 text-center text-muted-foreground">
                       <p className="text-xs font-semibold text-foreground">No Actions Pending</p>
@@ -1926,31 +1926,31 @@ function DashboardPage() {
               className={cn(
                 "group relative flex flex-col justify-between rounded-2xl border p-5 text-left transition-all duration-300 cursor-pointer shadow-md",
                 dataSource === "anand"
-                  ? "border-[#d2f831] bg-[#d2f831]/[0.08] ring-1 ring-[#d2f831]/50 shadow-[0_0_25px_rgba(210,248,49,0.15)]"
-                  : "border-white/[0.1] bg-[#121317] hover:border-white/25 hover:bg-[#16171d]"
+                  ? "border-emerald-600 bg-emerald-500/10 ring-1 ring-emerald-600/50 shadow-[0_0_25px_rgba(16,185,129,0.15)] dark:border-[#d2f831] dark:bg-[#d2f831]/[0.08] dark:ring-[#d2f831]/50 dark:shadow-[0_0_25px_rgba(210,248,49,0.15)]"
+                  : "border-border bg-card hover:border-emerald-600/40 hover:bg-muted/30 dark:border-white/[0.1] dark:bg-[#121317] dark:hover:border-white/25 dark:hover:bg-[#16171d]"
               )}
             >
               <div>
                 <div className="flex items-center justify-between mb-3.5">
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-[#d2f831]/10 border border-[#d2f831]/25 text-[#d2f831] transition-transform group-hover:scale-105">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:bg-[#d2f831]/10 dark:border-[#d2f831]/25 dark:text-[#d2f831] transition-transform group-hover:scale-105">
                     <Database className="size-5" />
                   </div>
                   {dataSource === "anand" && (
-                    <span className="rounded-full bg-[#d2f831] px-2 py-0.5 text-[9px] font-mono font-bold text-neutral-950 uppercase tracking-wider">
+                    <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[9px] font-mono font-bold text-white uppercase tracking-wider dark:bg-[#d2f831] dark:text-neutral-950">
                       Active
                     </span>
                   )}
                 </div>
-                <span className="block text-base font-bold text-white tracking-tight">
+                <span className="block text-base font-bold text-foreground dark:text-white tracking-tight">
                   Anand Corridor
                 </span>
-                <p className="mt-1.5 text-xs text-neutral-300/80 leading-relaxed whitespace-normal">
+                <p className="mt-1.5 text-xs text-muted-foreground dark:text-neutral-300/80 leading-relaxed whitespace-normal">
                   18-asset Day 89 sample fleet trained on Kaggle failure records and IEEE C57.104 gas signatures.
                 </p>
               </div>
-              <div className="mt-4 pt-3 border-t border-white/[0.08] flex items-center justify-between text-[11px] font-mono text-neutral-400">
+              <div className="mt-4 pt-3 border-t border-border dark:border-white/[0.08] flex items-center justify-between text-[11px] font-mono text-muted-foreground dark:text-neutral-400">
                 <span>18 Assets</span>
-                <span className="text-[#d2f831] font-semibold flex items-center gap-1">
+                <span className="text-emerald-700 dark:text-[#d2f831] font-semibold flex items-center gap-1">
                   Load Fleet <ArrowRight className="size-3" />
                 </span>
               </div>
@@ -1966,27 +1966,27 @@ function DashboardPage() {
                   fileRef.current?.click();
                 }
               }}
-              className="group relative flex flex-col justify-between rounded-2xl border border-white/[0.1] bg-[#121317] hover:border-cyan-500/50 hover:bg-[#16171d] p-5 text-left transition-all duration-300 cursor-pointer shadow-md hover:shadow-[0_0_25px_rgba(34,211,238,0.12)]"
+              className="group relative flex flex-col justify-between rounded-2xl border border-border bg-card hover:border-cyan-500/50 hover:bg-muted/30 p-5 text-left transition-all duration-300 cursor-pointer shadow-md hover:shadow-[0_0_25px_rgba(34,211,238,0.12)] dark:border-white/[0.1] dark:bg-[#121317] dark:hover:bg-[#16171d]"
             >
               <div>
                 <div className="flex items-center justify-between mb-3.5">
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-cyan-500/10 border border-cyan-500/25 text-cyan-400 transition-transform group-hover:scale-105">
+                  <div className="flex size-10 items-center justify-center rounded-xl bg-cyan-500/10 border border-cyan-500/25 text-cyan-600 dark:text-cyan-400 transition-transform group-hover:scale-105">
                     <FileUp className="size-5" />
                   </div>
-                  <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[9px] font-mono text-neutral-400 uppercase">
+                  <span className="rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[9px] font-mono text-muted-foreground dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-neutral-400 uppercase">
                     Upload
                   </span>
                 </div>
-                <span className="block text-base font-bold text-white tracking-tight">
+                <span className="block text-base font-bold text-foreground dark:text-white tracking-tight">
                   Custom CSV
                 </span>
-                <p className="mt-1.5 text-xs text-neutral-300/80 leading-relaxed whitespace-normal">
+                <p className="mt-1.5 text-xs text-muted-foreground dark:text-neutral-300/80 leading-relaxed whitespace-normal">
                   Upload transformer telemetry CSV scored live with Model 1 (Health Index) and Model 2 (DGA Classifier).
                 </p>
               </div>
-              <div className="mt-4 pt-3 border-t border-white/[0.08] flex items-center justify-between text-[11px] font-mono text-neutral-400">
+              <div className="mt-4 pt-3 border-t border-border dark:border-white/[0.08] flex items-center justify-between text-[11px] font-mono text-muted-foreground dark:text-neutral-400">
                 <span>Custom Telemetry</span>
-                <span className="text-cyan-400 font-semibold flex items-center gap-1">
+                <span className="text-cyan-600 dark:text-cyan-400 font-semibold flex items-center gap-1">
                   Select CSV <ArrowRight className="size-3" />
                 </span>
               </div>
@@ -2004,9 +2004,9 @@ function DashboardPage() {
           <button
             type="button"
             onClick={downloadSampleCsv}
-            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/20 py-2.5 text-xs font-mono text-neutral-300 transition-colors cursor-pointer"
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-muted/40 hover:bg-muted/80 hover:border-border py-2.5 text-xs font-mono text-foreground dark:border-white/[0.08] dark:bg-white/[0.03] dark:hover:bg-white/[0.06] dark:hover:border-white/20 dark:text-neutral-300 transition-colors cursor-pointer"
           >
-            <Download className="size-3.5 text-neutral-400" />
+            <Download className="size-3.5 text-muted-foreground dark:text-neutral-400" />
             Download Sample Telemetry CSV Template
           </button>
         </ModalShell>

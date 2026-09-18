@@ -373,88 +373,88 @@ function LiveGridPage() {
       {/* Hero KPI Metrics */}
       <div className="mt-8 grid grid-cols-2 gap-3.5 sm:grid-cols-4">
         {/* Card 1: Monitored Assets */}
-        <div className="group relative flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-[#111215]/85 hover:bg-[#15161a] backdrop-blur-xl p-4 shadow-xs transition-all duration-300 hover:border-white/20">
+        <div className="group relative flex flex-col justify-between rounded-2xl border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/85 hover:bg-muted/50 dark:hover:bg-[#15161a] backdrop-blur-xl p-4 shadow-xs transition-all duration-300 hover:border-border/80 dark:hover:border-white/20">
           <div className="flex items-center justify-between">
-            <ShieldCheck className="size-4 text-neutral-400 stroke-[1.75]" />
-            <div className="flex items-center gap-1.5 text-[10px] font-mono text-neutral-400">
-              <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
+            <ShieldCheck className="size-4 text-muted-foreground dark:text-neutral-400 stroke-[1.75]" />
+            <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground dark:text-neutral-400">
+              <span className="size-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
               <span className="uppercase tracking-wider">ONLINE</span>
             </div>
           </div>
           <div className="mt-3">
-            <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white">
+            <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground dark:text-white">
               {totalAssets}
             </p>
-            <p className="text-xs font-medium text-neutral-400 mt-0.5 truncate">
+            <p className="text-xs font-medium text-muted-foreground dark:text-neutral-400 mt-0.5 truncate">
               Monitored Assets
             </p>
-            <p className="text-[11px] text-neutral-500 font-mono mt-0.5 truncate">
+            <p className="text-[11px] text-muted-foreground/80 dark:text-neutral-500 font-mono mt-0.5 truncate">
               Anand District Network
             </p>
           </div>
         </div>
 
         {/* Card 2: Critical / High Risk */}
-        <div className="group relative flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-[#111215]/85 hover:bg-[#15161a] backdrop-blur-xl p-4 shadow-xs transition-all duration-300 hover:border-white/20">
+        <div className="group relative flex flex-col justify-between rounded-2xl border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/85 hover:bg-muted/50 dark:hover:bg-[#15161a] backdrop-blur-xl p-4 shadow-xs transition-all duration-300 hover:border-border/80 dark:hover:border-white/20">
           <div className="flex items-center justify-between">
-            <AlertTriangle className="size-4 text-rose-400 stroke-[1.75]" />
-            <div className="flex items-center gap-1.5 text-[10px] font-mono text-neutral-400 truncate max-w-[110px]">
+            <AlertTriangle className="size-4 text-rose-500 dark:text-rose-400 stroke-[1.75]" />
+            <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground dark:text-neutral-400 truncate max-w-[110px]">
               <span className="size-1.5 shrink-0 rounded-full bg-rose-500 animate-pulse shadow-[0_0_6px_rgba(244,63,94,0.8)]" />
               <span className="truncate">TX-107, TX-112</span>
             </div>
           </div>
           <div className="mt-3">
-            <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white">
+            <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground dark:text-white">
               {criticalCount}
             </p>
-            <p className="text-xs font-medium text-neutral-400 mt-0.5 truncate">
+            <p className="text-xs font-medium text-muted-foreground dark:text-neutral-400 mt-0.5 truncate">
               Critical / High Risk
             </p>
-            <p className="text-[11px] text-rose-400/90 font-mono mt-0.5 truncate">
+            <p className="text-[11px] text-rose-600 dark:text-rose-400/90 font-mono mt-0.5 truncate font-semibold">
               Requires immediate dispatch
             </p>
           </div>
         </div>
 
         {/* Card 3: Watch Tier */}
-        <div className="group relative flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-[#111215]/85 hover:bg-[#15161a] backdrop-blur-xl p-4 shadow-xs transition-all duration-300 hover:border-white/20">
+        <div className="group relative flex flex-col justify-between rounded-2xl border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/85 hover:bg-muted/50 dark:hover:bg-[#15161a] backdrop-blur-xl p-4 shadow-xs transition-all duration-300 hover:border-border/80 dark:hover:border-white/20">
           <div className="flex items-center justify-between">
-            <Activity className="size-4 text-amber-400 stroke-[1.75]" />
-            <div className="flex items-center gap-1.5 text-[10px] font-mono text-neutral-400">
-              <span className="size-1.5 rounded-full bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]" />
+            <Activity className="size-4 text-amber-500 dark:text-amber-400 stroke-[1.75]" />
+            <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground dark:text-neutral-400">
+              <span className="size-1.5 rounded-full bg-amber-500 dark:bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]" />
               <span className="uppercase tracking-wider">ELEVATED</span>
             </div>
           </div>
           <div className="mt-3">
-            <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-white">
+            <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-foreground dark:text-white">
               {watchCount}
             </p>
-            <p className="text-xs font-medium text-neutral-400 mt-0.5 truncate">
+            <p className="text-xs font-medium text-muted-foreground dark:text-neutral-400 mt-0.5 truncate">
               Watch Tier
             </p>
-            <p className="text-[11px] text-neutral-500 font-mono mt-0.5 truncate">
+            <p className="text-[11px] text-muted-foreground/80 dark:text-neutral-500 font-mono mt-0.5 truncate">
               Elevated monitoring active
             </p>
           </div>
         </div>
 
         {/* Card 4: Mean Health Score */}
-        <div className="group relative flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-[#111215]/85 hover:bg-[#15161a] backdrop-blur-xl p-4 shadow-xs transition-all duration-300 hover:border-white/20">
+        <div className="group relative flex flex-col justify-between rounded-2xl border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/85 hover:bg-muted/50 dark:hover:bg-[#15161a] backdrop-blur-xl p-4 shadow-xs transition-all duration-300 hover:border-border/80 dark:hover:border-white/20">
           <div className="flex items-center justify-between">
-            <Gauge className="size-4 text-emerald-400 stroke-[1.75]" />
-            <div className="flex items-center gap-1.5 text-[10px] font-mono text-neutral-400">
-              <span className="size-1.5 rounded-full bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
+            <Gauge className="size-4 text-emerald-600 dark:text-emerald-400 stroke-[1.75]" />
+            <div className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground dark:text-neutral-400">
+              <span className="size-1.5 rounded-full bg-cyan-500 dark:bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.8)]" />
               <span className="uppercase tracking-wider">FLEET WIDE</span>
             </div>
           </div>
           <div className="mt-3">
-            <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-emerald-400">
+            <p className="text-2xl sm:text-3xl font-bold font-mono tracking-tight text-emerald-700 dark:text-emerald-400">
               {avgHealth}%
             </p>
-            <p className="text-xs font-medium text-neutral-400 mt-0.5 truncate">
+            <p className="text-xs font-medium text-muted-foreground dark:text-neutral-400 mt-0.5 truncate">
               Mean Health Score
             </p>
-            <p className="text-[11px] text-neutral-500 font-mono mt-0.5 truncate">
+            <p className="text-[11px] text-muted-foreground/80 dark:text-neutral-500 font-mono mt-0.5 truncate">
               {stableCount} assets nominal
             </p>
           </div>
@@ -464,6 +464,7 @@ function LiveGridPage() {
       {/* ── KEY DEMO SHOWCASE BANNER ── */}
       <div className="mt-8">
         <TX115InterventionBanner
+          compact={true}
           onSelectTx115={() => {
             const tx = assets.find((a) => a.id === "TX-115");
             if (tx) setInspectorAsset(tx);

@@ -235,7 +235,7 @@ function LoginPage() {
       {/* ── Top Logo Bar ── */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-border/40">
         <Link to="/" className="transition-opacity hover:opacity-80">
-          <VoltraLogo size={30} showText subtitle="Grid Risk Advisor" />
+          <VoltraLogo size={30} showText />
         </Link>
         <span className="flex items-center gap-1.5 text-[10px] font-mono text-emerald-500 font-semibold">
           <span className="relative flex size-1.5">

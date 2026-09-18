@@ -359,30 +359,30 @@ export function TechnologyPage() {
   return (
     <div className="mx-auto mt-6 w-full max-w-6xl px-4 pb-28 sm:px-6">
       {/* Sleek Floating Glass Breadcrumb Header */}
-      <div className="flex flex-wrap items-center gap-2 rounded-full border border-white/[0.08] bg-[#111215]/80 px-4 py-2 text-xs font-mono backdrop-blur-md w-fit">
-        <span className="rounded-full bg-[#d2f831] px-2.5 py-0.5 text-[11px] font-bold text-neutral-950">
+      <div className="flex flex-wrap items-center gap-2 rounded-full border border-border dark:border-white/[0.08] bg-card/90 dark:bg-[#111215]/80 px-4 py-2 text-xs font-mono backdrop-blur-md w-fit shadow-xs">
+        <span className="rounded-full bg-emerald-600 text-white dark:bg-[#d2f831] dark:text-neutral-950 px-2.5 py-0.5 text-[11px] font-bold">
           Technology
         </span>
-        <span className="text-white/20">/</span>
-        <span className="text-neutral-400">Sensing Streams</span>
-        <span className="text-white/20">/</span>
-        <span className="text-neutral-400">Dual ML Pipeline</span>
-        <span className="text-white/20">/</span>
-        <span className="text-neutral-400">AI Advisory Layer</span>
-        <span className="text-white/20">/</span>
-        <span className="text-neutral-400">Empirical Benchmarks</span>
+        <span className="text-muted-foreground/30 dark:text-white/20">/</span>
+        <span className="text-muted-foreground dark:text-neutral-400">Sensing Streams</span>
+        <span className="text-muted-foreground/30 dark:text-white/20">/</span>
+        <span className="text-muted-foreground dark:text-neutral-400">Dual ML Pipeline</span>
+        <span className="text-muted-foreground/30 dark:text-white/20">/</span>
+        <span className="text-muted-foreground dark:text-neutral-400">AI Advisory Layer</span>
+        <span className="text-muted-foreground/30 dark:text-white/20">/</span>
+        <span className="text-muted-foreground dark:text-neutral-400">Empirical Benchmarks</span>
       </div>
 
       {/* Hero Section */}
       <div className="mt-10 grid gap-8 md:grid-cols-12 md:items-end">
         <div className="md:col-span-8">
-          <p className="text-xs uppercase tracking-[0.2em] text-[#d2f831] font-mono flex items-center gap-2">
-            <span className="size-1.5 rounded-full bg-[#d2f831] animate-pulse" />
+          <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 dark:text-[#d2f831] font-mono flex items-center gap-2">
+            <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-[#d2f831] animate-pulse" />
             Defensible Power Grid Intelligence · Techtonics × IBM Bobathon
           </p>
           <h1 className="mt-3 font-sans text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl md:text-6xl text-foreground">
             Machine learning grounded in{" "}
-            <span className="font-display font-normal italic text-[#d2f831]">physical chemistry.</span>
+            <span className="font-display font-normal italic text-emerald-700 dark:text-[#d2f831]">physical chemistry.</span>
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
             VOLTRA pairs two real machine learning models trained on Kaggle transformer datasets with dissolved gas
@@ -393,7 +393,7 @@ export function TechnologyPage() {
         <div className="flex flex-wrap items-center gap-3 md:col-span-4 md:justify-end">
           <Button
             asChild
-            className="rounded-full bg-[#d2f831] px-5 py-2.5 text-xs font-bold text-neutral-950 shadow-sm transition-all hover:bg-[#c7f023] hover:shadow-md"
+            className="rounded-full bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-[#d2f831] dark:text-neutral-950 dark:hover:bg-[#c7f023] px-5 py-2.5 text-xs font-bold shadow-sm transition-all hover:shadow-md"
           >
             <Link to="/grid">
               Explore Live Grid <ArrowRight className="size-3.5 ml-1.5" />
@@ -402,7 +402,7 @@ export function TechnologyPage() {
           <Button
             asChild
             variant="outline"
-            className="rounded-full border-white/[0.12] bg-[#141519] px-5 py-2.5 text-xs font-semibold text-white hover:bg-white/[0.08]"
+            className="rounded-full border-border bg-card text-foreground hover:bg-muted dark:border-white/[0.12] dark:bg-[#141519] dark:text-white dark:hover:bg-white/[0.08] px-5 py-2.5 text-xs font-semibold shadow-xs"
           >
             <Link to="/predict">
               Launch Studio <ArrowUpRight className="size-3.5 ml-1.5" />
@@ -411,54 +411,54 @@ export function TechnologyPage() {
         </div>
       </div>
 
-      {/* Top 4 Metric Cards (Matching the Sleek Dark Reference Design) */}
+      {/* Top 4 Metric Cards */}
       <div className="mt-10 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
         {[
           {
             icon: ShieldCheck,
             value: "90.8%",
             label: "DGA Fault Accuracy",
-            dotColor: "bg-cyan-400",
+            dotColor: "bg-cyan-500 dark:bg-cyan-400",
             tag: "7 IEC 60599 CLASSES",
           },
           {
             icon: Activity,
             value: "R² 0.72",
             label: "Health Index R²",
-            dotColor: "bg-[#d2f831]",
+            dotColor: "bg-emerald-500 dark:bg-[#d2f831]",
             tag: "470 UNITS TESTED",
           },
           {
             icon: Radio,
             value: "18",
             label: "Transformers Monitored",
-            dotColor: "bg-emerald-400",
+            dotColor: "bg-emerald-500 dark:bg-emerald-400",
             tag: "4 ANAND SUB-ZONES",
           },
           {
             icon: Zap,
             value: "545 MVA",
             label: "Total Fleet Capacity",
-            dotColor: "bg-amber-400",
+            dotColor: "bg-amber-500 dark:bg-amber-400",
             tag: "132kV / 220kV GRID",
           },
         ].map(({ icon: Icon, value, label, dotColor, tag }) => (
           <div
             key={label}
-            className="group relative flex flex-col justify-between rounded-2xl sm:rounded-[1.75rem] border border-white/[0.08] bg-[#111215]/90 p-4 sm:p-5 shadow-sm transition-all duration-300 hover:border-white/20 min-h-[135px] sm:min-h-[155px]"
+            className="group relative flex flex-col justify-between rounded-2xl sm:rounded-[1.75rem] border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/90 p-4 sm:p-5 shadow-xs transition-all duration-300 hover:border-border/80 dark:hover:border-white/20 min-h-[135px] sm:min-h-[155px]"
           >
-            <div className="text-neutral-400">
+            <div className="text-muted-foreground dark:text-neutral-400">
               <Icon className="size-5 stroke-[1.75]" />
             </div>
             <div className="my-auto py-1">
-              <p className="font-sans text-3xl sm:text-4xl font-bold tracking-tight text-white font-mono">
+              <p className="font-sans text-3xl sm:text-4xl font-bold tracking-tight text-foreground dark:text-white font-mono">
                 {value}
               </p>
-              <p className="text-xs sm:text-sm font-medium text-neutral-400 mt-1 truncate">
+              <p className="text-xs sm:text-sm font-medium text-muted-foreground dark:text-neutral-400 mt-1 truncate">
                 {label}
               </p>
             </div>
-            <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono text-neutral-300">
+            <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] font-mono text-muted-foreground dark:text-neutral-300">
               <span className={`size-1.5 rounded-full ${dotColor} shadow-[0_0_8px_rgba(255,255,255,0.4)]`} />
               <span className="uppercase tracking-wider">{tag}</span>
             </div>
@@ -468,7 +468,7 @@ export function TechnologyPage() {
 
       {/* Hero Visual & Decoupled Architecture Card */}
       <div className="mt-8 grid gap-4 lg:grid-cols-12 items-stretch">
-        <div className="relative overflow-hidden rounded-[2rem] border border-white/[0.08] bg-[#111215] shadow-lg lg:col-span-8 group min-h-[300px] sm:min-h-[360px]">
+        <div className="relative overflow-hidden rounded-[2rem] border border-border dark:border-white/[0.08] bg-[#111215] shadow-lg lg:col-span-8 group min-h-[300px] sm:min-h-[360px]">
           <img
             src={gridImg}
             alt="Transmission towers monitored with automated power line telemetry"
@@ -492,28 +492,28 @@ export function TechnologyPage() {
           </div>
         </div>
 
-        <div className="flex flex-col justify-between rounded-[2rem] border border-white/[0.08] bg-[#111215]/90 p-6 sm:p-8 text-white shadow-lg lg:col-span-4">
+        <div className="flex flex-col justify-between rounded-[2rem] border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/90 p-6 sm:p-8 text-foreground dark:text-white shadow-sm dark:shadow-lg lg:col-span-4">
           <div>
             <div className="flex items-center justify-between">
-              <span className="rounded-full bg-[#d2f831]/15 border border-[#d2f831]/30 px-3 py-1 font-mono text-[10px] text-[#d2f831] font-bold tracking-wider uppercase">
+              <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:bg-[#d2f831]/15 dark:border-[#d2f831]/30 dark:text-[#d2f831] px-3 py-1 font-mono text-[10px] font-bold tracking-wider uppercase">
                 ARCHITECTURE
               </span>
-              <span className="flex items-center gap-1 text-[11px] font-mono text-emerald-400">
-                <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live
+              <span className="flex items-center gap-1 text-[11px] font-mono text-emerald-600 dark:text-emerald-400">
+                <span className="size-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" /> Live
               </span>
             </div>
-            <h3 className="mt-4 font-sans text-xl font-bold leading-snug">
+            <h3 className="mt-4 font-sans text-xl font-bold leading-snug text-foreground dark:text-white">
               FastAPI + Isolated LLM Layer
             </h3>
-            <p className="mt-3 text-xs sm:text-sm leading-relaxed text-neutral-300/80">
+            <p className="mt-3 text-xs sm:text-sm leading-relaxed text-muted-foreground dark:text-neutral-300/80">
               Scoring and ranking endpoints are fully decoupled from external LLM API availability.
               If IBM Bob API keys are absent, the system falls back to deterministic engineering templates.
-              Scoring <em className="text-white font-semibold">never breaks</em>.
+              Scoring <em className="text-foreground dark:text-white font-semibold">never breaks</em>.
             </p>
           </div>
-          <div className="mt-6 border-t border-white/[0.08] pt-4 flex items-center justify-between text-xs text-neutral-400 font-mono">
-            <span className="inline-flex items-center gap-1.5 text-white">
-              <Lock className="size-3.5 text-[#d2f831]" /> Fully Auditable
+          <div className="mt-6 border-t border-border dark:border-white/[0.08] pt-4 flex items-center justify-between text-xs text-muted-foreground dark:text-neutral-400 font-mono">
+            <span className="inline-flex items-center gap-1.5 text-foreground dark:text-white">
+              <Lock className="size-3.5 text-emerald-600 dark:text-[#d2f831]" /> Fully Auditable
             </span>
             <span>FastAPI REST Engine</span>
           </div>
@@ -523,12 +523,12 @@ export function TechnologyPage() {
       {/* ── 4 Real Sensing Pillars ── */}
       <section className="mt-28">
         <div className="flex flex-col gap-2 max-w-3xl">
-          <p className="text-xs uppercase tracking-[0.2em] text-[#d2f831] font-mono flex items-center gap-2">
-            <span className="size-1.5 rounded-full bg-[#d2f831]" /> Real Telemetry Streams
+          <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 dark:text-[#d2f831] font-mono flex items-center gap-2">
+            <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-[#d2f831]" /> Real Telemetry Streams
           </p>
           <h2 className="font-sans text-3xl font-semibold sm:text-4xl text-foreground">
             The 4 Physical Data Streams in{" "}
-            <span className="font-display font-normal italic text-[#d2f831]">VOLTRA</span>
+            <span className="font-display font-normal italic text-emerald-700 dark:text-[#d2f831]">VOLTRA</span>
           </h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
             Failure prediction is grounded in IEEE C57.104 gas signatures and physical top-oil thermal constraints.
@@ -545,31 +545,31 @@ export function TechnologyPage() {
                 onClick={() => setActivePillar(idx)}
                 className={`group cursor-pointer rounded-[1.75rem] border p-6 transition-all duration-300 flex flex-col justify-between ${
                   isSelected
-                    ? "border-[#d2f831] bg-[#d2f831]/[0.05] ring-1 ring-[#d2f831]/50 shadow-lg"
-                    : "border-white/[0.08] bg-[#111215]/85 hover:border-white/20 hover:bg-[#15161a]"
+                    ? "border-emerald-600 bg-emerald-50/90 ring-2 ring-emerald-600/30 text-emerald-950 dark:border-[#d2f831] dark:bg-[#d2f831]/[0.08] dark:ring-1 dark:ring-[#d2f831]/50 dark:text-white shadow-md"
+                    : "border-border bg-card hover:bg-muted/40 text-foreground dark:border-white/[0.08] dark:bg-[#111215]/85 dark:hover:border-white/20 dark:hover:bg-[#15161a] dark:text-white shadow-xs"
                 }`}
               >
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-bold text-neutral-400">{pillar.num}</span>
-                    <span className="rounded-full border border-white/[0.08] bg-black/40 px-2.5 py-0.5 font-mono text-[10px] text-neutral-300">
+                    <span className="font-mono text-xs font-bold text-muted-foreground dark:text-neutral-400">{pillar.num}</span>
+                    <span className="rounded-full border border-border dark:border-white/[0.08] bg-muted/60 dark:bg-black/40 px-2.5 py-0.5 font-mono text-[10px] text-muted-foreground dark:text-neutral-300">
                       {pillar.tag}
                     </span>
                   </div>
                   <div className="mt-5 flex items-center gap-3">
-                    <div className="flex size-10 items-center justify-center rounded-xl bg-white/[0.05] border border-white/[0.08] text-white transition-transform group-hover:scale-105">
+                    <div className="flex size-10 items-center justify-center rounded-xl bg-muted/60 dark:bg-white/[0.05] border border-border dark:border-white/[0.08] text-foreground dark:text-white transition-transform group-hover:scale-105">
                       <Icon className="size-5" />
                     </div>
-                    <h3 className="font-sans text-base font-bold leading-tight text-white">
+                    <h3 className="font-sans text-base font-bold leading-tight text-foreground dark:text-white">
                       {pillar.title}
                     </h3>
                   </div>
-                  <p className="mt-3 text-xs leading-relaxed text-neutral-400">{pillar.summary}</p>
+                  <p className="mt-3 text-xs leading-relaxed text-muted-foreground dark:text-neutral-400">{pillar.summary}</p>
                 </div>
-                <div className="mt-5 border-t border-white/[0.08] pt-4 space-y-2">
+                <div className="mt-5 border-t border-border dark:border-white/[0.08] pt-4 space-y-2">
                   {pillar.details.map((item, i) => (
-                    <div key={i} className="flex items-start gap-2 text-[11px] text-neutral-300">
-                      <span className="mt-1 size-1.5 shrink-0 rounded-full bg-[#d2f831]" />
+                    <div key={i} className="flex items-start gap-2 text-[11px] text-foreground/90 dark:text-neutral-300">
+                      <span className="mt-1 size-1.5 shrink-0 rounded-full bg-emerald-600 dark:bg-[#d2f831]" />
                       <span className="leading-snug">{item}</span>
                     </div>
                   ))}
@@ -583,11 +583,11 @@ export function TechnologyPage() {
       {/* ── Deep Model Cards ── */}
       <section className="mt-28">
         <div className="flex flex-col gap-2 max-w-3xl">
-          <p className="text-xs uppercase tracking-[0.2em] text-[#d2f831] font-mono flex items-center gap-2">
-            <span className="size-1.5 rounded-full bg-[#d2f831]" /> Trained ML Models
+          <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 dark:text-[#d2f831] font-mono flex items-center gap-2">
+            <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-[#d2f831]" /> Trained ML Models
           </p>
           <h2 className="font-sans text-3xl font-semibold sm:text-4xl text-foreground">
-            Two Real Models. <span className="font-display font-normal italic text-[#d2f831]">Zero Shortcuts.</span>
+            Two Real Models. <span className="font-display font-normal italic text-emerald-700 dark:text-[#d2f831]">Zero Shortcuts.</span>
           </h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
             Both models were trained on real Kaggle transformer datasets, cross-validated, and their limitations documented transparently. No simulated accuracy, no inflated benchmarks.
@@ -603,8 +603,8 @@ export function TechnologyPage() {
               onClick={() => setActiveModel(idx)}
               className={`rounded-full border px-5 py-2 text-xs font-semibold font-mono transition-all duration-300 cursor-pointer ${
                 activeModel === idx
-                  ? "border-[#d2f831] bg-[#d2f831] text-neutral-950 font-bold shadow-sm"
-                  : "border-white/[0.1] bg-[#111215] text-neutral-400 hover:text-white hover:border-white/20"
+                  ? "border-emerald-600 bg-emerald-600 text-white font-bold shadow-sm dark:border-[#d2f831] dark:bg-[#d2f831] dark:text-neutral-950"
+                  : "border-border bg-card text-muted-foreground hover:text-foreground hover:border-border/80 dark:border-white/[0.1] dark:bg-[#111215] dark:text-neutral-400 dark:hover:text-white dark:hover:border-white/20"
               }`}
             >
               {m.num} · {m.label.split("—")[1]?.trim()}
@@ -618,59 +618,59 @@ export function TechnologyPage() {
           return (
             <div
               key={m.num}
-              className="mt-5 rounded-[2rem] border border-white/[0.1] bg-[#111215]/95 p-6 sm:p-10 shadow-2xl transition-all"
+              className="mt-5 rounded-[2rem] border border-border dark:border-white/[0.1] bg-card dark:bg-[#111215]/95 p-6 sm:p-10 shadow-sm dark:shadow-2xl transition-all"
             >
-              <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-white/[0.08]">
+              <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-border dark:border-white/[0.08]">
                 <div className="flex items-center gap-3.5">
-                  <div className="flex size-12 items-center justify-center rounded-2xl bg-white/[0.05] border border-white/[0.08] text-[#d2f831]">
+                  <div className="flex size-12 items-center justify-center rounded-2xl bg-muted/60 dark:bg-white/[0.05] border border-border dark:border-white/[0.08] text-emerald-700 dark:text-[#d2f831]">
                     <Icon className="size-6" />
                   </div>
                   <div>
-                    <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-[#d2f831]/15 text-[#d2f831] border border-[#d2f831]/30">
+                    <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-800 border border-emerald-500/30 dark:bg-[#d2f831]/15 dark:text-[#d2f831] dark:border-[#d2f831]/30">
                       {m.badge}
                     </span>
-                    <h3 className="mt-1 font-sans text-xl font-bold text-white">{m.title}</h3>
+                    <h3 className="mt-1 font-sans text-xl font-bold text-foreground dark:text-white">{m.title}</h3>
                   </div>
                 </div>
               </div>
 
-              <p className="mt-6 max-w-3xl text-sm leading-relaxed text-neutral-300/90">{m.description}</p>
+              <p className="mt-6 max-w-3xl text-sm leading-relaxed text-muted-foreground dark:text-neutral-300/90">{m.description}</p>
 
               <div className="mt-8 grid gap-8 lg:grid-cols-2">
                 {/* Metrics grid */}
                 <div>
-                  <p className="text-xs uppercase tracking-widest text-neutral-400 font-mono mb-3.5">
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground dark:text-neutral-400 font-mono mb-3.5">
                     Verified Performance Metrics
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     {m.metrics.map(({ label, value, note }) => (
                       <div
                         key={label}
-                        className="rounded-2xl border border-white/[0.08] bg-black/40 p-4 transition-all hover:border-white/20"
+                        className="rounded-2xl border border-border dark:border-white/[0.08] bg-muted/40 dark:bg-black/40 p-4 transition-all hover:border-border/80 dark:hover:border-white/20"
                       >
-                        <p className="text-[10px] uppercase tracking-widest text-neutral-400 font-mono">{label}</p>
-                        <p className="mt-1.5 font-mono text-2xl font-bold text-white">{value}</p>
-                        <p className="mt-1 text-[11px] text-neutral-400 leading-tight">{note}</p>
+                        <p className="text-[10px] uppercase tracking-widest text-muted-foreground dark:text-neutral-400 font-mono">{label}</p>
+                        <p className="mt-1.5 font-mono text-2xl font-bold text-foreground dark:text-white">{value}</p>
+                        <p className="mt-1 text-[11px] text-muted-foreground dark:text-neutral-400 leading-tight">{note}</p>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 {/* Feature importance bars */}
-                <div className="rounded-2xl border border-white/[0.08] bg-black/40 p-5 sm:p-6">
-                  <p className="text-xs uppercase tracking-widest text-neutral-400 font-mono mb-4">
+                <div className="rounded-2xl border border-border dark:border-white/[0.08] bg-muted/40 dark:bg-black/40 p-5 sm:p-6">
+                  <p className="text-xs uppercase tracking-widest text-muted-foreground dark:text-neutral-400 font-mono mb-4">
                     Top SHAP Feature Drivers
                   </p>
                   <div className="space-y-3.5">
                     {m.topFeatures.map(({ name, pct }) => (
                       <div key={name}>
                         <div className="mb-1.5 flex items-center justify-between text-xs">
-                          <span className="text-neutral-300 font-mono">{name}</span>
-                          <span className="font-bold font-mono text-[#d2f831]">{pct}%</span>
+                          <span className="text-foreground dark:text-neutral-300 font-mono">{name}</span>
+                          <span className="font-bold font-mono text-emerald-700 dark:text-[#d2f831]">{pct}%</span>
                         </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-white/[0.08]">
+                        <div className="h-2 overflow-hidden rounded-full bg-muted dark:bg-white/[0.08]">
                           <div
-                            className="h-full rounded-full bg-[#d2f831] transition-all duration-700"
+                            className="h-full rounded-full bg-emerald-600 dark:bg-[#d2f831] transition-all duration-700"
                             style={{ width: `${pct}%` }}
                           />
                         </div>
@@ -678,13 +678,13 @@ export function TechnologyPage() {
                     ))}
                   </div>
 
-                  <div className="mt-6 border-t border-white/[0.08] pt-4 space-y-2">
-                    <p className="text-[10px] uppercase tracking-widest text-neutral-400 font-mono mb-2">
+                  <div className="mt-6 border-t border-border dark:border-white/[0.08] pt-4 space-y-2">
+                    <p className="text-[10px] uppercase tracking-widest text-muted-foreground dark:text-neutral-400 font-mono mb-2">
                       Model Outputs
                     </p>
                     {m.outputs.map((o, i) => (
-                      <div key={i} className="flex items-start gap-2 text-xs text-neutral-300">
-                        <Check className="mt-0.5 size-3.5 shrink-0 text-[#d2f831]" />
+                      <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground dark:text-neutral-300">
+                        <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600 dark:text-[#d2f831]" />
                         <span className="leading-snug">{o}</span>
                       </div>
                     ))}
@@ -696,64 +696,72 @@ export function TechnologyPage() {
         })}
       </section>
 
-      {/* ── 7-Stage Pipeline ── */}
-      <section className="mt-28 rounded-[2.5rem] border border-white/[0.08] bg-[#111215]/95 p-6 sm:p-10 shadow-2xl">
+      {/* ── 7-Stage Pipeline (Continuous Endless Flowing Marquee Carousel) ── */}
+      <section className="mt-28 rounded-[2.5rem] border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/95 p-6 sm:p-10 shadow-sm dark:shadow-2xl overflow-hidden relative">
         <div className="max-w-2xl">
-          <span className="rounded-full bg-[#d2f831]/15 border border-[#d2f831]/30 px-3 py-1 font-mono text-xs text-[#d2f831] font-bold">
+          <span className="rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:bg-[#d2f831]/15 dark:border-[#d2f831]/30 dark:text-[#d2f831] px-3 py-1 font-mono text-xs font-bold">
             STAGE-BY-STAGE PIPELINE
           </span>
-          <h2 className="mt-4 font-sans text-3xl font-semibold sm:text-4xl text-white">
-            The 7-Stage <span className="font-display font-normal italic text-[#d2f831]">Dual ML Architecture</span>
+          <h2 className="mt-4 font-sans text-3xl font-semibold sm:text-4xl text-foreground dark:text-white">
+            The 7-Stage <span className="font-display font-normal italic text-emerald-700 dark:text-[#d2f831]">Dual ML Architecture</span>
           </h2>
-          <p className="mt-2 text-xs leading-relaxed text-neutral-400 sm:text-sm">
-            From dissolved gas ppm to calibrated Remaining Useful Life (RUL) and plain-English dispatch advisories.
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground dark:text-neutral-400 sm:text-sm">
+            Continuous end-to-end automated pipeline from physical sensor ppm to calibrated Remaining Useful Life (RUL) and plain-English dispatch advisories.
           </p>
         </div>
 
-        <div className="mt-10 grid gap-3.5 md:grid-cols-4 xl:grid-cols-7">
-          {pipelineStages.map((st) => {
-            const Icon = st.icon;
-            return (
-              <div
-                key={st.step}
-                className="group relative flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-black/40 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-[#d2f831]/40 hover:bg-black/60 shadow-sm"
-              >
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex size-7 items-center justify-center rounded-lg bg-[#d2f831]/10 text-[#d2f831]">
-                      <Icon className="size-4" />
+        {/* Endless Marquee Carousel */}
+        <div className="relative mt-8 sm:mt-10 overflow-hidden w-full select-none">
+          {/* Edge gradient fade masks */}
+          <div className="pointer-events-none absolute inset-y-0 left-0 w-10 sm:w-20 bg-gradient-to-r from-card dark:from-[#111215] to-transparent z-10" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-10 sm:w-20 bg-gradient-to-l from-card dark:from-[#111215] to-transparent z-10" />
+
+          {/* Flowing Track with duplicate array for 100% infinite seamless loop */}
+          <div className="animate-marquee-flow flex gap-3.5 sm:gap-4 py-2 hover:[animation-play-state:paused]">
+            {[...pipelineStages, ...pipelineStages].map((st, i) => {
+              const Icon = st.icon;
+              return (
+                <div
+                  key={`${st.step}-${i}`}
+                  className="w-[240px] sm:w-[270px] shrink-0 rounded-2xl border border-border dark:border-white/[0.08] bg-muted/40 dark:bg-black/40 p-4 sm:p-5 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-600/40 dark:hover:border-[#d2f831]/40 hover:shadow-md flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex size-8 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-700 dark:bg-[#d2f831]/10 dark:text-[#d2f831]">
+                        <Icon className="size-4" />
+                      </div>
+                      <span className="font-mono text-xs font-bold text-muted-foreground dark:text-neutral-400">{st.step}</span>
                     </div>
-                    <span className="font-mono text-[10px] font-bold text-neutral-400">{st.step}</span>
+                    <h4 className="mt-4 font-sans text-sm sm:text-base font-bold text-foreground dark:text-white leading-tight">{st.title}</h4>
                   </div>
-                  <h4 className="mt-5 font-sans text-sm font-bold text-white leading-tight">{st.title}</h4>
+                  <p className="mt-3 text-xs leading-relaxed text-muted-foreground dark:text-neutral-400">{st.desc}</p>
                 </div>
-                <p className="mt-3 text-[11px] leading-relaxed text-neutral-400">{st.desc}</p>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </section>
 
-      {/* ── SHAP Explanation Section ── */}
+      {/* ── SHAP Explanation Section (Third Image Fix) ── */}
       <section className="mt-28">
         <div className="flex flex-col gap-2 max-w-3xl">
-          <p className="text-xs uppercase tracking-[0.2em] text-[#d2f831] font-mono flex items-center gap-2">
-            <span className="size-1.5 rounded-full bg-[#d2f831]" /> Explainability by Design
+          <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 dark:text-[#d2f831] font-mono flex items-center gap-2">
+            <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-[#d2f831]" /> Explainability by Design
           </p>
           <h2 className="font-sans text-3xl font-semibold sm:text-4xl text-foreground">
-            Why SHAP — not just a <span className="font-display font-normal italic text-[#d2f831]">black box score.</span>
+            Why SHAP — not just a <span className="font-display font-normal italic text-emerald-700 dark:text-[#d2f831]">black box score.</span>
           </h2>
         </div>
 
         <div className="mt-8 grid gap-4 lg:grid-cols-12 items-stretch">
-          <div className="rounded-[2rem] border border-white/[0.08] bg-[#111215]/90 p-6 sm:p-8 lg:col-span-8 shadow-lg">
-            <h3 className="text-base sm:text-lg font-bold text-white">SHapley Additive exPlanations (SHAP)</h3>
-            <p className="mt-2.5 text-xs sm:text-sm leading-relaxed text-neutral-300">
+          <div className="rounded-[2rem] border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/90 p-6 sm:p-8 lg:col-span-8 shadow-sm dark:shadow-lg">
+            <h3 className="text-base sm:text-lg font-bold text-foreground dark:text-white">SHapley Additive exPlanations (SHAP)</h3>
+            <p className="mt-2.5 text-xs sm:text-sm leading-relaxed text-muted-foreground dark:text-neutral-300">
               SHAP values decompose each model prediction into the additive contribution of every input feature.
               For a transformer with Health Index 67.3, SHAP tells you that Acetylene contributed +12.4 HI points,
               Methane +9.1 points, and Hydrogen +5.6 points — not just that the score is high.
             </p>
-            <p className="mt-3 text-xs sm:text-sm leading-relaxed text-neutral-400">
+            <p className="mt-3 text-xs sm:text-sm leading-relaxed text-muted-foreground dark:text-neutral-400">
               This grounds every advisory. IBM Bob receives the top-3 SHAP features alongside the score, so its
               narrative says "Acetylene surge indicates active electrical arcing in the main tank" — not a
               generic risk statement. Operators can defend every maintenance decision to regulators.
@@ -763,17 +771,17 @@ export function TechnologyPage() {
               {[
                 { gas: "Acetylene (C₂H₂)", shap: "+12.4 HI", color: "bg-rose-500", pct: 92, note: "Active electrical arcing indicator" },
                 { gas: "Methane (CH₄)", shap: "+9.1 HI", color: "bg-amber-500", pct: 74, note: "Low-temp thermal decomposition" },
-                { gas: "Hydrogen (H₂)", shap: "+5.6 HI", color: "bg-cyan-400", pct: 56, note: "Partial discharge / dielectric stress" },
+                { gas: "Hydrogen (H₂)", shap: "+5.6 HI", color: "bg-cyan-500 dark:bg-cyan-400", pct: 56, note: "Partial discharge / dielectric stress" },
               ].map(({ gas, shap, color, pct, note }) => (
-                <div key={gas} className="rounded-xl border border-white/[0.08] bg-black/40 p-3.5">
+                <div key={gas} className="rounded-xl border border-border dark:border-white/[0.08] bg-muted/40 dark:bg-black/40 p-3.5">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-mono text-xs font-semibold text-white">{gas}</span>
-                    <span className="font-mono text-xs font-bold text-rose-400">{shap}</span>
+                    <span className="font-mono text-xs font-semibold text-foreground dark:text-white">{gas}</span>
+                    <span className="font-mono text-xs font-bold text-rose-600 dark:text-rose-400">{shap}</span>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-muted dark:bg-white/[0.08]">
                     <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
                   </div>
-                  <p className="mt-1.5 text-[10px] text-neutral-400 font-mono">{note}</p>
+                  <p className="mt-1.5 text-[10px] text-muted-foreground dark:text-neutral-400 font-mono">{note}</p>
                 </div>
               ))}
             </div>
@@ -787,13 +795,13 @@ export function TechnologyPage() {
             ].map(({ icon: Icon, title, desc }) => (
               <div
                 key={title}
-                className="rounded-[1.75rem] border border-white/[0.08] bg-[#111215]/90 p-5 flex-1 shadow-sm flex flex-col justify-center"
+                className="rounded-[1.75rem] border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/90 p-5 flex-1 shadow-xs dark:shadow-sm flex flex-col justify-center"
               >
-                <div className="flex size-9 items-center justify-center rounded-xl bg-[#d2f831]/10 text-[#d2f831]">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-700 dark:bg-[#d2f831]/10 dark:text-[#d2f831]">
                   <Icon className="size-5" />
                 </div>
-                <h4 className="mt-3 font-sans text-sm font-bold text-white">{title}</h4>
-                <p className="mt-1 text-xs leading-relaxed text-neutral-400">{desc}</p>
+                <h4 className="mt-3 font-sans text-sm font-bold text-foreground dark:text-white">{title}</h4>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground dark:text-neutral-400">{desc}</p>
               </div>
             ))}
           </div>
@@ -803,12 +811,12 @@ export function TechnologyPage() {
       {/* ── AI Integration Layer ── */}
       <section className="mt-28">
         <div className="flex flex-col gap-2 max-w-3xl">
-          <p className="text-xs uppercase tracking-[0.2em] text-[#d2f831] font-mono flex items-center gap-2">
-            <span className="size-1.5 rounded-full bg-[#d2f831]" /> Multi-AI Integration
+          <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 dark:text-[#d2f831] font-mono flex items-center gap-2">
+            <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-[#d2f831]" /> Multi-AI Integration
           </p>
           <h2 className="font-sans text-3xl font-semibold sm:text-4xl text-foreground">
             Four AI systems.{" "}
-            <span className="font-display font-normal italic text-[#d2f831]">One coherent operator experience.</span>
+            <span className="font-display font-normal italic text-emerald-700 dark:text-[#d2f831]">One coherent operator experience.</span>
           </h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
             Each AI is used for what it does best — not as a catch-all. Scoring logic is never delegated to an LLM.
@@ -821,30 +829,30 @@ export function TechnologyPage() {
             return (
               <div
                 key={ai.name}
-                className="rounded-[2rem] border border-white/[0.08] bg-[#111215]/90 p-6 sm:p-7 shadow-lg flex flex-col justify-between"
+                className="rounded-[2rem] border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/90 p-6 sm:p-7 shadow-xs dark:shadow-lg flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="flex size-11 items-center justify-center rounded-2xl bg-white/[0.05] border border-white/[0.08] text-[#d2f831]">
+                      <div className="flex size-11 items-center justify-center rounded-2xl bg-muted/60 dark:bg-white/[0.05] border border-border dark:border-white/[0.08] text-emerald-700 dark:text-[#d2f831]">
                         <Icon className="size-5" />
                       </div>
                       <div>
-                        <p className="font-sans text-base font-bold text-white">{ai.name}</p>
-                        <p className="text-[10px] text-neutral-400 font-mono">{ai.sub}</p>
+                        <p className="font-sans text-base font-bold text-foreground dark:text-white">{ai.name}</p>
+                        <p className="text-[10px] text-muted-foreground dark:text-neutral-400 font-mono">{ai.sub}</p>
                       </div>
                     </div>
-                    <span className="rounded-full border border-white/[0.08] bg-black/40 px-2.5 py-0.5 font-mono text-[9px] text-neutral-300 shrink-0">
+                    <span className="rounded-full border border-border dark:border-white/[0.08] bg-muted/60 dark:bg-black/40 px-2.5 py-0.5 font-mono text-[9px] text-muted-foreground dark:text-neutral-300 shrink-0">
                       {ai.source}
                     </span>
                   </div>
-                  <p className="mt-4 text-xs sm:text-sm leading-relaxed text-neutral-300">{ai.desc}</p>
+                  <p className="mt-4 text-xs sm:text-sm leading-relaxed text-muted-foreground dark:text-neutral-300">{ai.desc}</p>
                 </div>
                 <div className="mt-5 flex flex-wrap gap-1.5">
                   {ai.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-0.5 text-[10px] font-mono text-neutral-300"
+                      className="rounded-full border border-border dark:border-white/[0.08] bg-muted/50 dark:bg-white/[0.04] px-2.5 py-0.5 text-[10px] font-mono text-muted-foreground dark:text-neutral-300"
                     >
                       {tag}
                     </span>
@@ -860,11 +868,11 @@ export function TechnologyPage() {
           <div className="flex items-start gap-3">
             <ShieldCheck className="size-5 text-amber-400 mt-0.5 shrink-0" />
             <div>
-              <p className="text-xs font-bold text-white">LLM Isolation Guarantee</p>
-              <p className="mt-1 text-xs text-neutral-300 leading-relaxed">
+              <p className="text-xs font-bold text-foreground dark:text-white">LLM Isolation Guarantee</p>
+              <p className="mt-1 text-xs text-muted-foreground dark:text-neutral-300 leading-relaxed">
                 All four AI integrations are wrapped in try/except isolation. If any API key is missing or the external service is unreachable,
                 VOLTRA's core scoring, ranking, and maintenance planning pipeline continues without interruption. The{" "}
-                <code className="font-mono text-[11px] text-amber-300 bg-amber-950/40 px-1 py-0.5 rounded">
+                <code className="font-mono text-[11px] text-amber-600 dark:text-amber-300 bg-amber-500/10 dark:bg-amber-950/40 px-1 py-0.5 rounded">
                   advisory_source
                 </code>{" "}
                 field in API responses tells you whether a real LLM or the deterministic fallback was used.
@@ -877,12 +885,12 @@ export function TechnologyPage() {
       {/* ── Empirical Benchmarks ── */}
       <section className="mt-28">
         <div className="flex flex-col gap-2 max-w-3xl">
-          <p className="text-xs uppercase tracking-[0.2em] text-[#d2f831] font-mono flex items-center gap-2">
-            <span className="size-1.5 rounded-full bg-[#d2f831]" /> Actual Verified Metrics
+          <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 dark:text-[#d2f831] font-mono flex items-center gap-2">
+            <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-[#d2f831]" /> Actual Verified Metrics
           </p>
           <h2 className="font-sans text-3xl font-semibold sm:text-4xl text-foreground">
             Empirical Model Performance{" "}
-            <span className="font-display font-normal italic text-[#d2f831]">Benchmarks</span>
+            <span className="font-display font-normal italic text-emerald-700 dark:text-[#d2f831]">Benchmarks</span>
           </h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
             Trained and cross-validated on real Kaggle transformer datasets without simulated shortcuts.
@@ -890,46 +898,46 @@ export function TechnologyPage() {
         </div>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="group rounded-[2rem] border border-white/[0.08] bg-[#111215]/90 p-6 sm:p-7 shadow-sm transition-all duration-300 hover:border-white/20">
-            <ShieldCheck className="size-6 text-[#d2f831]" />
-            <p className="mt-8 font-sans text-4xl sm:text-5xl font-bold tracking-tight text-white font-mono">
+          <div className="group rounded-[2rem] border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/90 p-6 sm:p-7 shadow-xs dark:shadow-sm transition-all duration-300 hover:border-border/80 dark:hover:border-white/20">
+            <ShieldCheck className="size-6 text-emerald-700 dark:text-[#d2f831]" />
+            <p className="mt-8 font-sans text-4xl sm:text-5xl font-bold tracking-tight text-foreground dark:text-white font-mono">
               90.8%
             </p>
-            <p className="mt-3 font-sans text-sm font-bold text-white">DGA Fault Classification</p>
-            <p className="mt-1 text-xs text-neutral-400 leading-relaxed">
+            <p className="mt-3 font-sans text-sm font-bold text-foreground dark:text-white">DGA Fault Classification</p>
+            <p className="mt-1 text-xs text-muted-foreground dark:text-neutral-400 leading-relaxed">
               Random Forest Classifier across 7 IEC 60599 fault categories (F1 = 0.896 on 4,151 rows).
             </p>
           </div>
 
-          <div className="group rounded-[2rem] bg-[#d2f831] p-6 sm:p-7 text-neutral-950 shadow-md transition-all duration-300 hover:bg-[#c7f023]">
-            <Activity className="size-6 text-neutral-950" />
-            <p className="mt-8 font-sans text-4xl sm:text-5xl font-bold tracking-tight font-mono text-neutral-950">
+          <div className="group rounded-[2rem] bg-emerald-600 text-white dark:bg-[#d2f831] dark:text-neutral-950 p-6 sm:p-7 shadow-md transition-all duration-300 hover:bg-emerald-700 dark:hover:bg-[#c7f023]">
+            <Activity className="size-6 text-white dark:text-neutral-950" />
+            <p className="mt-8 font-sans text-4xl sm:text-5xl font-bold tracking-tight font-mono text-white dark:text-neutral-950">
               R² = 0.72
             </p>
-            <p className="mt-3 font-sans text-sm font-bold text-neutral-950">Health Index Regression</p>
-            <p className="mt-1 text-xs text-neutral-900/80 leading-relaxed">
+            <p className="mt-3 font-sans text-sm font-bold text-white dark:text-neutral-950">Health Index Regression</p>
+            <p className="mt-1 text-xs text-white/85 dark:text-neutral-900/80 leading-relaxed">
               Random Forest Regressor (MAE = 5.88) predicting continuous damage score on 470 Kaggle units.
             </p>
           </div>
 
-          <div className="group rounded-[2rem] border border-white/[0.08] bg-[#111215]/90 p-6 sm:p-7 shadow-sm transition-all duration-300 hover:border-white/20">
-            <Clock3 className="size-6 text-emerald-400" />
-            <p className="mt-8 font-sans text-4xl sm:text-5xl font-bold tracking-tight text-white font-mono">
+          <div className="group rounded-[2rem] border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/90 p-6 sm:p-7 shadow-xs dark:shadow-sm transition-all duration-300 hover:border-border/80 dark:hover:border-white/20">
+            <Clock3 className="size-6 text-emerald-600 dark:text-emerald-400" />
+            <p className="mt-8 font-sans text-4xl sm:text-5xl font-bold tracking-tight text-foreground dark:text-white font-mono">
               +89d
             </p>
-            <p className="mt-3 font-sans text-sm font-bold text-white">TX-115 Rescued Life</p>
-            <p className="mt-1 text-xs text-neutral-400 leading-relaxed">
+            <p className="mt-3 font-sans text-sm font-bold text-foreground dark:text-white">TX-115 Rescued Life</p>
+            <p className="mt-1 text-xs text-muted-foreground dark:text-neutral-400 leading-relaxed">
               Pre-failure intervention at Day 78 (RUL 7.7d) recovered useful operating life to 97 days.
             </p>
           </div>
 
-          <div className="group rounded-[2rem] border border-white/[0.08] bg-[#111215]/90 p-6 sm:p-7 shadow-sm transition-all duration-300 hover:border-white/20">
-            <Zap className="size-6 text-amber-400" />
-            <p className="mt-8 font-sans text-4xl sm:text-5xl font-bold tracking-tight text-white font-mono">
+          <div className="group rounded-[2rem] border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/90 p-6 sm:p-7 shadow-xs dark:shadow-sm transition-all duration-300 hover:border-border/80 dark:hover:border-white/20">
+            <Zap className="size-6 text-amber-500 dark:text-amber-400" />
+            <p className="mt-8 font-sans text-4xl sm:text-5xl font-bold tracking-tight text-foreground dark:text-white font-mono">
               545 MVA
             </p>
-            <p className="mt-3 font-sans text-sm font-bold text-white">Total Fleet Monitored</p>
-            <p className="mt-1 text-xs text-neutral-400 leading-relaxed">
+            <p className="mt-3 font-sans text-sm font-bold text-foreground dark:text-white">Total Fleet Monitored</p>
+            <p className="mt-1 text-xs text-muted-foreground dark:text-neutral-400 leading-relaxed">
               18 active transformers mapped across Anand District regional transmission corridors.
             </p>
           </div>
@@ -937,17 +945,17 @@ export function TechnologyPage() {
       </section>
 
       {/* ── TX-115 Intervention Story ── */}
-      <section className="mt-28 rounded-[2.5rem] border border-white/[0.08] bg-[#111215]/90 p-6 sm:p-10 shadow-2xl overflow-hidden">
+      <section className="mt-28 rounded-[2.5rem] border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/90 p-6 sm:p-10 shadow-sm dark:shadow-2xl overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
           <div>
-            <span className="text-xs font-mono font-bold uppercase tracking-widest text-[#d2f831]">
+            <span className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-700 dark:text-[#d2f831]">
               Key Demo Narrative
             </span>
-            <h3 className="mt-1 font-sans text-2xl sm:text-3xl font-bold text-white">
+            <h3 className="mt-1 font-sans text-2xl sm:text-3xl font-bold text-foreground dark:text-white">
               TX-115 · The Intervention Story
             </h3>
           </div>
-          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3.5 py-1 font-mono text-xs text-emerald-400 font-bold">
+          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3.5 py-1 font-mono text-xs text-emerald-700 dark:text-emerald-400 font-bold">
             +89d RUL Recovered
           </span>
         </div>
@@ -957,29 +965,29 @@ export function TechnologyPage() {
             {
               day: "Day 60–78",
               label: "Degradation Phase",
-              color: "border-rose-500/30 bg-rose-500/[0.05]",
-              textColor: "text-rose-400",
+              color: "border-rose-500/30 bg-rose-500/[0.04] dark:bg-rose-500/[0.05]",
+              textColor: "text-rose-600 dark:text-rose-400",
               desc: "TX-115 operated in Zone-C at progressive thermal overload. Health Index climbed from 28 → 72.3. Acetylene surge (C₂H₂ > 1400 ppm) flagged D2 high-energy arcing. RUL fell to 7.7 days at Day 78.",
             },
             {
               day: "Day 78–79",
               label: "VOLTRA Intervention",
-              color: "border-amber-500/30 bg-amber-500/[0.05]",
-              textColor: "text-amber-400",
+              color: "border-amber-500/30 bg-amber-500/[0.04] dark:bg-amber-500/[0.05]",
+              textColor: "text-amber-600 dark:text-amber-400",
               desc: "Composite risk score of 0.94 triggered highest-priority maintenance dispatch. IBM Bob advisory: 'Immediate DGA syringe sampling and load curtailment below 60% nameplate rating.' Crew deployed within 16 hours.",
             },
             {
               day: "Day 80–89",
               label: "Recovery & Stabilisation",
-              color: "border-emerald-500/30 bg-emerald-500/[0.05]",
-              textColor: "text-emerald-400",
+              color: "border-emerald-500/30 bg-emerald-500/[0.04] dark:bg-emerald-500/[0.05]",
+              textColor: "text-emerald-700 dark:text-emerald-400",
               desc: "Post-maintenance, gas levels stabilised. Health Index dropped to 29.4 (healthy range). RUL recovered from 7.7 days → 97+ days at Day 89. Transformer returned to normal service, preventing an estimated ₹4.2Cr outage cost.",
             },
           ].map(({ day, label, color, textColor, desc }) => (
             <div key={day} className={`rounded-2xl border p-5 ${color}`}>
-              <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-neutral-400">{day}</p>
+              <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground dark:text-neutral-400">{day}</p>
               <p className={`mt-1 font-sans text-base font-bold ${textColor}`}>{label}</p>
-              <p className="mt-2.5 text-xs leading-relaxed text-neutral-300">{desc}</p>
+              <p className="mt-2.5 text-xs leading-relaxed text-muted-foreground dark:text-neutral-300">{desc}</p>
             </div>
           ))}
         </div>
@@ -988,11 +996,11 @@ export function TechnologyPage() {
       {/* ── Full Tech Stack ── */}
       <section className="mt-28">
         <div className="flex flex-col gap-2 max-w-3xl">
-          <p className="text-xs uppercase tracking-[0.2em] text-[#d2f831] font-mono flex items-center gap-2">
-            <span className="size-1.5 rounded-full bg-[#d2f831]" /> Complete Technology Stack
+          <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 dark:text-[#d2f831] font-mono flex items-center gap-2">
+            <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-[#d2f831]" /> Complete Technology Stack
           </p>
           <h2 className="font-sans text-3xl font-semibold sm:text-4xl text-foreground">
-            Built end-to-end. <span className="font-display font-normal italic text-[#d2f831]">Nothing off-the-shelf.</span>
+            Built end-to-end. <span className="font-display font-normal italic text-emerald-700 dark:text-[#d2f831]">Nothing off-the-shelf.</span>
           </h2>
         </div>
 
@@ -1000,19 +1008,19 @@ export function TechnologyPage() {
           {stackRows.map(({ layer, items }) => (
             <div
               key={layer}
-              className="rounded-[1.75rem] border border-white/[0.08] bg-[#111215]/90 p-6 shadow-sm flex flex-col justify-between"
+              className="rounded-[1.75rem] border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/90 p-6 shadow-xs dark:shadow-sm flex flex-col justify-between"
             >
               <div>
-                <p className="text-xs font-mono font-bold uppercase tracking-widest text-[#d2f831] mb-4">
+                <p className="text-xs font-mono font-bold uppercase tracking-widest text-emerald-700 dark:text-[#d2f831] mb-4">
                   {layer}
                 </p>
                 <div className="space-y-3">
                   {items.map(({ name, role }) => (
                     <div key={name} className="flex items-start gap-2.5">
-                      <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[#d2f831]" />
+                      <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-emerald-600 dark:bg-[#d2f831]" />
                       <div>
-                        <p className="text-xs font-bold text-white">{name}</p>
-                        <p className="text-[11px] text-neutral-400 mt-0.5">{role}</p>
+                        <p className="text-xs font-bold text-foreground dark:text-white">{name}</p>
+                        <p className="text-[11px] text-muted-foreground dark:text-neutral-400 mt-0.5">{role}</p>
                       </div>
                     </div>
                   ))}
@@ -1024,32 +1032,32 @@ export function TechnologyPage() {
       </section>
 
       {/* ── Transparent Limitations ── */}
-      <section className="mt-28 rounded-[2rem] border border-white/[0.08] bg-[#111215]/90 p-6 sm:p-9 shadow-lg">
-        <div className="flex items-center gap-2 text-xs font-mono text-[#d2f831] font-semibold">
+      <section className="mt-28 rounded-[2rem] border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/90 p-6 sm:p-9 shadow-xs dark:shadow-lg">
+        <div className="flex items-center gap-2 text-xs font-mono text-emerald-700 dark:text-[#d2f831] font-semibold">
           <Info className="size-4" /> TRANSPARENT ENGINEERING LIMITATIONS
         </div>
-        <h3 className="mt-2 font-sans text-2xl font-bold sm:text-3xl text-white">
+        <h3 className="mt-2 font-sans text-2xl font-bold sm:text-3xl text-foreground dark:text-white">
           Known Boundaries & Academic Defense
         </h3>
-        <p className="mt-3 text-xs leading-relaxed text-neutral-400 sm:text-sm max-w-3xl">
+        <p className="mt-3 text-xs leading-relaxed text-muted-foreground dark:text-neutral-400 sm:text-sm max-w-3xl">
           To maintain scientific integrity for judges and utility engineers, we document the specific domain constraints of real dissolved gas analysis datasets:
         </p>
         <div className="mt-6 grid gap-4 sm:grid-cols-3 text-xs">
-          <div className="rounded-2xl border border-white/[0.08] bg-black/40 p-4 sm:p-5">
-            <p className="font-bold text-white font-mono text-xs">1. Furan / Paper Insulation Gap</p>
-            <p className="mt-2 text-neutral-400 leading-relaxed text-[11px]">
+          <div className="rounded-2xl border border-border dark:border-white/[0.08] bg-muted/40 dark:bg-black/40 p-4 sm:p-5">
+            <p className="font-bold text-foreground dark:text-white font-mono text-xs">1. Furan / Paper Insulation Gap</p>
+            <p className="mt-2 text-muted-foreground dark:text-neutral-400 leading-relaxed text-[11px]">
               The Health Index model achieves R² = 0.717 because public DGA datasets omit furan 2-FAL and degree of polymerisation (DP) measurements (IEEE C57.104, CIGRE TB 296). This is a known dataset gap, not a modeling flaw.
             </p>
           </div>
-          <div className="rounded-2xl border border-white/[0.08] bg-black/40 p-4 sm:p-5">
-            <p className="font-bold text-white font-mono text-xs">2. T2 Fault Class Recall (74.3%)</p>
-            <p className="mt-2 text-neutral-400 leading-relaxed text-[11px]">
+          <div className="rounded-2xl border border-border dark:border-white/[0.08] bg-muted/40 dark:bg-black/40 p-4 sm:p-5">
+            <p className="font-bold text-foreground dark:text-white font-mono text-xs">2. T2 Fault Class Recall (74.3%)</p>
+            <p className="mt-2 text-muted-foreground dark:text-neutral-400 leading-relaxed text-[11px]">
               The T2 class (moderate thermal fault 300°C–700°C) shares overlapping gas ratios with T1 and T3 boundary states. The system flags this uncertainty explicitly in operator advisories.
             </p>
           </div>
-          <div className="rounded-2xl border border-white/[0.08] bg-black/40 p-4 sm:p-5">
-            <p className="font-bold text-white font-mono text-xs">3. Calibrated RUL Estimation</p>
-            <p className="mt-2 text-neutral-400 leading-relaxed text-[11px]">
+          <div className="rounded-2xl border border-border dark:border-white/[0.08] bg-muted/40 dark:bg-black/40 p-4 sm:p-5">
+            <p className="font-bold text-foreground dark:text-white font-mono text-xs">3. Calibrated RUL Estimation</p>
+            <p className="mt-2 text-muted-foreground dark:text-neutral-400 leading-relaxed text-[11px]">
               Because utility datasets do not provide run-to-destruction ground truth labels, Remaining Useful Life is modeled through a calibrated piecewise function validated against transformer thermal dissipation curves.
             </p>
           </div>
@@ -1059,11 +1067,11 @@ export function TechnologyPage() {
       {/* ── Team ── */}
       <section className="mt-28">
         <div className="flex flex-col gap-2 max-w-3xl">
-          <p className="text-xs uppercase tracking-[0.2em] text-[#d2f831] font-mono flex items-center gap-2">
-            <span className="size-1.5 rounded-full bg-[#d2f831]" /> Techtonics · IBM Bobathon AI Hackathon
+          <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 dark:text-[#d2f831] font-mono flex items-center gap-2">
+            <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-[#d2f831]" /> Techtonics · IBM Bobathon AI Hackathon
           </p>
           <h2 className="font-sans text-3xl font-semibold sm:text-4xl text-foreground">
-            Built by <span className="font-display font-normal italic text-[#d2f831]">Team Techtonics.</span>
+            Built by <span className="font-display font-normal italic text-emerald-700 dark:text-[#d2f831]">Team Techtonics.</span>
           </h2>
         </div>
 
@@ -1071,25 +1079,25 @@ export function TechnologyPage() {
           {team.map(({ name, role, email, lead, branch }) => (
             <div
               key={name}
-              className="flex items-center gap-4 rounded-[1.75rem] border border-white/[0.08] bg-[#111215]/90 p-5 transition-all duration-300 hover:border-[#d2f831]/40 shadow-sm"
+              className="flex items-center gap-4 rounded-[1.75rem] border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/90 p-5 transition-all duration-300 hover:border-emerald-600/40 dark:hover:border-[#d2f831]/40 shadow-xs dark:shadow-sm"
             >
-              <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-[#d2f831]/10 text-[#d2f831] font-mono text-xl font-bold border border-[#d2f831]/20">
+              <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-emerald-500/10 text-emerald-700 dark:bg-[#d2f831]/10 dark:text-[#d2f831] font-mono text-xl font-bold border border-emerald-500/20 dark:border-[#d2f831]/20">
                 {name[0]}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="font-sans text-sm font-bold text-white truncate">{name}</p>
+                  <p className="font-sans text-sm font-bold text-foreground dark:text-white truncate">{name}</p>
                   {lead && (
-                    <span className="rounded-full bg-[#d2f831]/20 border border-[#d2f831]/30 px-2 py-0.5 font-mono text-[9px] font-bold text-[#d2f831]">
+                    <span className="rounded-full bg-emerald-500/15 text-emerald-800 border border-emerald-500/30 dark:bg-[#d2f831]/20 dark:text-[#d2f831] dark:border-[#d2f831]/30 px-2 py-0.5 font-mono text-[9px] font-bold">
                       Lead
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-neutral-400 mt-0.5 leading-snug">{role}</p>
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-mono text-neutral-400">
-                  <span className="text-neutral-300">{email}</span>
+                <p className="text-xs text-muted-foreground dark:text-neutral-400 mt-0.5 leading-snug">{role}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] font-mono text-muted-foreground dark:text-neutral-400">
+                  <span className="text-foreground/90 dark:text-neutral-300">{email}</span>
                   <span className="opacity-40">·</span>
-                  <span className="text-[#d2f831]/80">branch: {branch}</span>
+                  <span className="text-emerald-700 dark:text-[#d2f831]/80">branch: {branch}</span>
                 </div>
               </div>
             </div>

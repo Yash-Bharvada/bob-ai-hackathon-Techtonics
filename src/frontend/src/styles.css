@@ -75,9 +75,9 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.18 0.014 105);
 
-  --primary: oklch(0.69 0.2 128);
-  --primary-foreground: oklch(0.14 0.025 125);
-  --primary-soft: oklch(0.92 0.08 128);
+  --primary: oklch(0.48 0.18 142);
+  --primary-foreground: oklch(0.99 0 0);
+  --primary-soft: oklch(0.92 0.05 142);
 
   --secondary: oklch(0.94 0.008 105);
   --secondary-foreground: oklch(0.22 0.012 105);
@@ -94,8 +94,8 @@
   /* Semantic Telemetry Colors - Clean, high contrast, neon lime accents */
   --signal: oklch(0.55 0.18 220); /* Authoritative Electric Cyan/Blue */
   --signal-foreground: oklch(1 0 0);
-  --lime: oklch(0.69 0.2 128); /* Electric Lime */
-  --lime-foreground: oklch(0.14 0.025 125);
+  --lime: oklch(0.48 0.18 142); /* High contrast deep emerald in light mode */
+  --lime-foreground: oklch(0.99 0 0);
   --warning: oklch(0.65 0.16 72); /* Rich Amber */
   --warning-soft: oklch(0.95 0.04 80);
   --danger: oklch(0.58 0.22 26); /* Crisp Crimson */
@@ -1579,3 +1579,31 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     inset: 0;
   }
 }
+
+/* ── Seamless Endless Flowing Marquee Carousel ── */
+@keyframes marquee-scroll {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee-flow {
+  display: flex;
+  width: max-content;
+  animation: marquee-scroll 45s linear infinite;
+  will-change: transform;
+}
+
+.animate-marquee-flow:hover {
+  animation-play-state: paused;
+}
+
+@media (max-width: 640px) {
+  .animate-marquee-flow {
+    animation-duration: 32s;
+  }
+}
+
