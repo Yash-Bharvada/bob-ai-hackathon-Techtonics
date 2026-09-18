@@ -1199,10 +1199,17 @@ function PlatformModules() {
   const modules = [
     {
       to: "/grid",
-      badge: "LIVE GRID & BLACKOUT SHIELD",
+      badge: "LIVE GRID CORRIDOR",
       title: "Grid Corridor Inspector",
-      desc: "Interactive SCADA telemetry map, DGA gas ratios, Duval pentagons, and real-time consumer blackout estimator for all 18 Anand transformers.",
+      desc: "Interactive SCADA telemetry map, DGA gas ratios, Duval pentagons, and real-time transformer health monitoring for all 18 Anand transformers.",
       accent: "text-emerald-700 dark:text-[#d2f831] border-emerald-500/30 bg-emerald-500/10",
+    },
+    {
+      to: "/blackout",
+      badge: "BLACKOUT DEFENSE COMMAND",
+      title: "Blackout Prevention & SMS Dispatch",
+      desc: "Dedicated consumer impact estimator, household outage calculation, predicted ETR windows, and contractor-authorized emergency warning SMS dispatcher.",
+      accent: "text-rose-600 dark:text-rose-400 border-rose-500/30 bg-rose-500/10",
     },
     {
       to: "/dashboard",
@@ -1237,29 +1244,31 @@ function PlatformModules() {
           All 5 Platform Views
         </h2>
         <p className="text-sm text-muted-foreground dark:text-neutral-400">
-          Switch seamlessly across live grid corridor telemetry, executive fleet analytics, ad-hoc ML scoring, and architecture documentation.
+          Switch seamlessly across live grid corridor telemetry, blackout defense command, executive fleet analytics, ad-hoc ML scoring, and architecture documentation.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {modules.map((m, idx) => (
           <Link
             key={idx}
             to={m.to}
-            className="group relative rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card dark:bg-[#121318] p-6 shadow-xs hover:border-emerald-500/40 dark:hover:border-[#d2f831]/40 hover:shadow-lg transition-all duration-300"
+            className="group relative rounded-3xl border border-border/80 dark:border-white/[0.08] bg-card dark:bg-[#121318] p-6 shadow-xs hover:border-emerald-500/40 dark:hover:border-[#d2f831]/40 hover:shadow-lg transition-all duration-300 flex flex-col justify-between"
           >
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-mono font-bold ${m.accent}`}>
-                {m.badge}
-              </span>
-              <ArrowUpRight className="size-4 text-muted-foreground group-hover:text-foreground dark:group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+            <div>
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[10px] font-mono font-bold ${m.accent}`}>
+                  {m.badge}
+                </span>
+                <ArrowUpRight className="size-4 text-muted-foreground group-hover:text-foreground dark:group-hover:text-white group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+              </div>
+              <h3 className="text-base font-bold text-foreground dark:text-white group-hover:text-emerald-700 dark:group-hover:text-[#d2f831] transition-colors">
+                {m.title}
+              </h3>
+              <p className="mt-2 text-xs text-muted-foreground dark:text-neutral-400 leading-relaxed">
+                {m.desc}
+              </p>
             </div>
-            <h3 className="text-lg font-bold text-foreground dark:text-white group-hover:text-emerald-700 dark:group-hover:text-[#d2f831] transition-colors">
-              {m.title}
-            </h3>
-            <p className="mt-2 text-xs text-muted-foreground dark:text-neutral-400 leading-relaxed">
-              {m.desc}
-            </p>
           </Link>
         ))}
       </div>

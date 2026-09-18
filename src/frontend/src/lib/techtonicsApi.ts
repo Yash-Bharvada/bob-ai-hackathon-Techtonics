@@ -569,6 +569,53 @@ export const techtonicsApi = {
     return res.json();
   },
 
+  /** GET /api/blackout/consumers/{asset_id} */
+  async getFeederConsumers(assetId: string): Promise<FeederConsumersResponse> {
+    const authHeaders = _getAuthHeaders();
+    const res = await fetch(`${API_BASE}/api/blackout/consumers/${encodeURIComponent(assetId)}`, {
+      headers: { ...authHeaders },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status} fetching feeder consumers for ${assetId}`);
+    }
+    return res.json();
+  },
+
+  /** GET /api/blackout/consumers/{asset_id}/csv — returns direct download URL */
+  getFeederConsumerCsvUrl(assetId: string): string {
+    return `${API_BASE}/api/blackout/consumers/${encodeURIComponent(assetId)}/csv`;
+  },
+
+  /** GET /api/blackout/consumers/sample-template — returns direct sample template CSV URL */
+  getSampleConsumerCsvUrl(): string {
+    return `${API_BASE}/api/blackout/consumers/sample-template`;
+  },
+
+  /** POST /api/blackout/consumers/upload */
+  async uploadFeederConsumersCsv(file: File, defaultAssetId: string = "TX-107"): Promise<{ status: string; message: string; uploaded_count: number; consumers: FeederConsumerRecord[] }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const authHeaders = _getAuthHeaders();
+    
+    // Remove Content-Type header if present so browser sets boundary for multipart
+    const headers = { ...authHeaders };
+    delete headers["Content-Type"];
+
+    const res = await fetch(`${API_BASE}/api/blackout/consumers/upload?default_asset_id=${encodeURIComponent(defaultAssetId)}`, {
+      method: "POST",
+      headers,
+      body: formData,
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      throw new Error(`HTTP ${res.status} uploading consumer CSV: ${errText}`);
+    }
+    return res.json();
+  },
+
   /** RAG Chatbot Integration: chatWithGridAdvisor */
   chatWithGridAdvisor,
   checkRagHealth,
@@ -657,6 +704,28 @@ export interface SmsBroadcastResponse {
 export interface SmsLogsResponse {
   logs: SmsDispatchRecord[];
   total: number;
+}
+
+export interface FeederConsumerRecord {
+  consumer_id: string;
+  asset_id: string;
+  substation: string;
+  feeder_line: string;
+  consumer_name: string;
+  category: string;
+  mobile_number: string;
+  address_area: string;
+  peak_load_kw: number;
+  sms_alert_status: string;
+}
+
+export interface FeederConsumersResponse {
+  asset_id: string;
+  substation: string;
+  total_feeder_households: number;
+  sample_consumers_count: number;
+  consumers: FeederConsumerRecord[];
+  csv_download_url: string;
 }
 
 

@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { to: "/", label: "Home" },
   { to: "/dashboard", label: "Dashboard" },
   { to: "/grid", label: "Live Grid" },
+  { to: "/blackout", label: "Blackout Defense" },
   { to: "/predict", label: "Prediction" },
   { to: "/technology", label: "Technology" },
 ] as const;
