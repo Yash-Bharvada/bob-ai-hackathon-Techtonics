@@ -616,6 +616,36 @@ export const techtonicsApi = {
     return res.json();
   },
 
+  /** GET /api/stream/assets */
+  async getStreamAssets(): Promise<{ assets: StreamAssetMetadata[] }> {
+    const res = await fetch(`${API_BASE}/api/stream/assets`, {
+      headers: _getAuthHeaders(),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status} fetching streaming assets`);
+    return res.json();
+  },
+
+  /** GET /api/stream/tick/{asset_id}/{day} */
+  async getStreamTick(assetId: string, day: number): Promise<StreamTickResponse> {
+    const res = await fetch(`${API_BASE}/api/stream/tick/${encodeURIComponent(assetId)}/${day}`, {
+      headers: _getAuthHeaders(),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status} fetching stream tick for ${assetId} day ${day}`);
+    return res.json();
+  },
+
+  /** GET /api/stream/history/{asset_id}?up_to_day={upToDay} */
+  async getStreamHistory(assetId: string, upToDay: number = 89): Promise<StreamHistoryResponse> {
+    const res = await fetch(`${API_BASE}/api/stream/history/${encodeURIComponent(assetId)}?up_to_day=${upToDay}`, {
+      headers: _getAuthHeaders(),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status} fetching stream history for ${assetId}`);
+    return res.json();
+  },
+
   /** RAG Chatbot Integration: chatWithGridAdvisor */
   chatWithGridAdvisor,
   checkRagHealth,
@@ -727,5 +757,77 @@ export interface FeederConsumersResponse {
   consumers: FeederConsumerRecord[];
   csv_download_url: string;
 }
+
+// ─── Real-Time Telemetry Streaming & On-the-Fly ML Inference Types ─────────
+export interface StreamAssetMetadata {
+  asset_id: string;
+  substation: string;
+  voltage_kv: string;
+  mva_rating: number;
+  feeder_line: string;
+  phenomenon: string;
+  color: string;
+}
+
+export interface StreamSensorTelemetry {
+  hydrogen: number;
+  oxygen: number;
+  nitrogen: number;
+  methane: number;
+  co: number;
+  co2: number;
+  ethylene: number;
+  ethane: number;
+  acetylene: number;
+  top_oil_temp_c: number;
+  load_pct: number;
+  vibration_g: number;
+  dielectric_rigidity: number;
+  water_content: number;
+}
+
+export interface StreamLiveMlOutput {
+  health_index: number;
+  risk_tier: string;
+  rul_days: number;
+  fault_type: string;
+  fault_confidence_pct: number;
+  all_fault_probs: Record<string, number>;
+  blackout_probability_pct: number;
+  etr_mins: number;
+  ttf_hours: number;
+  current_load_mw: number;
+  affected_households: number;
+}
+
+export interface StreamTickResponse {
+  asset_id: string;
+  day: number;
+  date: string;
+  total_days: number;
+  metadata: StreamAssetMetadata;
+  sensor_telemetry: StreamSensorTelemetry;
+  live_ml_output: StreamLiveMlOutput;
+}
+
+export interface StreamHistoryPoint {
+  day: number;
+  date: string;
+  hydrogen: number;
+  acetylene: number;
+  methane: number;
+  ethylene: number;
+  co: number;
+  top_oil_temp_c: number;
+  load_pct: number;
+  health_index: number;
+}
+
+export interface StreamHistoryResponse {
+  asset_id: string;
+  history: StreamHistoryPoint[];
+  count: number;
+}
+
 
 

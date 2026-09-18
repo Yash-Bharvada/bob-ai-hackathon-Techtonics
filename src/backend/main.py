@@ -1437,7 +1437,165 @@ async def upload_feeder_consumers_csv(file: UploadFile = File(...), default_asse
         }
     except Exception as e:
         logger.error(f"Error processing CSV upload: {e}")
-        raise HTTPException(status_code=400, detail=f"Failed to process CSV file: {str(e)}")
+# ---------------------------------------------------------------------------
+# Real-Time Telemetry Streaming & On-the-Fly ML Inference (2 Focus Assets)
+# ---------------------------------------------------------------------------
+STREAM_ASSETS = {
+    "TX-107": {
+        "asset_id": "TX-107",
+        "substation": "Anand GIDC Industrial Substation",
+        "voltage_kv": "66 kV",
+        "mva_rating": 25.0,
+        "feeder_line": "Line-B Industrial Feeder",
+        "phenomenon": "Electrical Discharge & Arcing Degradation (D1/D2 Surge)",
+        "color": "#ef4444"
+    },
+    "TX-115": {
+        "asset_id": "TX-115",
+        "substation": "Anand South Bulk Substation",
+        "voltage_kv": "66 kV",
+        "mva_rating": 31.5,
+        "feeder_line": "Borsad Road Bulk Feeder",
+        "phenomenon": "Thermal Stress Fluctuations & Dynamic Peak Load",
+        "color": "#f59e0b"
+    }
+}
+
+@app.get("/api/stream/assets")
+def get_streaming_assets():
+    return {"assets": list(STREAM_ASSETS.values())}
+
+@app.get("/api/stream/tick/{asset_id}/{day}")
+def get_stream_tick(asset_id: str, day: int):
+    clean_id = asset_id.strip().upper()
+    if clean_id not in STREAM_ASSETS:
+        clean_id = "TX-107"
+        
+    ts_file = DATA_DIR / "transformer_timeseries.csv"
+    if not ts_file.exists():
+        raise HTTPException(status_code=404, detail="Time-series dataset file not found.")
+        
+    df = pd.read_csv(ts_file)
+    sub = df[(df["asset_id"].str.strip().str.upper() == clean_id)].sort_values("day")
+    if sub.empty:
+        raise HTTPException(status_code=404, detail=f"Asset {clean_id} not found in time-series.")
+        
+    total_days = len(sub)
+    day_clamped = max(0, min(total_days - 1, int(day)))
+    
+    row_data = sub[sub["day"] == day_clamped]
+    if row_data.empty:
+        row_data = sub.iloc[day_clamped:day_clamped+1]
+        
+    row_dict = row_data.iloc[0].to_dict()
+    
+    # Run Live ML Pipeline Model 1 (Health Index) & Model 2 (DGA Classifier) on this specific row
+    ml_score = score_asset_risk(row_dict, generate_advisory=False)
+    
+    hi_score = float(ml_score.get("health_index_score", 30.0))
+    fault_type = str(ml_score.get("fault_type", "Normal"))
+    fault_confidence = float(ml_score.get("fault_confidence", 10.0)) / 100.0
+    rul_days_val = float(ml_score.get("RUL_days", 100.0))
+    risk_tier_val = str(ml_score.get("risk_tier", "LOW"))
+    
+    asset_meta = STREAM_ASSETS[clean_id]
+    mva_rating = asset_meta["mva_rating"]
+    load_pct = float(row_dict.get("load_pct", 75.0))
+    current_load_mw = round(mva_rating * (load_pct / 100.0) * 0.90, 2)
+    residential_mw = current_load_mw * 0.45
+    affected_households = int(round((residential_mw * 1000.0) / 0.70))
+    
+    # Real-time blackout probability derived on this tick
+    blackout_prob_pct = min(99.5, max(2.5, (hi_score * 0.9) + (fault_confidence * 35.0)))
+    
+    # Dynamic continuous ETR physics calculation
+    base_fault_repair_mins = {
+        "D2": 150, "D1": 120, "T3": 135, "T2": 100, "T1": 70, "PD": 55, "NORMAL": 35
+    }
+    base_repair = 45
+    for fk, mins in base_fault_repair_mins.items():
+        if fk.upper() in fault_type.upper():
+            base_repair = mins
+            break
+            
+    hi_penalty = hi_score * 1.15
+    dga_penalty = fault_confidence * 35.0
+    mva_factor = (mva_rating / 25.0) * 12.0
+    asset_digits = ''.join(filter(str.isdigit, clean_id))
+    asset_num = int(asset_digits) if asset_digits else 107
+    site_access_offset = (asset_num * 7) % 23 - 11
+    
+    raw_etr = base_repair + hi_penalty + dga_penalty + mva_factor + site_access_offset
+    etr_mins = int(round(max(25, min(360, raw_etr))))
+    
+    raw_ttf = max(0.3, ((100.0 - hi_score) / 11.5) * (1.0 - (fault_confidence * 0.45)))
+    ttf_hours = round(raw_ttf, 1)
+    
+    return {
+        "asset_id": clean_id,
+        "day": day_clamped,
+        "date": str(row_dict.get("date", "")),
+        "total_days": total_days,
+        "metadata": asset_meta,
+        "sensor_telemetry": {
+            "hydrogen": round(float(row_dict.get("Hydrogen", 0)), 2),
+            "oxygen": round(float(row_dict.get("Oxigen", 0)), 2),
+            "nitrogen": round(float(row_dict.get("Nitrogen", 0)), 2),
+            "methane": round(float(row_dict.get("Methane", 0)), 2),
+            "co": round(float(row_dict.get("CO", 0)), 2),
+            "co2": round(float(row_dict.get("CO2", 0)), 2),
+            "ethylene": round(float(row_dict.get("Ethylene", 0)), 2),
+            "ethane": round(float(row_dict.get("Ethane", 0)), 2),
+            "acetylene": round(float(row_dict.get("Acethylene", 0)), 2),
+            "top_oil_temp_c": round(float(row_dict.get("top_oil_temp_c", 65.0)), 2),
+            "load_pct": round(load_pct, 2),
+            "vibration_g": round(float(row_dict.get("vibration_g", 0.05)), 4),
+            "dielectric_rigidity": round(float(row_dict.get("Dielectric rigidity", 60.0)), 2),
+            "water_content": round(float(row_dict.get("Water content", 12.0)), 2)
+        },
+        "live_ml_output": {
+            "health_index": round(hi_score, 2),
+            "risk_tier": risk_tier_val,
+            "rul_days": round(rul_days_val, 1),
+            "fault_type": fault_type,
+            "fault_confidence_pct": round(fault_confidence * 100, 1),
+            "all_fault_probs": ml_score.get("fault_proba_all", {}),
+            "blackout_probability_pct": round(blackout_prob_pct, 1),
+            "etr_mins": etr_mins,
+            "ttf_hours": ttf_hours,
+            "current_load_mw": current_load_mw,
+            "affected_households": affected_households
+        }
+    }
+
+@app.get("/api/stream/history/{asset_id}")
+def get_stream_history(asset_id: str, up_to_day: int = 89):
+    clean_id = asset_id.strip().upper()
+    if clean_id not in STREAM_ASSETS:
+        clean_id = "TX-107"
+        
+    ts_file = DATA_DIR / "transformer_timeseries.csv"
+    if not ts_file.exists():
+        raise HTTPException(status_code=404, detail="Time-series dataset file not found.")
+        
+    df = pd.read_csv(ts_file)
+    sub = df[(df["asset_id"].str.strip().str.upper() == clean_id) & (df["day"] <= up_to_day)].sort_values("day")
+    
+    history = []
+    for _, row in sub.iterrows():
+        history.append({
+            "day": int(row["day"]),
+            "date": str(row["date"]),
+            "hydrogen": round(float(row["Hydrogen"]), 1),
+            "acetylene": round(float(row["Acethylene"]), 2),
+            "methane": round(float(row["Methane"]), 1),
+            "ethylene": round(float(row["Ethylene"]), 2),
+            "co": round(float(row["CO"]), 1),
+            "top_oil_temp_c": round(float(row["top_oil_temp_c"]), 1),
+            "load_pct": round(float(row["load_pct"]), 1),
+            "health_index": round(float(row["health_index"]), 1)
+        })
+    return {"asset_id": clean_id, "history": history, "count": len(history)}
 
 
 # ---------------------------------------------------------------------------

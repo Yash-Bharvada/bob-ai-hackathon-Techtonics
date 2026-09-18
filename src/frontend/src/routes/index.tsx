@@ -1198,6 +1198,13 @@ function Analytics({ historyData = defaultHistory }: { historyData?: Array<{ tim
 function PlatformModules() {
   const modules = [
     {
+      to: "/stream",
+      badge: "REAL-TIME SCADA STREAM",
+      title: "Live Sensor Stream & Dynamic ML",
+      desc: "Sequential 90-day time-series telemetry replay at 1 row / 2s with live Recharts graphing, recalculating Health Index, DGA state, and Blackout ETR dynamically on incoming ticks.",
+      accent: "text-red-500 border-red-500/30 bg-red-500/10",
+    },
+    {
       to: "/grid",
       badge: "LIVE GRID CORRIDOR",
       title: "Grid Corridor Inspector",
@@ -1241,10 +1248,10 @@ function PlatformModules() {
           Explore Full VOLTRA Console
         </p>
         <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground dark:text-white font-display">
-          All 5 Platform Views
+          All 6 Platform Views
         </h2>
         <p className="text-sm text-muted-foreground dark:text-neutral-400">
-          Switch seamlessly across live grid corridor telemetry, blackout defense command, executive fleet analytics, ad-hoc ML scoring, and architecture documentation.
+          Switch seamlessly across live stream telemetry replay, grid corridor SCADA, blackout defense command, executive fleet analytics, ad-hoc ML scoring, and architecture documentation.
         </p>
       </div>
 

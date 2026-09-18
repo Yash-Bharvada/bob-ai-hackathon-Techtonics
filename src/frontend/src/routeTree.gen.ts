@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TechnologyRouteImport } from './routes/technology'
+import { Route as StreamRouteImport } from './routes/stream'
 import { Route as PredictRouteImport } from './routes/predict'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as GridRouteImport } from './routes/grid'
@@ -20,6 +21,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const TechnologyRoute = TechnologyRouteImport.update({
   id: '/technology',
   path: '/technology',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StreamRoute = StreamRouteImport.update({
+  id: '/stream',
+  path: '/stream',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PredictRoute = PredictRouteImport.update({
@@ -60,6 +66,7 @@ export interface FileRoutesByFullPath {
   '/grid': typeof GridRoute
   '/login': typeof LoginRoute
   '/predict': typeof PredictRoute
+  '/stream': typeof StreamRoute
   '/technology': typeof TechnologyRoute
 }
 export interface FileRoutesByTo {
@@ -69,6 +76,7 @@ export interface FileRoutesByTo {
   '/grid': typeof GridRoute
   '/login': typeof LoginRoute
   '/predict': typeof PredictRoute
+  '/stream': typeof StreamRoute
   '/technology': typeof TechnologyRoute
 }
 export interface FileRoutesById {
@@ -79,6 +87,7 @@ export interface FileRoutesById {
   '/grid': typeof GridRoute
   '/login': typeof LoginRoute
   '/predict': typeof PredictRoute
+  '/stream': typeof StreamRoute
   '/technology': typeof TechnologyRoute
 }
 export interface FileRouteTypes {
@@ -90,6 +99,7 @@ export interface FileRouteTypes {
     | '/grid'
     | '/login'
     | '/predict'
+    | '/stream'
     | '/technology'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -99,6 +109,7 @@ export interface FileRouteTypes {
     | '/grid'
     | '/login'
     | '/predict'
+    | '/stream'
     | '/technology'
   id:
     | '__root__'
@@ -108,6 +119,7 @@ export interface FileRouteTypes {
     | '/grid'
     | '/login'
     | '/predict'
+    | '/stream'
     | '/technology'
   fileRoutesById: FileRoutesById
 }
@@ -118,6 +130,7 @@ export interface RootRouteChildren {
   GridRoute: typeof GridRoute
   LoginRoute: typeof LoginRoute
   PredictRoute: typeof PredictRoute
+  StreamRoute: typeof StreamRoute
   TechnologyRoute: typeof TechnologyRoute
 }
 
@@ -128,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/technology'
       fullPath: '/technology'
       preLoaderRoute: typeof TechnologyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stream': {
+      id: '/stream'
+      path: '/stream'
+      fullPath: '/stream'
+      preLoaderRoute: typeof StreamRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/predict': {
@@ -182,6 +202,7 @@ const rootRouteChildren: RootRouteChildren = {
   GridRoute: GridRoute,
   LoginRoute: LoginRoute,
   PredictRoute: PredictRoute,
+  StreamRoute: StreamRoute,
   TechnologyRoute: TechnologyRoute,
 }
 export const routeTree = rootRouteImport

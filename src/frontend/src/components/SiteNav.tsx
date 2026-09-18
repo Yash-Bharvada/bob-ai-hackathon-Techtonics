@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 const NAV_LINKS = [
   { to: "/", label: "Home" },
+  { to: "/stream", label: "Live Stream" },
   { to: "/dashboard", label: "Dashboard" },
   { to: "/grid", label: "Live Grid" },
   { to: "/blackout", label: "Blackout Defense" },
@@ -129,6 +130,7 @@ export function SiteNav() {
             {NAV_LINKS.map((l) => {
               const active = l.to === "/" ? path === "/" : path.startsWith(l.to);
               const isLiveGrid = l.to === "/grid";
+              const isStream = l.to === "/stream";
               return (
                 <Link
                   key={l.to}
@@ -136,12 +138,17 @@ export function SiteNav() {
                   className={`rounded-full px-3.5 py-1.5 text-xs transition-all ${
                     active
                       ? "bg-white/[0.12] text-white shadow-sm font-bold border border-white/[0.08]"
+                      : isStream
+                      ? "text-red-400 font-bold hover:bg-white/[0.06] hover:text-red-300"
                       : isLiveGrid
                       ? "text-[#d2f831] font-bold hover:bg-white/[0.06] hover:text-[#e4ff54]"
                       : "text-neutral-400 hover:text-white hover:bg-white/[0.06] font-semibold"
                   }`}
                 >
                   <span className="inline-flex items-center gap-1.5">
+                    {isStream && (
+                      <span className="size-1.5 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444] animate-ping" />
+                    )}
                     {isLiveGrid && (
                       <span className="size-1.5 rounded-full bg-[#d2f831] shadow-[0_0_8px_#d2f831] animate-pulse" />
                     )}
