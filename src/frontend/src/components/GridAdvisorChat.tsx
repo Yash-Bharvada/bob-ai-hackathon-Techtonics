@@ -3,8 +3,10 @@ import { useRouterState } from "@tanstack/react-router";
 import {
   chatWithGridAdvisor,
   checkRagHealth,
+  ingestCsvFile,
   type RagChatResponse,
   type RagChatSource,
+  type IngestResponse,
 } from "@/lib/ragApi";
 import {
   Sheet,
@@ -31,6 +33,9 @@ import {
   MessageSquare,
   Activity,
   Layers,
+  UploadCloud,
+  CheckCircle2,
+  FileSpreadsheet,
 } from "lucide-react";
 
 interface ChatMessage {
@@ -54,6 +59,12 @@ export function GridAdvisorChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputQuery, setInputQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [customSuggestions, setCustomSuggestions] = useState<string[]>([]);
   const [apiOnline, setApiOnline] = useState<boolean | null>(null);
   const [focusedAssetId, setFocusedAssetId] = useState<string | null>(null);
   const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
@@ -64,6 +75,7 @@ export function GridAdvisorChat() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Periodic health check (every 30 seconds when drawer is open, and once on mount)
   useEffect(() => {
@@ -122,8 +134,11 @@ export function GridAdvisorChat() {
     }
   }, [messages, isLoading]);
 
-  // Contextual suggestion chips based on active route and selected asset
+  // Contextual suggestion chips based on dynamic uploads, active route and selected asset
   const dynamicSuggestions = (() => {
+    if (customSuggestions.length > 0) {
+      return customSuggestions;
+    }
     if (isGridRoute && focusedAssetId) {
       return [
         `Why is ${focusedAssetId} underperforming?`,
@@ -142,6 +157,63 @@ export function GridAdvisorChat() {
     }
     return DEFAULT_SUGGESTIONS;
   })();
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Reset input so same file can be selected again
+    event.target.value = "";
+
+    setIsUploading(true);
+    setUploadStatus(null);
+
+    try {
+      const res: IngestResponse = await ingestCsvFile(file);
+      if (res.status === "success") {
+        const assetList = res.assets.length > 0 ? res.assets.join(", ") : "telemetry data";
+
+        setUploadStatus({
+          type: "success",
+          message: `Ingested ${res.documents_indexed} rows (${assetList})`,
+        });
+
+        // Add assistant system announcement to conversation
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `sys-${Date.now()}`,
+            sender: "assistant",
+            text: `📊 **Dynamic Telemetry Ingested**:\n\nSuccessfully indexed **${res.documents_indexed} records** from \`${res.filename}\`.\n\n• **Assets:** ${assetList}\n• **Recorded Dates:** ${res.dates.slice(0, 3).join(", ")}${res.dates.length > 3 ? "..." : ""}\n\nThe vector knowledge base has been dynamically updated. You can immediately ask questions about these records!`,
+            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          },
+        ]);
+
+        if (res.assets.length > 0) {
+          const newSuggestions = [
+            `Why is ${res.assets[0]} underperforming?`,
+            `Summarize performance for ${res.assets.join(" and ")}.`,
+            `What is the weather impact on ${res.assets[0]}?`,
+            "Which asset has the largest deviation?",
+          ];
+          setCustomSuggestions(newSuggestions);
+          setInputQuery(`Why is ${res.assets[0]} underperforming?`);
+        }
+      } else {
+        setUploadStatus({
+          type: "error",
+          message: res.message || "Failed to ingest telemetry CSV.",
+        });
+      }
+    } catch (err: any) {
+      setUploadStatus({
+        type: "error",
+        message: err?.message || "Failed to upload and ingest CSV.",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSend = async (overridePrompt?: string) => {
     const query = (overridePrompt ?? inputQuery).trim();
@@ -272,17 +344,36 @@ export function GridAdvisorChat() {
                   </div>
                 </div>
 
-                {messages.length > 0 && (
+                <div className="flex items-center gap-1.5">
                   <Button
-                    variant="ghost"
-                    size="icon-xs"
-                    onClick={handleClearHistory}
-                    title="Clear conversation"
-                    className="text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="h-7 text-[11px] font-medium gap-1.5 px-2.5 rounded-lg border-border/80 hover:bg-signal/10 hover:text-signal transition-colors"
+                    title="Upload and dynamically index CSV telemetry data"
                   >
-                    <Trash2 className="size-3.5" />
+                    {isUploading ? (
+                      <Loader2 className="size-3 animate-spin text-signal" />
+                    ) : (
+                      <UploadCloud className="size-3 text-signal" />
+                    )}
+                    <span>{isUploading ? "Ingesting..." : "Ingest CSV"}</span>
                   </Button>
-                )}
+
+                  {messages.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleClearHistory}
+                      title="Clear conversation"
+                      className="size-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {/* Context bar if on /grid or asset focused */}
@@ -485,6 +576,43 @@ export function GridAdvisorChat() {
 
           {/* Footer Input Area */}
           <div className="p-3 sm:p-4 border-t border-border/80 bg-surface/80 dark:bg-card/60 backdrop-blur-md">
+            {/* Hidden CSV file input */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".csv"
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+
+            {/* Ingestion status banner */}
+            {uploadStatus && (
+              <div
+                className={`mb-2.5 flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium animate-in fade-in duration-150 ${
+                  uploadStatus.type === "success"
+                    ? "bg-lime/10 text-lime border border-lime/25"
+                    : "bg-destructive/10 text-destructive border border-destructive/25"
+                }`}
+              >
+                <div className="flex items-center gap-1.5 truncate">
+                  {uploadStatus.type === "success" ? (
+                    <CheckCircle2 className="size-3.5 shrink-0" />
+                  ) : (
+                    <AlertCircle className="size-3.5 shrink-0" />
+                  )}
+                  <span className="truncate">{uploadStatus.message}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setUploadStatus(null)}
+                  className="text-muted-foreground hover:text-foreground text-[10px] ml-1 p-0.5"
+                  title="Dismiss notification"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -492,6 +620,22 @@ export function GridAdvisorChat() {
               }}
               className="flex items-end gap-2"
             >
+              <Button
+                type="button"
+                variant="outline"
+                size="default"
+                disabled={isLoading || isUploading}
+                onClick={() => fileInputRef.current?.click()}
+                className="h-10 w-10 p-0 rounded-xl border-border/80 hover:bg-muted/60 text-muted-foreground hover:text-signal shrink-0"
+                title="Upload telemetry CSV to dynamically ingest into RAG"
+              >
+                {isUploading ? (
+                  <Loader2 className="size-4 animate-spin text-signal" />
+                ) : (
+                  <UploadCloud className="size-4" />
+                )}
+              </Button>
+
               <div className="relative flex-1">
                 <textarea
                   ref={inputRef}

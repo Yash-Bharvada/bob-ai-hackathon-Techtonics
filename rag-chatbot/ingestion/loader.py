@@ -1,4 +1,5 @@
 import os
+import io
 import csv
 from pathlib import Path
 from datetime import datetime
@@ -174,89 +175,82 @@ def format_operational_document(
     return OperationalDocument(text=doc_text, metadata=metadata, doc_id=doc_id)
 
 
-def load_csv(
-    file_path: Path | str,
+def load_csv_from_string(
+    csv_text: str,
+    source_filename: str = "uploaded.csv",
     column_map: Dict[str, str] = COLUMN_MAP,
 ) -> List[OperationalDocument]:
     """
-    Load a single CSV file, validate columns, group by asset_id + date, and return OperationalDocument list.
+    Parse CSV text from memory, validate columns, group by asset_id + date,
+    and return a list of OperationalDocument objects.
     """
-    path = Path(file_path)
-    if not path.exists():
-        raise FileNotFoundError(f"CSV file not found at: {path}")
+    f = io.StringIO(csv_text.strip())
+    reader = csv.DictReader(f)
+    if reader.fieldnames is None:
+        raise ValueError(f"CSV content in '{source_filename}' is empty or malformed.")
 
-    source_filename = path.name
+    validate_csv_headers(reader.fieldnames, column_map)
 
-    with open(path, mode="r", encoding="utf-8-sig") as f:
-        reader = csv.DictReader(f)
-        if reader.fieldnames is None:
-            raise ValueError(f"CSV file '{source_filename}' is empty or malformed.")
+    def get_col(row: Dict[str, str], logical_key: str) -> str:
+        phys = column_map[logical_key]
+        return row.get(phys, "").strip()
 
-        validate_csv_headers(reader.fieldnames, column_map)
+    groups = defaultdict(lambda: {
+        "asset_id": "",
+        "asset_type": "",
+        "site_name": "",
+        "date_str": "",
+        "records": [],
+    })
 
-        # Mapping helper
-        def get_col(row: Dict[str, str], logical_key: str) -> str:
-            phys = column_map[logical_key]
-            return row.get(phys, "").strip()
+    for row_idx, row in enumerate(reader, start=2):
+        try:
+            asset_id = get_col(row, "asset_id")
+            asset_type = get_col(row, "asset_type")
+            site_name = get_col(row, "site_name")
+            ts_str = get_col(row, "timestamp")
+            actual_kwh_str = get_col(row, "actual_kwh")
+            expected_kwh_str = get_col(row, "expected_kwh")
+            grid_load_str = get_col(row, "grid_load_mw")
+            weather = get_col(row, "weather")
 
-        # Grouping accumulator: key = (asset_id, date_str)
-        groups = defaultdict(lambda: {
-            "asset_id": "",
-            "asset_type": "",
-            "site_name": "",
-            "date_str": "",
-            "records": [],
-        })
+            if not asset_id or not ts_str:
+                continue
 
-        for row_idx, row in enumerate(reader, start=2):
+            dt, date_str = parse_timestamp_and_date(ts_str)
+
             try:
-                asset_id = get_col(row, "asset_id")
-                asset_type = get_col(row, "asset_type")
-                site_name = get_col(row, "site_name")
-                ts_str = get_col(row, "timestamp")
-                actual_kwh_str = get_col(row, "actual_kwh")
-                expected_kwh_str = get_col(row, "expected_kwh")
-                grid_load_str = get_col(row, "grid_load_mw")
-                weather = get_col(row, "weather")
+                actual_kwh = float(actual_kwh_str)
+            except ValueError:
+                raise ValueError(f"Invalid numeric actual_kwh '{actual_kwh_str}' at row {row_idx}")
 
-                if not asset_id or not ts_str:
-                    continue
+            try:
+                expected_kwh = float(expected_kwh_str)
+            except ValueError:
+                raise ValueError(f"Invalid numeric expected_kwh '{expected_kwh_str}' at row {row_idx}")
 
-                dt, date_str = parse_timestamp_and_date(ts_str)
+            try:
+                grid_load_mw = float(grid_load_str)
+            except ValueError:
+                raise ValueError(f"Invalid numeric grid_load_mw '{grid_load_str}' at row {row_idx}")
 
-                try:
-                    actual_kwh = float(actual_kwh_str)
-                except ValueError:
-                    raise ValueError(f"Invalid numeric actual_kwh '{actual_kwh_str}' at row {row_idx}")
+            key = (asset_id, date_str)
+            group = groups[key]
+            group["asset_id"] = asset_id
+            group["asset_type"] = asset_type
+            group["site_name"] = site_name
+            group["date_str"] = date_str
+            group["records"].append({
+                "dt": dt,
+                "actual_kwh": actual_kwh,
+                "expected_kwh": expected_kwh,
+                "grid_load_mw": grid_load_mw,
+                "weather": weather,
+            })
 
-                try:
-                    expected_kwh = float(expected_kwh_str)
-                except ValueError:
-                    raise ValueError(f"Invalid numeric expected_kwh '{expected_kwh_str}' at row {row_idx}")
+        except Exception as e:
+            raise ValueError(f"Error parsing row {row_idx} in '{source_filename}': {str(e)}") from e
 
-                try:
-                    grid_load_mw = float(grid_load_str)
-                except ValueError:
-                    raise ValueError(f"Invalid numeric grid_load_mw '{grid_load_str}' at row {row_idx}")
-
-                key = (asset_id, date_str)
-                group = groups[key]
-                group["asset_id"] = asset_id
-                group["asset_type"] = asset_type
-                group["site_name"] = site_name
-                group["date_str"] = date_str
-                group["records"].append({
-                    "dt": dt,
-                    "actual_kwh": actual_kwh,
-                    "expected_kwh": expected_kwh,
-                    "grid_load_mw": grid_load_mw,
-                    "weather": weather,
-                })
-
-            except Exception as e:
-                raise ValueError(f"Error parsing row {row_idx} in '{source_filename}': {str(e)}") from e
-
-    # Generate documents for each group
     documents: List[OperationalDocument] = []
     for (asset_id, date_str), group in groups.items():
         doc = format_operational_document(
@@ -270,6 +264,23 @@ def load_csv(
         documents.append(doc)
 
     return documents
+
+
+def load_csv(
+    file_path: Path | str,
+    column_map: Dict[str, str] = COLUMN_MAP,
+) -> List[OperationalDocument]:
+    """
+    Load a single CSV file, validate columns, group by asset_id + date, and return OperationalDocument list.
+    """
+    path = Path(file_path)
+    if not path.exists():
+        raise FileNotFoundError(f"CSV file not found at: {path}")
+
+    with open(path, mode="r", encoding="utf-8-sig") as f:
+        content = f.read()
+
+    return load_csv_from_string(content, source_filename=path.name, column_map=column_map)
 
 
 def load_all_csvs(
