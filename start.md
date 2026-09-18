@@ -1,1 +1,42 @@
-Server: uvicorn src.backend.main:app --port 8000 & (cd src/frontend && npm run dev)
+# How to Run BOB / VOLTRA (Frontend & Backends)
+
+> **Note**: The bash command `uvicorn ... & (cd src/frontend && npm run dev)` only works on **Linux / macOS / Git Bash**.  
+> On **Windows PowerShell**, `&` and `&&` cause syntax errors (`AmpersandNotAllowed`).
+
+---
+
+## Recommended: Run in Separate PowerShell Terminals
+
+Open 3 terminal tabs in `D:\IBM BOB`:
+
+### Terminal 1: Core ML Backend (Port 8000)
+```powershell
+python -m uvicorn main:app --host 127.0.0.1 --port 8000 --app-dir src/backend
+```
+
+### Terminal 2: RAG Chatbot Service (Port 8001)
+```powershell
+cd rag-chatbot
+.\.venv\Scripts\activate
+uvicorn api.main:app --host 127.0.0.1 --port 8001 --reload
+```
+
+### Terminal 3: Frontend (Port 3000)
+```powershell
+cd src/frontend
+npm run dev
+```
+
+---
+
+## Option 2: One-Line PowerShell Command (Launches all in separate windows)
+
+```powershell
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "python -m uvicorn main:app --host 127.0.0.1 --port 8000 --app-dir src/backend"; Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd rag-chatbot; .\.venv\Scripts\activate; uvicorn api.main:app --host 127.0.0.1 --port 8001 --reload"; Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd src/frontend; npm run dev"
+```
+
+---
+
+## Option 3: Double-Click `start_all.bat` (Windows Batch)
+
+Run `.\start_all.bat` in the project root to open all three services in their own terminal windows automatically.
