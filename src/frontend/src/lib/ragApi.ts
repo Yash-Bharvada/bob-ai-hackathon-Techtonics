@@ -15,6 +15,11 @@ export interface RagChatSource {
   grid_load_mw?: number;
   weather?: string;
   relevance_score?: number;
+  health_index?: number;
+  fault_type?: string;
+  rul_days?: number;
+  risk_tier?: string;
+  dga_status?: string;
   [key: string]: unknown;
 }
 
