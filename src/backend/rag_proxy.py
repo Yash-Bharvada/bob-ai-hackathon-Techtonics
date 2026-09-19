@@ -66,7 +66,7 @@ def start_rag_service() -> None:
         pass  # Not running yet, proceed to spawn
 
     root_dir = Path(__file__).resolve().parent.parent.parent
-    rag_dir = root_dir / "rag-chatbot"
+    rag_dir = root_dir / "src" / "rag-chatbot"
     if not rag_dir.is_dir():
         print(f"[RAG-MANAGER] Warning: rag-chatbot directory not found at {rag_dir}", file=sys.stderr)
         return
