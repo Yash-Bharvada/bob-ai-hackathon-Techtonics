@@ -122,6 +122,13 @@ def index_documents(
     for doc in documents:
         print(f"  [+] {doc.doc_id} -> Point ID: {generate_deterministic_id(doc.doc_id)}")
 
+    return {
+        "status": "success",
+        "documents_indexed": len(documents),
+        "assets": sorted(list({doc.metadata.get("asset_id") for doc in documents if doc.metadata.get("asset_id")})),
+        "dates": sorted(list({doc.metadata.get("date") for doc in documents if doc.metadata.get("date")})),
+    }
+
 
 
 

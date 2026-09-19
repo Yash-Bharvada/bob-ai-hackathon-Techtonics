@@ -19,14 +19,18 @@ import {
   Sparkles,
   Send,
   Loader2,
+  AlertCircle,
+  Sun,
+  Wind,
+  Zap,
+  ChevronDown,
+  ChevronUp,
   Trash2,
   Activity,
   Layers,
-  ChevronDown,
-  ChevronUp,
+  CheckCircle2,
   Cpu,
   ShieldCheck,
-  Zap,
   Flame,
   X,
 } from "lucide-react";
@@ -165,6 +169,12 @@ export function GridAdvisorChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputQuery, setInputQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [systemCsvInfo, setSystemCsvInfo] = useState<{
+    filename: string;
+    assets: string[];
+    count: number;
+  } | null>(null);
+  const [customSuggestions, setCustomSuggestions] = useState<string[]>([]);
   const [apiOnline, setApiOnline] = useState<boolean | null>(null);
   const [focusedAssetId, setFocusedAssetId] = useState<string | null>(null);
   const [expandedSources, setExpandedSources] = useState<Record<string, boolean>>({});
@@ -216,14 +226,45 @@ export function GridAdvisorChat() {
       }
     };
 
+    const handleSystemCsv = (
+      event: CustomEvent<{ filename: string; assets: string[]; count: number }>
+    ) => {
+      const { filename, assets, count } = event.detail || {};
+      setSystemCsvInfo({ filename, assets: assets || [], count: count || 0 });
+
+      if (assets && assets.length > 0) {
+        const first = assets[0];
+        const newSuggestions = [
+          `What is the operational status of ${first}?`,
+          assets.length > 1 ? `Compare ${assets[0]} and ${assets[1]}.` : `Explain ${first}'s telemetry readings.`,
+          "What are the highest risk assets in this CSV?",
+          "Summarize findings from the uploaded CSV.",
+        ];
+        setCustomSuggestions(newSuggestions);
+        setInputQuery(`What is the operational status of ${first}?`);
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `sys-csv-${Date.now()}`,
+          sender: "assistant",
+          text: `📊 **System Telemetry Synchronized**:\n\nLoaded **${count || 0} records** from your analyzed CSV (\`${filename}\`).\n\n• **Assets:** ${assets && assets.length > 0 ? assets.join(", ") : "Analyzed records"}\n\nGrid Advisor is now synchronized with your uploaded CSV data. Ask me anything about these assets!`,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        },
+      ]);
+    };
+
     window.addEventListener("open-grid-advisor" as any, handleOpenChat);
     window.addEventListener("open-voltrics-ai" as any, handleOpenChat);
     window.addEventListener("voltra-grid-asset-focused" as any, handleAssetFocused);
+    window.addEventListener("voltra-system-csv-ingested" as any, handleSystemCsv);
 
     return () => {
       window.removeEventListener("open-grid-advisor" as any, handleOpenChat);
       window.removeEventListener("open-voltrics-ai" as any, handleOpenChat);
       window.removeEventListener("voltra-grid-asset-focused" as any, handleAssetFocused);
+      window.removeEventListener("voltra-system-csv-ingested" as any, handleSystemCsv);
     };
   }, []);
 
@@ -234,8 +275,11 @@ export function GridAdvisorChat() {
     }
   }, [messages, isLoading]);
 
-  // Contextual suggestion chips based on active route and selected asset
+  // Contextual suggestion chips based on dynamic uploads, active route and selected asset
   const dynamicSuggestions = (() => {
+    if (customSuggestions.length > 0) {
+      return customSuggestions;
+    }
     if (isGridRoute && focusedAssetId) {
       return [
         `What is the risk score and RUL of ${focusedAssetId}?`,
@@ -246,6 +290,8 @@ export function GridAdvisorChat() {
     }
     return DEFAULT_SUGGESTIONS;
   })();
+
+
 
   const handleSend = async (overridePrompt?: string) => {
     const query = (overridePrompt ?? inputQuery).trim();
@@ -409,6 +455,17 @@ export function GridAdvisorChat() {
                 </div>
               </div>
 
+              {/* Active System CSV context banner if synced */}
+              {systemCsvInfo && (
+                <div className="mt-2.5 flex items-center justify-between rounded-lg bg-lime/10 border border-lime/25 px-2.5 py-1.5 text-[11px] text-lime font-medium animate-in fade-in">
+                  <div className="flex items-center gap-1.5 truncate">
+                    <CheckCircle2 className="size-3.5 shrink-0" />
+                    <span className="truncate">Active CSV: <strong>{systemCsvInfo.filename}</strong> ({systemCsvInfo.count} rows)</span>
+                  </div>
+                  <span className="font-mono text-[10px] text-muted-foreground shrink-0">Synced</span>
+                </div>
+              )}
+
               {/* Context bar if on /grid or asset focused */}
               {isGridRoute && (
                 <div className="mt-2.5 flex items-center justify-between rounded-xl bg-muted/60 dark:bg-white/[0.03] px-3 py-1.5 border border-border dark:border-white/[0.06] text-[11px]">
@@ -536,14 +593,38 @@ export function GridAdvisorChat() {
                               >
                                 <div className="flex items-center justify-between gap-1">
                                   <div className="flex items-center gap-1.5 font-mono font-bold text-foreground dark:text-white">
-                                    <Zap className="size-3 text-emerald-700 dark:text-[#d2f831]" />
+                                    {src.asset_type?.toLowerCase().includes("wind") ? (
+                                      <Wind className="size-3 text-signal" />
+                                    ) : src.asset_type?.toLowerCase().includes("transformer") ? (
+                                      <Zap className="size-3 text-amber-400 dark:text-[#d2f831]" />
+                                    ) : (
+                                      <Sun className="size-3 text-amber-500" />
+                                    )}
                                     <span>{src.asset_id || "Asset"}</span>
                                   </div>
-                                  {typeof dev === "number" && dev !== 0 && (
-                                    <span className="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded bg-warning-soft text-warning">
+                                  {typeof dev === "number" && dev !== 0 ? (
+                                    <span
+                                      className={`font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                                        dev < 0
+                                          ? "bg-danger/15 text-danger"
+                                          : "bg-lime/15 text-lime dark:bg-[#d2f831]/15 dark:text-[#d2f831]"
+                                      }`}
+                                    >
                                       Dev: {dev > 0 ? `+${dev.toFixed(1)}` : dev.toFixed(1)}%
                                     </span>
-                                  )}
+                                  ) : src.risk_tier ? (
+                                    <span
+                                      className={`font-mono font-semibold px-1.5 py-0.2 rounded text-[10px] ${
+                                        String(src.risk_tier).toUpperCase().includes("CRIT")
+                                          ? "bg-danger/15 text-danger"
+                                          : String(src.risk_tier).toUpperCase().includes("HIGH")
+                                          ? "bg-amber-500/15 text-amber-500"
+                                          : "bg-lime/15 text-lime dark:bg-[#d2f831]/15 dark:text-[#d2f831]"
+                                      }`}
+                                    >
+                                      {String(src.risk_tier)}
+                                    </span>
+                                  ) : null}
                                 </div>
 
                                 <div className="text-muted-foreground dark:text-neutral-400 text-[10px] font-mono flex flex-wrap gap-x-2">
@@ -551,6 +632,24 @@ export function GridAdvisorChat() {
                                   {src.date && <span>· {src.date}</span>}
                                 </div>
 
+                                {(src.actual_kwh !== undefined || src.expected_kwh !== undefined) && (
+                                  <div className="text-[10px] text-muted-foreground flex gap-2 font-mono">
+                                    {src.actual_kwh !== undefined && (
+                                      <span>Act: {Number(src.actual_kwh).toLocaleString()} kWh</span>
+                                    )}
+                                    {src.expected_kwh !== undefined && (
+                                      <span>Exp: {Number(src.expected_kwh).toLocaleString()} kWh</span>
+                                    )}
+                                  </div>
+                                )}
+
+                                {(src.health_index !== undefined || src.fault_type !== undefined) && (
+                                  <div className="text-[10px] text-muted-foreground flex gap-2 font-mono">
+                                    {src.health_index !== undefined && <span>HI: {Number(src.health_index)}</span>}
+                                    {src.fault_type && <span>Fault: {String(src.fault_type)}</span>}
+                                    {src.rul_days !== undefined && <span>RUL: {Number(src.rul_days)}d</span>}
+                                  </div>
+                                )}
                                 {src.weather && (
                                   <div className="text-[10px] text-muted-foreground dark:text-neutral-400 italic">
                                     Obs: {src.weather}

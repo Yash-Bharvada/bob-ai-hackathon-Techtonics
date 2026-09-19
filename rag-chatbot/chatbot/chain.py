@@ -60,6 +60,10 @@ class RAGChatbotChain:
                 "deviation_pct": meta.get("deviation_pct"),
                 "grid_load_mw": meta.get("grid_load_mw"),
                 "weather": meta.get("weather"),
+                "health_index": meta.get("health_index"),
+                "rul_days": meta.get("rul_days"),
+                "risk_tier": meta.get("risk_tier"),
+                "fault_type": meta.get("fault_type"),
                 "relevance_score": item.get("score"),
             }
             # Remove None values

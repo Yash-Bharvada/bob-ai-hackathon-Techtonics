@@ -1,4 +1,5 @@
 import os
+import io
 import csv
 from pathlib import Path
 from datetime import datetime
@@ -174,32 +175,154 @@ def format_operational_document(
     return OperationalDocument(text=doc_text, metadata=metadata, doc_id=doc_id)
 
 
-def load_csv(
-    file_path: Path | str,
+def format_transformer_operational_document(
+    row: Dict[str, str],
+    row_idx: int,
+    source_file: str,
+) -> OperationalDocument:
+    """Format a transformer or substation asset sensor reading row into an OperationalDocument."""
+    asset_id = (
+        row.get("asset_id")
+        or row.get("Asset_ID")
+        or row.get("asset")
+        or row.get("id")
+        or f"TX-ROW-{row_idx}"
+    ).strip()
+
+    gas_keys = [
+        ("Hydrogen", "H2 (Hydrogen)"),
+        ("Methane", "CH4 (Methane)"),
+        ("Acethylene", "C2H2 (Acetylene)"),
+        ("Ethylene", "C2H4 (Ethylene)"),
+        ("Ethane", "C2H6 (Ethane)"),
+        ("CO", "CO (Carbon Monoxide)"),
+        ("CO2", "CO2 (Carbon Dioxide)"),
+        ("Oxigen", "O2 (Oxygen)"),
+        ("Nitrogen", "N2 (Nitrogen)"),
+    ]
+    gases = []
+    for k, label in gas_keys:
+        val = row.get(k) or row.get(k.lower())
+        if val is not None and str(val).strip() != "":
+            gases.append(f"  - {label}: {val} ppm")
+
+    oil_keys = [
+        ("Water_content", "Water Content"),
+        ("Water content", "Water Content"),
+        ("Dielectric_rigidity", "Dielectric Rigidity"),
+        ("Interfacial_V", "Interfacial Tension"),
+        ("Power_factor", "Power Factor"),
+        ("Power factor", "Power Factor"),
+        ("DBDS", "DBDS Content"),
+        ("top_oil_temp_c", "Top Oil Temperature"),
+        ("load_pct", "Operating Load"),
+    ]
+    oil_metrics = []
+    for k, label in oil_keys:
+        val = row.get(k) or row.get(k.lower())
+        if val is not None and str(val).strip() != "":
+            unit = "°C" if "temp" in k.lower() else ("%" if "load" in k.lower() else "")
+            oil_metrics.append(f"  - {label}: {val} {unit}".strip())
+
+    hi = row.get("health_index") or row.get("health_index_score")
+    rul = row.get("RUL_days") or row.get("rul_days")
+    risk = row.get("risk_tier") or row.get("criticality_tier")
+    fault = row.get("fault_type")
+    fault_prob = row.get("fault_prob")
+
+    doc_lines = [
+        f"OPERATIONAL ASSET SUMMARY: {asset_id} (Grid Substation Transformer Asset)",
+        f"Source File: {source_file} (Row {row_idx})",
+    ]
+
+    if risk or hi or rul or fault:
+        eval_parts = []
+        if risk: eval_parts.append(f"Risk Tier: {risk}")
+        if hi: eval_parts.append(f"Health Index: {hi}/100")
+        if rul: eval_parts.append(f"RUL: {rul} days")
+        if fault: eval_parts.append(f"Diagnosed Fault: {fault} (Confidence: {fault_prob or 'N/A'})")
+        doc_lines.append("Health & Risk Assessment: " + " | ".join(eval_parts))
+
+    if gases:
+        doc_lines.append("Dissolved Gas Analysis (DGA) Readings:")
+        doc_lines.extend(gases)
+
+    if oil_metrics:
+        doc_lines.append("Insulating Oil & Thermal Parameters:")
+        doc_lines.extend(oil_metrics)
+
+    handled = {k for k, _ in gas_keys} | {k for k, _ in oil_keys} | {
+        "asset_id", "Asset_ID", "asset", "id", "health_index", "RUL_days", "rul_days",
+        "risk_tier", "criticality_tier", "fault_type", "fault_prob", "health_index_score",
+        "site_name", "substation_name", "date", "timestamp"
+    }
+    other_lines = []
+    for k, v in row.items():
+        if k not in handled and v is not None and str(v).strip() != "":
+            other_lines.append(f"  - {k}: {v}")
+    if other_lines:
+        doc_lines.append("Additional Telemetry Readings:")
+        doc_lines.extend(other_lines)
+
+    doc_text = "\n".join(doc_lines)
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    doc_id = f"{asset_id}_row{row_idx}_{today_str}".replace(" ", "_")
+
+    hi_val = None
+    try:
+        if hi is not None and str(hi).strip() != "":
+            hi_val = float(hi)
+    except Exception:
+        pass
+
+    rul_val = None
+    try:
+        if rul is not None and str(rul).strip() != "":
+            rul_val = float(rul)
+    except Exception:
+        pass
+
+    metadata = {
+        "source_file": source_file,
+        "asset_id": asset_id,
+        "asset_type": "Transformer",
+        "site_name": row.get("substation_name") or row.get("site_name") or "Substation Fleet",
+        "date": row.get("date") or row.get("timestamp") or today_str,
+        "health_index": hi_val,
+        "rul_days": rul_val,
+        "risk_tier": risk or "Standard",
+        "fault_type": fault or "NF",
+    }
+    return OperationalDocument(text=doc_text, metadata=metadata, doc_id=doc_id)
+
+
+def load_csv_from_string(
+    csv_text: str,
+    source_filename: str = "uploaded.csv",
     column_map: Dict[str, str] = COLUMN_MAP,
 ) -> List[OperationalDocument]:
     """
-    Load a single CSV file, validate columns, group by asset_id + date, and return OperationalDocument list.
+    Parse CSV text from memory. Automatically identifies whether the file is
+    a renewable generation telemetry CSV or a transformer/substation sensor readings CSV,
+    and returns a list of rich OperationalDocument objects.
     """
-    path = Path(file_path)
-    if not path.exists():
-        raise FileNotFoundError(f"CSV file not found at: {path}")
+    f = io.StringIO(csv_text.strip())
+    reader = csv.DictReader(f)
+    if reader.fieldnames is None:
+        raise ValueError(f"CSV content in '{source_filename}' is empty or malformed.")
 
-    source_filename = path.name
+    headers_lower = {h.strip().lower() for h in reader.fieldnames if h}
 
-    with open(path, mode="r", encoding="utf-8-sig") as f:
-        reader = csv.DictReader(f)
-        if reader.fieldnames is None:
-            raise ValueError(f"CSV file '{source_filename}' is empty or malformed.")
+    # Branch A: Renewable generation telemetry (has actual_kwh / expected_kwh)
+    is_renewable = "actual_kwh" in headers_lower or "expected_kwh" in headers_lower
 
+    if is_renewable:
         validate_csv_headers(reader.fieldnames, column_map)
 
-        # Mapping helper
         def get_col(row: Dict[str, str], logical_key: str) -> str:
             phys = column_map[logical_key]
             return row.get(phys, "").strip()
 
-        # Grouping accumulator: key = (asset_id, date_str)
         groups = defaultdict(lambda: {
             "asset_id": "",
             "asset_type": "",
@@ -256,20 +379,52 @@ def load_csv(
             except Exception as e:
                 raise ValueError(f"Error parsing row {row_idx} in '{source_filename}': {str(e)}") from e
 
-    # Generate documents for each group
+        documents: List[OperationalDocument] = []
+        for (asset_id, date_str), group in groups.items():
+            doc = format_operational_document(
+                asset_id=group["asset_id"],
+                asset_type=group["asset_type"],
+                site_name=group["site_name"],
+                date_str=group["date_str"],
+                records=group["records"],
+                source_file=source_filename,
+            )
+            documents.append(doc)
+
+        return documents
+
+    # Branch B: Transformer / Substation / Custom Asset Sensor Telemetry
     documents: List[OperationalDocument] = []
-    for (asset_id, date_str), group in groups.items():
-        doc = format_operational_document(
-            asset_id=group["asset_id"],
-            asset_type=group["asset_type"],
-            site_name=group["site_name"],
-            date_str=group["date_str"],
-            records=group["records"],
+    for row_idx, row in enumerate(reader, start=2):
+        cleaned_row = {k.strip(): (v.strip() if v else "") for k, v in row.items() if k}
+        # Skip empty lines
+        if not any(cleaned_row.values()):
+            continue
+        doc = format_transformer_operational_document(
+            row=cleaned_row,
+            row_idx=row_idx,
             source_file=source_filename,
         )
         documents.append(doc)
 
     return documents
+
+
+def load_csv(
+    file_path: Path | str,
+    column_map: Dict[str, str] = COLUMN_MAP,
+) -> List[OperationalDocument]:
+    """
+    Load a single CSV file, validate columns, group by asset_id + date, and return OperationalDocument list.
+    """
+    path = Path(file_path)
+    if not path.exists():
+        raise FileNotFoundError(f"CSV file not found at: {path}")
+
+    with open(path, mode="r", encoding="utf-8-sig") as f:
+        content = f.read()
+
+    return load_csv_from_string(content, source_filename=path.name, column_map=column_map)
 
 
 def load_all_csvs(

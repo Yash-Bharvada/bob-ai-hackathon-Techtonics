@@ -105,3 +105,53 @@ export async function chatWithGridAdvisor(
 
   return res.json();
 }
+
+export interface IngestResponse {
+  status: string;
+  filename: string;
+  documents_indexed: number;
+  assets: string[];
+  dates: string[];
+  message: string;
+}
+
+/**
+ * Upload and ingest a custom operational telemetry CSV into Qdrant Cloud.
+ * Sends POST /ingest/csv as multipart/form-data.
+ */
+export async function ingestCsvFile(
+  file: File,
+  recreate: boolean = false,
+  signal?: AbortSignal
+): Promise<IngestResponse> {
+  const base = getRagApiBase();
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("recreate", String(recreate));
+
+  const timeoutSignal = signal || AbortSignal.timeout(90000);
+  let res: Response;
+  try {
+    res = await fetch(`${base}/ingest/csv`, {
+      method: "POST",
+      body: formData,
+      signal: timeoutSignal,
+    });
+  } catch (err: any) {
+    if (err.name === "AbortError" || err.name === "TimeoutError") {
+      throw new Error("CSV ingestion timed out. The file may be too large.");
+    }
+    throw new Error("Unable to connect to RAG Ingestion Service.");
+  }
+
+  if (!res.ok) {
+    let errorDetail = "";
+    try {
+      const errJson = await res.json();
+      errorDetail = errJson.detail || "";
+    } catch {}
+    throw new Error(errorDetail || `HTTP ${res.status}: CSV ingestion failed.`);
+  }
+
+  return res.json();
+}
