@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { to: "/stream", label: "Live Stream" },
   { to: "/dashboard", label: "Dashboard" },
   { to: "/grid", label: "Live Grid" },
+  { to: "/map", label: "Map" },
   { to: "/blackout", label: "Blackout Defense" },
   { to: "/predict", label: "Prediction" },
   { to: "/technology", label: "Technology" },

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TechnologyRouteImport } from './routes/technology'
 import { Route as StreamRouteImport } from './routes/stream'
 import { Route as PredictRouteImport } from './routes/predict'
+import { Route as MapRouteImport } from './routes/map'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as GridRouteImport } from './routes/grid'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -31,6 +32,11 @@ const StreamRoute = StreamRouteImport.update({
 const PredictRoute = PredictRouteImport.update({
   id: '/predict',
   path: '/predict',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MapRoute = MapRouteImport.update({
+  id: '/map',
+  path: '/map',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/grid': typeof GridRoute
   '/login': typeof LoginRoute
+  '/map': typeof MapRoute
   '/predict': typeof PredictRoute
   '/stream': typeof StreamRoute
   '/technology': typeof TechnologyRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/grid': typeof GridRoute
   '/login': typeof LoginRoute
+  '/map': typeof MapRoute
   '/predict': typeof PredictRoute
   '/stream': typeof StreamRoute
   '/technology': typeof TechnologyRoute
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/grid': typeof GridRoute
   '/login': typeof LoginRoute
+  '/map': typeof MapRoute
   '/predict': typeof PredictRoute
   '/stream': typeof StreamRoute
   '/technology': typeof TechnologyRoute
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/grid'
     | '/login'
+    | '/map'
     | '/predict'
     | '/stream'
     | '/technology'
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/grid'
     | '/login'
+    | '/map'
     | '/predict'
     | '/stream'
     | '/technology'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/grid'
     | '/login'
+    | '/map'
     | '/predict'
     | '/stream'
     | '/technology'
@@ -129,6 +141,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   GridRoute: typeof GridRoute
   LoginRoute: typeof LoginRoute
+  MapRoute: typeof MapRoute
   PredictRoute: typeof PredictRoute
   StreamRoute: typeof StreamRoute
   TechnologyRoute: typeof TechnologyRoute
@@ -155,6 +168,13 @@ declare module '@tanstack/react-router' {
       path: '/predict'
       fullPath: '/predict'
       preLoaderRoute: typeof PredictRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/map': {
+      id: '/map'
+      path: '/map'
+      fullPath: '/map'
+      preLoaderRoute: typeof MapRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -201,6 +221,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   GridRoute: GridRoute,
   LoginRoute: LoginRoute,
+  MapRoute: MapRoute,
   PredictRoute: PredictRoute,
   StreamRoute: StreamRoute,
   TechnologyRoute: TechnologyRoute,
