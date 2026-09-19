@@ -1,0 +1,19 @@
+asset_id,substation_name,feeder_line,grid_zone,region_corridor,latitude,longitude,altitude_m,address_area,city,district,state,country,voltage_kv,mva_rating,install_year,archetype,criticality
+TX-101,Anand City Civil Hospital Substation,Feeder Line-1,Zone-A,Urban Core Corridor,22.5590,72.9480,41.2,Hospital Road,Anand,Anand,Gujarat,India,11kV,25.0,2008,Stable,Medium
+TX-102,Anand Substation #2,Feeder Line-2,Zone-A,Urban Core Corridor,22.5620,72.9450,41.5,Sector A Main Bazaar,Anand,Anand,Gujarat,India,33kV,63.0,2010,Stable,Low
+TX-103,Anand Substation #3,Feeder Line-3,Zone-A,Urban Core Corridor,22.5530,72.9540,40.8,Water Works Road,Anand,Anand,Gujarat,India,66kV,40.0,1987,Stable,Low
+TX-104,Anand Central Transmission Substation,Feeder Line-4,Zone-A,Urban Core Corridor,22.5567,72.9512,41.0,Anand Central Transmission Hub,Anand,Anand,Gujarat,India,132kV,100.0,2007,Progressive_Thermal,Critical
+TX-105,Vitthal Udyognagar Feeder Substation,Feeder Line-5,Zone-B,Heavy Manufacturing Corridor,22.5678,72.9620,42.0,Vitthal Udyognagar GIDC,Anand,Anand,Gujarat,India,11kV,100.0,2008,Stable,High
+TX-106,Anand Substation #6,Feeder Line-6,Zone-B,Heavy Manufacturing Corridor,22.5615,72.9645,41.8,GIDC Phase-1 Industrial Area,Anand,Anand,Gujarat,India,33kV,160.0,1998,Stable,Medium
+TX-107,GIDC Industrial Phase-2 Substation,Line-B Feeder,Zone-B,Heavy Manufacturing Corridor,22.5645,72.9589,42.3,Phase-2 Main Gate GIDC,Anand,Anand,Gujarat,India,66kV,25.0,2012,Electrical_Arcing,Critical
+TX-108,Anand Substation #8,Feeder Line-8,Zone-B,Heavy Manufacturing Corridor,22.5702,72.9595,42.1,GIDC North Belt,Anand,Anand,Gujarat,India,132kV,100.0,2004,Stable,Low
+TX-109,Anand Substation #9,Feeder Line-9,Zone-C,Industrial Transition Corridor,22.4230,72.9110,39.8,Anand-Borsad Highway Junction,Borsad,Anand,Gujarat,India,11kV,63.0,1998,Stable,Medium
+TX-110,Borsad Town Primary Substation,Feeder Line-10,Zone-C,Industrial Transition Corridor,22.4110,72.9023,39.5,Borsad Town Central,Borsad,Anand,Gujarat,India,33kV,25.0,2001,Stable,High
+TX-111,Anand Substation #11,Feeder Line-11,Zone-C,Industrial Transition Corridor,22.4050,72.8980,39.2,Borsad Rural Interconnect,Borsad,Anand,Gujarat,India,66kV,160.0,2009,Stable,Low
+TX-112,Borsad Industrial Feeder Substation,Feeder Line-12,Zone-C,Industrial Transition Corridor,22.4150,72.9045,39.6,Borsad Industrial Park,Borsad,Anand,Gujarat,India,132kV,25.0,2007,Shock_PD,Critical
+TX-113,Anand Substation #13,Feeder Line-13,Zone-D,South Distribution Corridor,22.5250,72.9380,40.5,Borsad Gate South Pump Area,Anand,Anand,Gujarat,India,11kV,100.0,1995,Stable,Low
+TX-114,Anand Substation #14,Feeder Line-14,Zone-D,South Distribution Corridor,22.5205,72.9460,40.3,Station Road South Corridor,Anand,Anand,Gujarat,India,33kV,63.0,2011,Stable,Low
+TX-115,Anand South Bulk Substation,Feeder-1,Zone-D,South Distribution Corridor,22.5312,72.9421,40.7,Station Road South / Borsad Road,Anand,Anand,Gujarat,India,66kV,100.0,1990,Intervention_Recovery,Critical
+TX-116,Anand University Feeder Substation,Feeder Line-16,Zone-D,South Distribution Corridor,22.5380,72.9280,41.0,Vidhya Nagar University Road,Anand,Anand,Gujarat,India,132kV,40.0,1999,Stable,High
+TX-117,Anand Substation #17,Feeder Line-17,Zone-A,Urban Core Corridor,22.5510,72.9470,41.1,West Anand Urban Sector,Anand,Anand,Gujarat,India,11kV,63.0,1989,Stable,Low
+TX-118,Anand Substation #18,Feeder Line-18,Zone-A,Urban Core Corridor,22.5680,72.9530,41.6,North Anand Link Road,Anand,Anand,Gujarat,India,33kV,160.0,2007,Stable,Low

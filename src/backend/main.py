@@ -23,11 +23,14 @@ import ast
 import asyncio
 import io
 import json
+import logging
 import os
 import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+logger = logging.getLogger("voltra.backend")
 
 # Load .env from the backend directory before anything else
 from dotenv import load_dotenv
@@ -501,6 +504,50 @@ def download_sample_csv():
         io.BytesIO(content.encode()),
         media_type="text/csv",
         headers={"Content-Disposition": 'attachment; filename="voltra_sample_readings.csv"'},
+    )
+
+
+@app.get("/api/transformers/locations/csv")
+def download_transformer_locations_csv():
+    """Download the complete CSV of all 18 Anand grid transformer locations and geographic metadata."""
+    csv_path = DATA_DIR / "transformer_locations.csv"
+    if not csv_path.exists():
+        csv_path = SRC_DIR.parent / "transformer_locations.csv"
+    if not csv_path.exists():
+        raise HTTPException(404, "transformer_locations.csv not found")
+    with open(csv_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    return StreamingResponse(
+        io.BytesIO(content.encode("utf-8")),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="transformer_locations.csv"'},
+    )
+
+
+@app.get("/api/transformers/locations")
+def get_transformer_locations():
+    """Return all 18 transformer locations and GIS attributes as JSON records."""
+    csv_path = DATA_DIR / "transformer_locations.csv"
+    if not csv_path.exists():
+        csv_path = SRC_DIR.parent / "transformer_locations.csv"
+    if not csv_path.exists():
+        raise HTTPException(404, "transformer_locations.csv not found")
+    df = pd.read_csv(csv_path)
+    return {"total": len(df), "locations": df.to_dict(orient="records")}
+
+
+@app.get("/api/docs/model-formulas/docx")
+def download_model_formulas_docx():
+    """Download the complete Word document (.docx) containing all mathematical models, formulas, and value analysis."""
+    docx_path = SRC_DIR.parent / "docs" / "VOLTRA_MODEL_FORMULAS_AND_SPECS.docx"
+    if not docx_path.exists():
+        docx_path = SRC_DIR.parent / "VOLTRA_MODEL_FORMULAS_AND_SPECS.docx"
+    if not docx_path.exists():
+        raise HTTPException(404, "VOLTRA_MODEL_FORMULAS_AND_SPECS.docx not found")
+    return FileResponse(
+        docx_path,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        filename="VOLTRA_MODEL_FORMULAS_AND_SPECS.docx"
     )
 
 
