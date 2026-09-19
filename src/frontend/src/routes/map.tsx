@@ -208,19 +208,20 @@ function MapPage() {
       </div>
 
       {/* Map + Grid layout */}
-      <div className="max-w-[1600px] mx-auto px-4 py-4 flex flex-col lg:flex-row gap-4 h-[calc(100vh-64px)]">
+      <div className="max-w-[1600px] mx-auto px-4 py-4 flex flex-col lg:flex-row gap-4 min-h-[calc(100vh-140px)] lg:h-[calc(100vh-140px)]">
         {/* Map panel */}
-        <div className="flex-1 min-h-[400px] lg:min-h-0 rounded-xl overflow-hidden border border-border shadow-sm">
+        <div className="flex-1 min-h-[480px] lg:min-h-0 h-full rounded-xl overflow-hidden border border-border shadow-sm flex flex-col relative bg-muted/20">
           <TransformerMap
             selectedId={selectedId}
             onPinClick={(id) => setSelectedId((prev) => (prev === id ? null : id))}
             liveUpdates={liveUpdates}
-            style={{ height: "100%" }}
+            className="w-full h-full flex-1"
+            style={{ width: "100%", height: "100%" }}
           />
         </div>
 
         {/* Grid panel */}
-        <div className="w-full lg:w-[480px] xl:w-[540px] flex flex-col min-h-[300px] lg:min-h-0">
+        <div className="w-full lg:w-[480px] xl:w-[540px] flex flex-col min-h-[350px] lg:min-h-0 lg:h-full overflow-hidden">
           <LocationGrid
             selectedId={selectedId}
             onRowClick={(id) => setSelectedId((prev) => (prev === id ? null : id))}

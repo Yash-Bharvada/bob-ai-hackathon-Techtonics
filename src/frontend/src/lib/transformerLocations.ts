@@ -14,6 +14,7 @@ import type { ValidatedLocation } from "@/lib/locationValidator";
 
 /** OpenFreeMap style URL — only defined here, imported everywhere else */
 export const MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
+export const MAP_STYLE_DARK_URL = "https://tiles.openfreemap.org/styles/dark";
 
 /**
  * Raw CSV data from src/data/transformer_locations.csv

@@ -64,7 +64,7 @@ from pipeline.grid_impact_ranker import rank_assets
 from pipeline.maintenance_plan import generate_maintenance_plan
 from pipeline.duval import calculate_duval_triangle
 
-from services.sms_alert import send_fault_alert, validate_config as _sms_validate_config
+from services.sms_alert import send_fault_alert, validate_config as _sms_validate_config, send_custom_sms
 
 DATA_DIR = SRC_DIR / "data"
 
@@ -1675,13 +1675,9 @@ def get_blackout_estimate(asset_id: str):
     load_factor = min(0.95, max(0.40, 0.65 + (hi_score / 200.0)))
     current_load_mw = round(mva_rating * load_factor * 0.90, 2)
     
-    # 45% of transformer capacity powers residential feeders, avg peak household load is 0.70 kW (0.0007 MW)
-    residential_mw = current_load_mw * 0.45
-    affected_households = int(round((residential_mw * 1000.0) / 0.70))
-    if affected_households < 500:
-        affected_households = 1420 + int(mva_rating * 400)
-        
-    estimated_residents = affected_households * 4
+    # Designated recipient contacts: Nikunj Desai & Yash Bharvada
+    affected_households = 2
+    estimated_residents = 2
     
     # 3. Dynamic Physics & Empirical ETR (Estimated Time to Restore in minutes) calculation
     # Base repair complexity (minutes) depending on exact DGA fault classification:
@@ -1859,20 +1855,26 @@ def broadcast_outage_sms(body: SmsBroadcastRequest):
         address_area=first_consumer["address_area"]
     )
     
-    # Check if Exotel SMS environment variables are configured
+    # Check if SMS Gateway (Android) or Exotel are active
+    smsgate_active = bool(os.getenv("SMSGATE_USER") and os.getenv("SMSGATE_PASS"))
     exotel_active = bool(EXOTEL_ACCOUNT_SID and EXOTEL_API_KEY and EXOTEL_API_TOKEN)
     real_dispatches = 0
-    if exotel_active:
-        for c in sample_rows:
-            c_sms = build_personalized_sms(
-                consumer_name=c["consumer_name"],
-                category=c["category"],
-                asset_id=body.asset_id,
-                substation=estimate["substation"],
-                predicted_time=estimate["predicted_outage_time"],
-                etr_mins=estimate["estimated_time_to_restore_mins"],
-                address_area=c["address_area"]
-            )
+    
+    for c in sample_rows:
+        c_sms = build_personalized_sms(
+            consumer_name=c["consumer_name"],
+            category=c["category"],
+            asset_id=body.asset_id,
+            substation=estimate["substation"],
+            predicted_time=estimate["predicted_outage_time"],
+            etr_mins=estimate["estimated_time_to_restore_mins"],
+            address_area=c["address_area"]
+        )
+        if smsgate_active:
+            success = send_custom_sms(c["mobile_number"], c_sms)
+            if success:
+                real_dispatches += 1
+        elif exotel_active:
             success = send_exotel_sms(c["mobile_number"], c_sms)
             if success:
                 real_dispatches += 1
@@ -1884,13 +1886,13 @@ def broadcast_outage_sms(body: SmsBroadcastRequest):
         "dispatch_id": dispatch_id,
         "asset_id": body.asset_id,
         "substation": estimate["substation"],
-        "affected_households": estimate["affected_households"],
+        "affected_households": len(sample_rows),
         "predicted_outage_time": estimate["predicted_outage_time"],
         "etr_mins": estimate["estimated_time_to_restore_mins"],
         "sms_preview": sms_text,
         "status": "DISPATCHED",
-        "exotel_active": exotel_active,
-        "delivered_pct": 99.8 if exotel_active else 99.4,
+        "exotel_active": exotel_active or smsgate_active,
+        "delivered_pct": 100.0,
         "authorized_by": _contractor_permit_state["authorized_by"],
         "timestamp": now_iso
     }
@@ -1899,11 +1901,11 @@ def broadcast_outage_sms(body: SmsBroadcastRequest):
     if len(_sms_broadcast_logs) > 50:
         _sms_broadcast_logs.pop()
         
-    gateway_note = "(Live Exotel SMS API)" if exotel_active else "(VOLTRA Dispatch Gateway)"
+    gateway_note = "(Live Android SMS Gateway)" if smsgate_active else ("(Live Exotel SMS API)" if exotel_active else "(VOLTRA Dispatch Gateway)")
     return {
         "status": "success",
         "dispatch": record,
-        "message": f"Personalized Outage Warning SMS broadcast successfully dispatched to {estimate['affected_households']:,} households {gateway_note}."
+        "message": f"Personalized Outage Warning SMS broadcast dispatched to {len(sample_rows)} designated recipients (Nikunj Desai & Yash Bharvada) {gateway_note}."
     }
 
 @app.post("/api/blackout/send-single-sms")
@@ -1923,8 +1925,11 @@ def send_single_consumer_sms(body: SingleSmsRequest):
         etr_mins=estimate["estimated_time_to_restore_mins"],
         address_area=body.address_area or estimate["substation"]
     )
+    smsgate_active = bool(os.getenv("SMSGATE_USER") and os.getenv("SMSGATE_PASS"))
     exotel_active = bool(EXOTEL_ACCOUNT_SID and EXOTEL_API_KEY and EXOTEL_API_TOKEN)
-    if exotel_active:
+    if smsgate_active:
+        send_custom_sms(body.mobile_number, sms_text)
+    elif exotel_active:
         send_exotel_sms(body.mobile_number, sms_text)
         
     dispatch_id = f"SMS-{datetime.now().strftime('%Y%m%d%H%M%S')}-{body.consumer_id}"
@@ -1939,7 +1944,7 @@ def send_single_consumer_sms(body: SingleSmsRequest):
         "etr_mins": estimate["estimated_time_to_restore_mins"],
         "sms_preview": sms_text,
         "status": "DISPATCHED",
-        "exotel_active": exotel_active,
+        "exotel_active": exotel_active or smsgate_active,
         "delivered_pct": 100.0,
         "authorized_by": _contractor_permit_state["authorized_by"],
         "timestamp": now_iso
@@ -1947,7 +1952,7 @@ def send_single_consumer_sms(body: SingleSmsRequest):
     _sms_broadcast_logs.insert(0, record)
     if len(_sms_broadcast_logs) > 50:
         _sms_broadcast_logs.pop()
-    gateway_note = "(Live Exotel SMS API)" if exotel_active else "(VOLTRA Dispatch Gateway)"
+    gateway_note = "(Live Android SMS Gateway)" if smsgate_active else ("(Live Exotel SMS API)" if exotel_active else "(VOLTRA Dispatch Gateway)")
     return {
         "status": "success",
         "dispatch": record,
@@ -1963,60 +1968,54 @@ def get_sms_broadcast_logs():
 # Feeder Consumer Directory & CSV Export Engine
 # ---------------------------------------------------------------------------
 def _generate_feeder_consumer_directory():
-    """Generates realistic feeder consumer records for all 18 Anand transformers."""
+    """Generates designated consumer records (Nikunj Desai & Yash Bharvada) for all 18 Anand transformers."""
     csv_file = DATA_DIR / "feeder_consumer_directory.csv"
     if csv_file.exists():
         try:
             df = pd.read_csv(csv_file, dtype={"mobile_number": str})
             df["mobile_number"] = df["mobile_number"].fillna("").astype(str).str.replace(r"\.0$", "", regex=True)
-            return df
+            if len(df) > 0 and "Nikunj Desai" in df["consumer_name"].values:
+                return df
         except Exception:
             pass
             
     records = []
-    substation_areas = {
-        "TX-107": ("GIDC Industrial Phase-2", "Line-B Feeder", [
-            ("GIDC General Hospital & Emergency Unit", "Hospital / Critical", "98250 14210", "Phase-2 Main Gate", 120.0),
-            ("Patel Precision Tooling Industries", "Industrial", "98980 33412", "Shed #14, GIDC", 85.0),
-            ("Sh. Vikrambhai Parmar (Residency)", "Residential", "94260 55109", "Flat 402, GIDC Towers", 0.75),
-            ("Anand Water Supply Pumping Station #4", "Water Supply", "98240 88901", "Sector 3 Water Works", 45.0),
-            ("Shreeji Cold Storage & Logistics", "Commercial", "97120 44211", "Plot 88, GIDC Phase-2", 35.0),
-            ("Smt. Hansaben Patel", "Residential", "98981 22340", "House #12, GIDC Colony", 0.65),
-            ("Anand Dairy Collection Center #3", "Commercial", "94270 99012", "Feeder Junction B", 18.0),
-            ("GIDC Fire Station & Control Room", "Public Safety", "98250 11100", "Central GIDC Complex", 12.0),
-            ("Er. Rajesh Shah (Substation Engg)", "Grid Personnel", "98251 00982", "Staff Quarters B1", 0.80),
-            ("Sh. Rameshchandra Joshi", "Residential", "94263 77123", "House #44, GIDC Colony", 0.70),
-        ]),
-        "TX-115": ("Anand South Bulk Substation", "Feeder-1", [
-            ("Anand South Trauma Center", "Hospital / Critical", "98250 99100", "Station Road South", 95.0),
-            ("Amul Milk Processing Unit #2", "Industrial", "98980 12345", "Milk Chilling Complex", 140.0),
-            ("Smt. Sunitaben Amin", "Residential", "94261 44556", "Vidhya Nagar Road", 0.75),
-            ("Borsad Road Commercial Center", "Commercial", "98241 66778", "Shop #101-112", 28.0),
-            ("South Anand Municipal Pump", "Water Supply", "97122 33445", "Borsad Gate Pump House", 40.0),
-        ]),
-    }
+    loc_file = DATA_DIR / "transformer_locations.csv"
+    loc_map = {}
+    if loc_file.exists():
+        try:
+            df_loc = pd.read_csv(loc_file)
+            for _, r in df_loc.iterrows():
+                loc_map[str(r["asset_id"]).strip().upper()] = (
+                    str(r.get("substation_name", f"{r['asset_id']} Substation")),
+                    str(r.get("feeder_line", "Main Feeder")),
+                    str(r.get("address_area", "Anand District"))
+                )
+        except Exception:
+            pass
 
     for i in range(1, 19):
         asset_id = f"TX-{100+i}"
-        sub_info = substation_areas.get(asset_id, (f"Anand Substation #{i}", f"Feeder Line-{i}", [
-            (f"Central Anand Clinic #{i}", "Hospital / Critical", "98250 11000", "Hospital Road", 50.0),
-            (f"Residential Cluster #{i} (240 Homes)", "Residential", "94260 22000", "Anand Sector A", 0.70),
-            (f"Substation Pump Station #{i}", "Water Supply", "98240 33000", "Water Works Road", 30.0),
-            (f"Commercial Complex #{i}", "Commercial", "97120 44000", "Main Bazaar", 22.0),
-        ]))
+        sub_name, feeder_name, addr = loc_map.get(
+            asset_id,
+            (f"Anand Substation #{i}", f"Feeder Line-{i}", "Anand District")
+        )
         
-        substation_name, feeder_name, rows = sub_info
-        for idx, r in enumerate(rows, 1):
-            name, cat, mobile, addr, load_kw = r
+        contacts = [
+            ("Nikunj Desai", "Grid Operations / Key Consumer", "+91 94274 74248", addr, 25.0),
+            ("Yash Bharvada", "Emergency Dispatch / Key Consumer", "+91 70169 92454", addr, 25.0),
+        ]
+        
+        for idx, (name, cat, mobile, area, load_kw) in enumerate(contacts, 1):
             records.append({
                 "consumer_id": f"CONS-{asset_id}-{idx:03d}",
                 "asset_id": asset_id,
-                "substation": substation_name,
+                "substation": sub_name,
                 "feeder_line": feeder_name,
                 "consumer_name": name,
                 "category": cat,
-                "mobile_number": f"+91 {mobile}",
-                "address_area": addr,
+                "mobile_number": mobile,
+                "address_area": area,
                 "peak_load_kw": load_kw,
                 "sms_alert_status": "QUEUED"
             })
@@ -2170,7 +2169,6 @@ async def upload_feeder_consumers_csv(file: UploadFile = File(...), default_asse
         df_combined.to_csv(csv_file, index=False)
         
         uploaded_records = df_upload.to_dict(orient="records")
-        
         return {
             "status": "success",
             "message": f"Successfully imported {len(uploaded_records)} consumer records from CSV.",
@@ -2184,7 +2182,7 @@ async def upload_feeder_consumers_csv(file: UploadFile = File(...), default_asse
 
 
 # ---------------------------------------------------------------------------
-# Real-Time Telemetry Streaming & On-the-Fly ML Inference (2 Focus Assets)
+# Real-Time Telemetry Streaming & On-the-Fly ML Inference (Focus + Full Network)
 # ---------------------------------------------------------------------------
 STREAM_ASSETS = {
     "TX-107": {
@@ -2207,6 +2205,41 @@ STREAM_ASSETS = {
     }
 }
 
+def _get_stream_asset_meta(clean_id: str) -> Dict[str, Any]:
+    if clean_id in STREAM_ASSETS:
+        return STREAM_ASSETS[clean_id]
+    
+    loc_file = DATA_DIR / "transformer_locations.csv"
+    if loc_file.exists():
+        try:
+            df_loc = pd.read_csv(loc_file)
+            match = df_loc[df_loc["asset_id"].str.strip().str.upper() == clean_id]
+            if not match.empty:
+                row = match.iloc[0]
+                crit = str(row.get("criticality", "Medium"))
+                color = "#ef4444" if crit == "Critical" else ("#f97316" if crit == "High" else ("#eab308" if crit == "Medium" else "#22c55e"))
+                return {
+                    "asset_id": clean_id,
+                    "substation": str(row.get("substation_name", f"{clean_id} Substation")),
+                    "voltage_kv": str(row.get("voltage_kv", "66 kV")),
+                    "mva_rating": float(row.get("mva_rating", 25.0)),
+                    "feeder_line": str(row.get("feeder_line", "Main Feeder")),
+                    "phenomenon": f"Telemetry Stream ({row.get('archetype', 'Standard')})",
+                    "color": color
+                }
+        except Exception as e:
+            logger.warning(f"Failed to lookup asset meta for {clean_id}: {e}")
+            
+    return {
+        "asset_id": clean_id,
+        "substation": f"{clean_id} Substation",
+        "voltage_kv": "66 kV",
+        "mva_rating": 25.0,
+        "feeder_line": "Grid Feeder",
+        "phenomenon": "Operational Telemetry",
+        "color": "#3b82f6"
+    }
+
 _timeseries_cache: Optional[pd.DataFrame] = None
 
 def _get_timeseries_df() -> pd.DataFrame:
@@ -2225,13 +2258,13 @@ def get_streaming_assets():
 @app.get("/api/stream/tick/{asset_id}/{day}")
 def get_stream_tick(asset_id: str, day: int):
     clean_id = asset_id.strip().upper()
-    if clean_id not in STREAM_ASSETS:
-        clean_id = "TX-107"
-        
     df = _get_timeseries_df()
     sub = df[(df["asset_id"].str.strip().str.upper() == clean_id)].sort_values("day")
     if sub.empty:
-        raise HTTPException(status_code=404, detail=f"Asset {clean_id} not found in time-series.")
+        clean_id = "TX-107"
+        sub = df[(df["asset_id"].str.strip().str.upper() == clean_id)].sort_values("day")
+        if sub.empty:
+            raise HTTPException(status_code=404, detail=f"Asset {clean_id} not found in time-series.")
         
     total_days = len(sub)
     day_clamped = max(0, min(total_days - 1, int(day)))
@@ -2252,7 +2285,7 @@ def get_stream_tick(asset_id: str, day: int):
     rul_days_val = float(ml_score.get("RUL_days", 100.0))
     risk_tier_val = str(ml_score.get("risk_tier", "LOW"))
     
-    asset_meta = STREAM_ASSETS[clean_id]
+    asset_meta = _get_stream_asset_meta(clean_id)
     mva_rating = asset_meta["mva_rating"]
     load_pct = float(row_dict.get("load_pct", 75.0))
     current_load_mw = round(mva_rating * (load_pct / 100.0) * 0.90, 2)
@@ -2268,15 +2301,16 @@ def get_stream_tick(asset_id: str, day: int):
     }
     base_repair = 45
     for fk, mins in base_fault_repair_mins.items():
-        if fk.upper() in fault_type.upper():
+        if fk in fault_type.upper():
             base_repair = mins
             break
             
-    hi_penalty = hi_score * 1.15
-    dga_penalty = fault_confidence * 35.0
-    mva_factor = (mva_rating / 25.0) * 12.0
-    asset_digits = ''.join(filter(str.isdigit, clean_id))
-    asset_num = int(asset_digits) if asset_digits else 107
+    hi_penalty = max(0, (hi_score - 30.0) * 1.5)
+    dga_penalty = fault_confidence * 45.0
+    mva_factor = (mva_rating / 50.0) * 15.0
+    
+    asset_num_match = re.search(r"\d+", clean_id)
+    asset_num = int(asset_num_match.group(0)) if asset_num_match else 107
     site_access_offset = (asset_num * 7) % 23 - 11
     
     raw_etr = base_repair + hi_penalty + dga_penalty + mva_factor + site_access_offset
@@ -2325,11 +2359,11 @@ def get_stream_tick(asset_id: str, day: int):
 @app.get("/api/stream/history/{asset_id}")
 def get_stream_history(asset_id: str, up_to_day: int = 89):
     clean_id = asset_id.strip().upper()
-    if clean_id not in STREAM_ASSETS:
-        clean_id = "TX-107"
-        
     df = _get_timeseries_df()
     sub = df[(df["asset_id"].str.strip().str.upper() == clean_id) & (df["day"] <= up_to_day)].sort_values("day")
+    if sub.empty:
+        clean_id = "TX-107"
+        sub = df[(df["asset_id"].str.strip().str.upper() == clean_id) & (df["day"] <= up_to_day)].sort_values("day")
     
     history = []
     for _, row in sub.iterrows():
