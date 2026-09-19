@@ -22,11 +22,14 @@ Endpoints:
 import ast
 import io
 import json
+import logging
 import os
 import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+logger = logging.getLogger("voltra.backend")
 
 # Load .env from the backend directory before anything else
 from dotenv import load_dotenv

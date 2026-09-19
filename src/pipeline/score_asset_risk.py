@@ -172,14 +172,43 @@ def generate_advisory_text(
     bob_key = os.environ.get("ANTHROPIC_API_KEY", "")
     if bob_key:
         try:
-            import anthropic
-            client = anthropic.Anthropic(api_key=bob_key)
-            response = client.messages.create(
-                model="claude-3-5-haiku-20241022",
-                max_tokens=300,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            return response.content[0].text.strip()
+            import importlib.util
+            if importlib.util.find_spec("anthropic"):
+                anthropic_mod = importlib.import_module("anthropic")
+                client = anthropic_mod.Anthropic(api_key=bob_key)
+                response = client.messages.create(
+                    model="claude-3-5-haiku-20241022",
+                    max_tokens=300,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                return response.content[0].text.strip()
+            else:
+                import json, urllib.request, ssl
+                try:
+                    import certifi
+                    ctx = ssl.create_default_context(cafile=certifi.where())
+                except Exception:
+                    ctx = ssl.create_default_context()
+                payload = json.dumps({
+                    "model": "claude-3-5-haiku-20241022",
+                    "max_tokens": 300,
+                    "messages": [{"role": "user", "content": prompt}],
+                }).encode("utf-8")
+                req = urllib.request.Request(
+                    "https://api.anthropic.com/v1/messages",
+                    data=payload,
+                    headers={
+                        "x-api-key": bob_key,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json",
+                    },
+                    method="POST"
+                )
+                with urllib.request.urlopen(req, context=ctx, timeout=8) as resp:
+                    res_json = json.loads(resp.read().decode("utf-8"))
+                    content = res_json["content"][0]["text"].strip()
+                    if content:
+                        return content
         except Exception:
             pass
 
