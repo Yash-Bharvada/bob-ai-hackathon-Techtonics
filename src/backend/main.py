@@ -491,6 +491,35 @@ def download_sample_csv():
     )
 
 
+@app.get("/api/transformers/locations/csv")
+def download_transformer_locations_csv():
+    """Download the complete CSV of all 18 Anand grid transformer locations and geographic metadata."""
+    csv_path = DATA_DIR / "transformer_locations.csv"
+    if not csv_path.exists():
+        csv_path = SRC_DIR.parent / "transformer_locations.csv"
+    if not csv_path.exists():
+        raise HTTPException(404, "transformer_locations.csv not found")
+    with open(csv_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    return StreamingResponse(
+        io.BytesIO(content.encode("utf-8")),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="transformer_locations.csv"'},
+    )
+
+
+@app.get("/api/transformers/locations")
+def get_transformer_locations():
+    """Return all 18 transformer locations and GIS attributes as JSON records."""
+    csv_path = DATA_DIR / "transformer_locations.csv"
+    if not csv_path.exists():
+        csv_path = SRC_DIR.parent / "transformer_locations.csv"
+    if not csv_path.exists():
+        raise HTTPException(404, "transformer_locations.csv not found")
+    df = pd.read_csv(csv_path)
+    return {"total": len(df), "locations": df.to_dict(orient="records")}
+
+
 # ---------------------------------------------------------------------------
 # CSV batch scoring endpoint
 # ---------------------------------------------------------------------------
