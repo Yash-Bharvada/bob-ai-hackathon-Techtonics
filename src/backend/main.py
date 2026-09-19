@@ -450,6 +450,19 @@ def score_adhoc(reading: SensorReading):
     duval_adhoc["zone_agreement"] = bool(duval_adhoc["zone"] == pred_fault_adhoc or (duval_adhoc["zone"] in ("D1", "D2") and pred_fault_adhoc in ("D1", "D2")) or (duval_adhoc["zone"] in ("T1", "T2", "T3") and pred_fault_adhoc in ("T1", "T2", "T3")))
     result["duval_analysis"] = duval_adhoc
 
+    if not result.get("advisory_text"):
+        hi = result.get("health_index", 0.0)
+        rul = result.get("RUL_days", 0.0)
+        f_type = result.get("fault_type", "NF")
+        f_conf = int(result.get("fault_prob", 0.0) * 100)
+        tier = result.get("risk_tier", "NOMINAL")
+        z_name = duval_adhoc.get("zone_name", "")
+        z_code = duval_adhoc.get("zone", "")
+        result["advisory_text"] = (
+            f"{tier} RISK: {reading.asset_id} evaluated with Health Index {hi:.1f} and approximately {rul:.0f} days RUL. "
+            f"Model 2 predicts {f_type} fault ({f_conf}% confidence). Duval Triangle 1 confirms Zone {z_code} ({z_name})."
+        )
+
     return result
 
 

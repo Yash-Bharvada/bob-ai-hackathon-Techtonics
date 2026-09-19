@@ -208,16 +208,8 @@ function PredictionStudioPage() {
       setLiveTsHistory(pts);
     }).catch(() => {});
 
-    if (!isAuthed) {
-      setSensorLoading(false);
-      setLiveResult(null);
-      return;
-    }
-
+    // Fetch asset detail for ML scores + sensor readings to pre-fill sliders (for all visitors)
     setSensorLoading(true);
-    setLiveResult(null);
-
-    // Fetch asset detail for ML scores + sensor readings to pre-fill sliders
     techtonicsApi.getAssetDetail(selectedAssetId, false).then((detail) => {
       if (!active) return;
       setLiveResult(detail as unknown as AdhocScoreResponse);
@@ -241,7 +233,59 @@ function PredictionStudioPage() {
     }).catch(() => {});
 
     return () => { active = false; };
-  }, [mounted, isAuthed, selectedAssetId]);
+  }, [mounted, selectedAssetId]);
+
+  // Live real-time scoring from our trained Random Forest models whenever any slider changes
+  const isInitialMount = useRef(true);
+
+  useEffect(() => {
+    if (!mounted) return;
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    if (sensorLoading) return;
+    let active = true;
+
+    const timer = setTimeout(() => {
+      techtonicsApi
+        .scoreAdhoc({
+          asset_id: selectedAssetId,
+          Hydrogen: hydrogenPpm,
+          Methane: methanePpm,
+          Acethylene: acethylenePpm,
+          Ethylene: ethylenePpm,
+          Ethane: 80,
+          Dielectric_rigidity: dielectricRigidity,
+          top_oil_temp_c: ambientTemp + 35,
+          generate_advisory: false,
+        })
+        .then((score) => {
+          if (active) {
+            setLiveResult(score);
+          }
+        })
+        .catch((err) => {
+          console.error("Live ML scoring error:", err);
+        });
+    }, 120);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [
+    mounted,
+    sensorLoading,
+    selectedAssetId,
+    loadFactor,
+    ambientTemp,
+    acethylenePpm,
+    methanePpm,
+    ethylenePpm,
+    hydrogenPpm,
+    dielectricRigidity,
+  ]);
 
   // Handle Preset Scenario Selection — switch asset and let the useEffect fetch live data
   const applyPreset = (presetId: string) => {
@@ -254,24 +298,31 @@ function PredictionStudioPage() {
     if (presetId.includes("arcing")) setWaveformType("transient");
     else if (presetId.includes("thermal")) setWaveformType("harmonic");
     else setWaveformType("live");
+    // Pre-fill sliders from the archetype scenario
+    if (found.inputs.acethylenePpm != null) setAcethylenePpm(found.inputs.acethylenePpm);
+    if (found.inputs.methanePpm != null) setMethanePpm(found.inputs.methanePpm);
     if (found.inputs.ethylenePpm != null) setEthylenePpm(found.inputs.ethylenePpm);
+    if (found.inputs.hydrogenPpm != null) setHydrogenPpm(found.inputs.hydrogenPpm);
+    if (found.inputs.dielectricRigidityKv != null) setDielectricRigidity(found.inputs.dielectricRigidityKv);
+    if (found.inputs.loadFactorPercent != null) setLoadFactor(found.inputs.loadFactorPercent);
+    if (found.inputs.ambientTempC != null) setAmbientTemp(found.inputs.ambientTempC);
 
     // Changing selectedAssetId will trigger the useEffect that fetches live sensor data
     if (found.inputs.assetId !== selectedAssetId) {
       setSelectedAssetId(found.inputs.assetId);
-      toast.info(`Loaded archetype: ${found.title} — fetching live sensor data...`);
+      toast.info(`Loaded archetype: ${found.title}`);
     } else {
-      // Same asset — immediately score with current slider values
+      // Same asset — immediately score with preset values
       toast.info(`Archetype selected: ${found.title}`);
       techtonicsApi.scoreAdhoc({
         asset_id: found.inputs.assetId,
-        Hydrogen: hydrogenPpm,
-        Methane: methanePpm,
-        Acethylene: acethylenePpm,
+        Hydrogen: found.inputs.hydrogenPpm ?? hydrogenPpm,
+        Methane: found.inputs.methanePpm ?? methanePpm,
+        Acethylene: found.inputs.acethylenePpm ?? acethylenePpm,
         Ethylene: found.inputs.ethylenePpm ?? ethylenePpm,
         Ethane: found.inputs.ethanePpm ?? 80,
-        Dielectric_rigidity: dielectricRigidity,
-        top_oil_temp_c: ambientTemp + 35,
+        Dielectric_rigidity: found.inputs.dielectricRigidityKv ?? dielectricRigidity,
+        top_oil_temp_c: (found.inputs.ambientTempC ?? ambientTemp) + 35,
         generate_advisory: false,
       }).then((score) => {
         setLiveResult(score);
@@ -289,13 +340,13 @@ function PredictionStudioPage() {
         Methane: methanePpm,
         Acethylene: acethylenePpm,
         Ethylene: ethylenePpm,
-        Ethane: presetScenarios.find((p) => p.id === activeScenarioId)?.inputs.ethanePpm ?? 80,
+        Ethane: 80,
         Dielectric_rigidity: dielectricRigidity,
         top_oil_temp_c: ambientTemp + 35,
         generate_advisory: true,
       });
       setLiveResult(score);
-      toast.success("Scored by real-time ML inference engine");
+      toast.success("Scored by real-time ML inference engine & Duval Triangle synced");
     } catch {
       // Fallback to local prediction
       setCalculationTrigger((c) => c + 1);
@@ -382,32 +433,7 @@ function PredictionStudioPage() {
   // (mounted/isAuthed declared above near other state hooks)
   return (
     <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      {/* ── Guest Preview Banner ── */}
-      {!isAuthed && !guestBannerDismissed && (
-        <div className="mb-5 flex items-center justify-between gap-3 rounded-xl border border-amber-600/50 bg-amber-500/15 dark:border-amber-500/40 dark:bg-amber-950/40 px-4 py-3 text-sm shadow-sm">
-          <div className="flex items-center gap-3 min-w-0">
-            <span className="shrink-0 size-8 grid place-items-center rounded-lg bg-amber-600 dark:bg-amber-500 text-white dark:text-black shadow-sm">
-              <Lock className="size-4" />
-            </span>
-            <div className="min-w-0">
-              <p className="font-bold text-amber-950 dark:text-amber-200 text-xs sm:text-sm">
-                Real Anand Region Model-Trained Data <span className="font-normal opacity-85">(Evaluation Baseline)</span>
-              </p>
-              <p className="text-[11px] sm:text-xs text-amber-900/90 dark:text-amber-300/80">
-                This baseline is sourced from real operational telemetry trained on the Anand regional grid (not synthetic). Sign in to upload custom sensor CSVs or trigger live AI predictions.
-              </p>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Link to="/login" className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition-colors">
-              <LogIn className="size-3.5" /> Sign In
-            </Link>
-            <button onClick={() => setGuestBannerDismissed(true)} className="text-amber-900/70 dark:text-amber-300/70 hover:text-foreground transition-colors p-1" aria-label="Dismiss banner">
-              <X className="size-4" />
-            </button>
-          </div>
-        </div>
-      )}
+
 
       {/* Studio Header */}
       <div className="flex flex-col gap-4 border-b border-border/50 pb-6 sm:flex-row sm:items-center sm:justify-between">
@@ -726,8 +752,9 @@ function PredictionStudioPage() {
 
               <div className="text-right">
                 <span className="font-mono text-xs text-muted-foreground">Scoring Source</span>
-                <p className="font-mono text-xs font-bold text-foreground">
-                  {liveResult ? "FastAPI Live (Trained Models)" : "Real Pipeline Calibrated"}
+                <p className="font-mono text-xs font-bold text-foreground flex items-center gap-1.5 justify-end">
+                  <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+                  FastAPI Live (Dual Trained ML Models)
                 </p>
               </div>
             </div>
@@ -778,6 +805,19 @@ function PredictionStudioPage() {
               </p>
             </div>
           </div>
+
+          {/* Duval Triangle 1 Diagnostics (IEC 60599 Real-Time Geometry — Live Synced) */}
+          <DuvalTriangle
+            ch4Ppm={methanePpm}
+            c2h4Ppm={ethylenePpm}
+            c2h2Ppm={acethylenePpm}
+            modelPredictedFault={liveResult?.fault_type || displayedFault}
+            duvalAnalysis={liveResult?.duval_analysis}
+            trajectory={duvalTrajectory}
+            assetId={selectedAssetId}
+            size={520}
+            showTitle={true}
+          />
 
           {/* 90-Day RUL Degradation & Load Trajectory (real timeseries from model) */}
           <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-sm">
@@ -887,19 +927,6 @@ function PredictionStudioPage() {
               </div>
             </div>
           )}
-
-          {/* Duval Triangle 1 Diagnostics (IEC 60599 Real-Time Geometry) */}
-          <DuvalTriangle
-            ch4Ppm={methanePpm}
-            c2h4Ppm={ethylenePpm}
-            c2h2Ppm={acethylenePpm}
-            modelPredictedFault={liveResult?.fault_type || displayedFault}
-            duvalAnalysis={liveResult?.duval_analysis}
-            trajectory={duvalTrajectory}
-            assetId={selectedAssetId}
-            size={520}
-            showTitle={true}
-          />
 
           {/* Recommended Actions — live Groq actions when available, else local heuristic */}
           <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-sm">
@@ -1088,49 +1115,10 @@ function PredictionStudioPage() {
         onClose={() => setReportModalOpen(false)}
         defaultZone={targetAsset.substation}
       />
-
-      {/* ── Guest Preview Overlay ── */}
-      {!isAuthed && <GuestPreviewBanner page="Prediction Studio" />}
     </div>
   );
 }
 
-function GuestPreviewBanner({ page }: { page: string }) {
-  return (
-    <>
-      <div
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-30"
-        style={{ height: "50%", background: "linear-gradient(to bottom, transparent 0%, hsl(var(--background)/0.85) 35%, hsl(var(--background)) 65%)" }}
-      />
-      <div className="sticky bottom-0 z-40 border-t border-border/60 bg-background/95 backdrop-blur-xl px-4 py-4 sm:px-6">
-        <div className="mx-auto flex max-w-5xl flex-col items-center gap-3 sm:flex-row sm:justify-between">
-          <div className="flex items-center gap-3">
-            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-              <Lock className="size-4" />
-            </span>
-            <div>
-              <p className="text-sm font-semibold text-foreground">{page} · Preview Mode</p>
-              <p className="text-xs text-muted-foreground">Sign in to run real ML predictions against live transformer sensor data.</p>
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-5 py-2.5 text-xs font-bold text-background transition-colors hover:bg-foreground/90"
-            >
-              <LogIn className="size-3.5" /> Sign In to Access
-            </Link>
-            <Link
-              to="/technology"
-              className="inline-flex items-center gap-1.5 rounded-full border border-border/70 px-4 py-2.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <ShieldCheck className="size-3.5" /> How It Works
-            </Link>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
+
 
 
