@@ -40,9 +40,9 @@ if [ -f "src/frontend/.output/server/index.mjs" ]; then
 fi
 
 # ── 2. Start RAG FastAPI service on internal localhost port ──────────────────
-if [ -d "rag-chatbot" ]; then
+if [ -d "src/rag-chatbot" ]; then
     echo "==> [2/3] Starting RAG FastAPI service on internal port $RAG_PORT..."
-    python -m uvicorn api.main:app --host 127.0.0.1 --port "$RAG_PORT" --app-dir rag-chatbot --workers 1 &
+    python -m uvicorn api.main:app --host 127.0.0.1 --port "$RAG_PORT" --app-dir src/rag-chatbot --workers 1 &
     RAG_PID=$!
     PIDS+=("$RAG_PID")
 fi

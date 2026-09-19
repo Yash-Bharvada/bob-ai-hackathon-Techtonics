@@ -22,16 +22,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY src/requirements.txt ./src/requirements.txt
-COPY rag-chatbot/requirements.txt ./rag-chatbot/requirements.txt
-RUN pip install --no-cache-dir -r ./src/requirements.txt -r ./rag-chatbot/requirements.txt
+COPY src/rag-chatbot/requirements.txt ./src/rag-chatbot/requirements.txt
+RUN pip install --no-cache-dir -r ./src/requirements.txt -r ./src/rag-chatbot/requirements.txt
 
 COPY src/ ./src/
-COPY rag-chatbot/ ./rag-chatbot/
 
 # Copy compiled frontend from Stage 1 into the runtime
 COPY --from=frontend-builder /app/frontend/.output ./src/frontend/.output
 
-COPY start.sh /app/start.sh
+COPY src/start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 ENV PORT=8000
