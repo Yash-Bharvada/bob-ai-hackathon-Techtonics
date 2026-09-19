@@ -17,8 +17,8 @@ from groq import Groq, GroqError
 
 class RAGChatbotChain:
     """
-    End-to-end RAG chain orchestrating semantic retrieval from Qdrant
-    and LLM inference via Groq for Grid Load and Renewable performance advisory.
+    End-to-end RAG chain orchestrating dual-domain semantic retrieval from Qdrant
+    (project knowledge + operational telemetry) and LLM inference via Groq.
     """
 
     def __init__(
@@ -46,47 +46,62 @@ class RAGChatbotChain:
     def format_sources(self, retrieved_items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
         Extract clean source metadata from retrieved results.
+        Handles both operational telemetry fields and project knowledge fields.
         """
         sources = []
         for item in retrieved_items:
             meta = item.get("metadata", {})
-            source_entry = {
-                "asset_id": meta.get("asset_id"),
-                "asset_type": meta.get("asset_type"),
-                "site_name": meta.get("site_name"),
-                "date": meta.get("date"),
-                "actual_kwh": meta.get("actual_kwh"),
-                "expected_kwh": meta.get("expected_kwh"),
-                "deviation_pct": meta.get("deviation_pct"),
-                "grid_load_mw": meta.get("grid_load_mw"),
-                "weather": meta.get("weather"),
-                "health_index": meta.get("health_index"),
-                "rul_days": meta.get("rul_days"),
-                "risk_tier": meta.get("risk_tier"),
-                "fault_type": meta.get("fault_type"),
-                "relevance_score": item.get("score"),
-            }
+            knowledge_type = meta.get("knowledge_type", "operational")
+
+            if knowledge_type == "project":
+                source_entry = {
+                    "knowledge_type": "project",
+                    "source_file": meta.get("source_file"),
+                    "section": meta.get("section"),
+                    "doc_type": meta.get("doc_type"),
+                    "chunk_index": meta.get("chunk_index"),
+                    "relevance_score": item.get("score"),
+                }
+            else:
+                source_entry = {
+                    "knowledge_type": "operational",
+                    "asset_id": meta.get("asset_id"),
+                    "asset_type": meta.get("asset_type"),
+                    "site_name": meta.get("site_name"),
+                    "date": meta.get("date"),
+                    "actual_kwh": meta.get("actual_kwh"),
+                    "expected_kwh": meta.get("expected_kwh"),
+                    "deviation_pct": meta.get("deviation_pct"),
+                    "grid_load_mw": meta.get("grid_load_mw"),
+                    "weather": meta.get("weather"),
+                    "health_index": meta.get("health_index"),
+                    "rul_days": meta.get("rul_days"),
+                    "risk_tier": meta.get("risk_tier"),
+                    "fault_type": meta.get("fault_type"),
+                    "relevance_score": item.get("score"),
+                }
+
             # Remove None values
             sources.append({k: v for k, v in source_entry.items() if v is not None})
         return sources
 
     def answer_question(self, question: str, top_k: Optional[int] = None) -> Dict[str, Any]:
         """
-        Execute RAG chain for the input question:
-        1. Query Qdrant for top-k relevant operational documents.
-        2. Format retrieved documents into prompt context.
-        3. Send system prompt + context + operator inquiry to Groq API.
+        Execute dual-domain RAG chain for the input question:
+        1. Query Qdrant for top-k relevant documents across both project and operational domains.
+        2. Format retrieved documents into prompt context (labeled by domain).
+        3. Send system prompt + context + query to Groq API.
         4. Return dict with 'answer' and 'sources'.
         """
         clean_q = question.strip() if question else ""
         if not clean_q:
             return {
-                "answer": "Please provide a valid query regarding grid load or asset performance.",
+                "answer": "Please provide a valid query about VOLTRA or grid operations.",
                 "sources": [],
             }
 
-        # Step 1: Retrieve context from Qdrant
-        retrieved_items = self.retriever.retrieve(query=clean_q, top_k=top_k)
+        # Step 1: Retrieve context from both domains via hybrid retrieval
+        retrieved_items = self.retriever.retrieve_hybrid(query=clean_q, top_k=top_k)
 
         # Step 2: Format context and prompt
         context_str = format_context(retrieved_items)

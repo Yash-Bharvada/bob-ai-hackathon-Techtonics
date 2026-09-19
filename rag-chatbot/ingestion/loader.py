@@ -158,6 +158,7 @@ def format_operational_document(
     doc_id = f"{asset_id}_{date_str}".replace(" ", "_")
 
     metadata = {
+        "knowledge_type": "operational",
         "source_file": source_file,
         "asset_id": asset_id,
         "asset_type": asset_type,
@@ -283,6 +284,7 @@ def format_transformer_operational_document(
         pass
 
     metadata = {
+        "knowledge_type": "operational",
         "source_file": source_file,
         "asset_id": asset_id,
         "asset_type": "Transformer",
