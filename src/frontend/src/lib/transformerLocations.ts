@@ -12,7 +12,92 @@
 import { validateLocationBatch, type RawLocationRecord } from "@/lib/locationValidator";
 import type { ValidatedLocation } from "@/lib/locationValidator";
 
-/** OpenFreeMap style URL — only defined here, imported everywhere else */
+import type { StyleSpecification } from "maplibre-gl";
+
+/** Ultra-reliable CARTO Dark Matter raster style — loads in 0ms without external JSON/sprite dependencies */
+export const CARTO_DARK_STYLE: StyleSpecification = {
+  version: 8,
+  sources: {
+    "carto-dark": {
+      type: "raster",
+      tiles: [
+        "https://a.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png",
+        "https://b.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png",
+        "https://c.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png",
+        "https://d.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png",
+      ],
+      tileSize: 256,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>',
+    },
+  },
+  layers: [
+    {
+      id: "carto-dark-layer",
+      type: "raster",
+      source: "carto-dark",
+      minzoom: 0,
+      maxzoom: 20,
+    },
+  ],
+};
+
+/** High-contrast CARTO Positron light raster style */
+export const CARTO_LIGHT_STYLE: StyleSpecification = {
+  version: 8,
+  sources: {
+    "carto-light": {
+      type: "raster",
+      tiles: [
+        "https://a.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}@2x.png",
+        "https://b.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}@2x.png",
+        "https://c.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}@2x.png",
+        "https://d.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}@2x.png",
+      ],
+      tileSize: 256,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions" target="_blank" rel="noopener noreferrer">CARTO</a>',
+    },
+  },
+  layers: [
+    {
+      id: "carto-light-layer",
+      type: "raster",
+      source: "carto-light",
+      minzoom: 0,
+      maxzoom: 20,
+    },
+  ],
+};
+
+/** Secondary fallback: Standard OpenStreetMap raster style */
+export const OSM_RASTER_STYLE: StyleSpecification = {
+  version: 8,
+  sources: {
+    "osm-tiles": {
+      type: "raster",
+      tiles: [
+        "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      ],
+      tileSize: 256,
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
+    },
+  },
+  layers: [
+    {
+      id: "osm-layer",
+      type: "raster",
+      source: "osm-tiles",
+      minzoom: 0,
+      maxzoom: 19,
+    },
+  ],
+};
+
+/** OpenFreeMap style URL — retained for vector option */
 export const MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 export const MAP_STYLE_DARK_URL = "https://tiles.openfreemap.org/styles/dark";
 
