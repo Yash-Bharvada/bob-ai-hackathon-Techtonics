@@ -25,7 +25,7 @@ import {
   type Asset7DayPlanResponse,
 } from "@/lib/techtonicsApi";
 import { DuvalTriangle } from "@/components/DuvalTriangle";
-import { GridDiagram, anandDistrictGridNodes } from "@/components/GridDiagram";
+import { SmallGridMap } from "@/components/SmallGridMap";
 import { TX115InterventionBanner } from "@/components/TX115InterventionBanner";
 import { IncidentReportModal } from "@/components/IncidentReportModal";
 import { BlackoutImpactWidget } from "@/components/BlackoutImpactWidget";
@@ -221,6 +221,18 @@ function LiveGridPage() {
   const [displayMode, setDisplayMode] = useState<"grid" | "table">("grid");
   const [apiConnected, setApiConnected] = useState<boolean>(false);
   const [guestBannerDismissed, setGuestBannerDismissed] = useState(false);
+
+  const topologyLiveUpdates = useMemo(() => {
+    const map: Record<string, { status: "risk" | "watch" | "stable"; healthScore: number; lastUpdated: string }> = {};
+    assets.forEach((a) => {
+      map[a.id] = {
+        status: (a.status as "risk" | "watch" | "stable") || "stable",
+        healthScore: a.healthScore ?? 50,
+        lastUpdated: a.lastInspected || "Live",
+      };
+    });
+    return map;
+  }, [assets]);
 
   // Listen for data source changes across the app
   useEffect(() => {
@@ -1576,7 +1588,7 @@ function LiveGridPage() {
       {/* ── VIEW 3: TOPOLOGY MAP ── */}
       {activeViewTab === "topology" && (
         <div className="mt-6 rounded-3xl border border-border/70 bg-card p-6 shadow-card">
-          <div className="flex items-center justify-between border-b border-border/40 pb-4 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border/40 pb-4 mb-4 gap-3">
             <div>
               <h3 className="font-sans text-xl font-bold text-foreground">
                 Anand District Topological Interconnects
@@ -1585,18 +1597,35 @@ function LiveGridPage() {
                 Substation status reflecting live risk severity from Model 1 & 2 analytics.
               </p>
             </div>
-            <span className="text-xs font-mono text-muted-foreground">
-              Selected: {selectedNodeId}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-mono text-muted-foreground">
+                Selected: <span className="text-foreground font-semibold font-mono">{selectedNodeId}</span>
+              </span>
+              {selectedNodeId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const found = assets.find((a) => a.id === selectedNodeId);
+                    if (found) setInspectorAsset(found);
+                  }}
+                  className="px-2.5 py-1 text-xs font-mono rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+                >
+                  Inspect {selectedNodeId}
+                </button>
+              )}
+            </div>
           </div>
 
-          <GridDiagram
+          <SmallGridMap
             selected={selectedNodeId}
             onSelect={(id) => {
               setSelectedNodeId(id);
               const found = assets.find((a) => a.id === id);
               if (found) setInspectorAsset(found);
             }}
+            liveUpdates={topologyLiveUpdates}
+            minHeight="540px"
+            className="w-full"
           />
         </div>
       )}

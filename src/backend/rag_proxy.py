@@ -35,13 +35,23 @@ _rag_process: Optional[subprocess.Popen] = None
 def get_rag_python_executable() -> str:
     """Find the best Python executable to run the standalone RAG service."""
     root_dir = Path(__file__).resolve().parent.parent.parent
-    win_venv = root_dir / "rag-chatbot" / ".venv" / "Scripts" / "python.exe"
-    posix_venv = root_dir / "rag-chatbot" / ".venv" / "bin" / "python"
-
-    if win_venv.is_file():
-        return str(win_venv)
-    if posix_venv.is_file():
-        return str(posix_venv)
+    candidates = [
+        root_dir / ".venv" / "bin" / "python",
+        root_dir / ".venv" / "Scripts" / "python.exe",
+        root_dir / "src" / "rag-chatbot" / ".venv" / "bin" / "python",
+        root_dir / "src" / "rag-chatbot" / ".venv" / "Scripts" / "python.exe",
+        root_dir / "rag-chatbot" / ".venv" / "bin" / "python",
+        root_dir / "rag-chatbot" / ".venv" / "Scripts" / "python.exe",
+    ]
+    for c in candidates:
+        if c.is_file() and os.access(c, os.X_OK):
+            # Test that the interpreter actually runs (guards against broken shebangs from moved folders)
+            try:
+                res = subprocess.run([str(c), "-c", "import sys; sys.exit(0)"], capture_output=True, timeout=2)
+                if res.returncode == 0:
+                    return str(c)
+            except Exception:
+                pass
     return sys.executable
 
 
@@ -60,7 +70,6 @@ def start_rag_service() -> None:
         with httpx.Client(timeout=0.6) as client:
             resp = client.get(f"{RAG_INTERNAL_URL}/health")
             if resp.status_code == 200:
-                print(f"[RAG-MANAGER] Internal RAG service is already active at {RAG_INTERNAL_URL}.")
                 return
     except Exception:
         pass  # Not running yet, proceed to spawn
@@ -68,7 +77,9 @@ def start_rag_service() -> None:
     root_dir = Path(__file__).resolve().parent.parent.parent
     rag_dir = root_dir / "src" / "rag-chatbot"
     if not rag_dir.is_dir():
-        print(f"[RAG-MANAGER] Warning: rag-chatbot directory not found at {rag_dir}", file=sys.stderr)
+        rag_dir = root_dir / "rag-chatbot"
+    if not rag_dir.is_dir():
+        print(f"[RAG-MANAGER] Warning: rag-chatbot directory not found", file=sys.stderr)
         return
 
     python_bin = get_rag_python_executable()
@@ -180,10 +191,11 @@ async def rag_chat(request: Request):
                 status_code=resp.status_code,
             )
     except httpx.ConnectError:
+        start_rag_service()
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={
-                "detail": "RAG Chatbot service is offline. Please ensure the internal service is started on port 8001.",
+                "detail": "RAG Chatbot service is starting up. Please try again in a moment.",
             },
         )
     except Exception as exc:

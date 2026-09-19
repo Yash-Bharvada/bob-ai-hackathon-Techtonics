@@ -5,9 +5,17 @@ from dotenv import load_dotenv
 # Base directory for the standalone RAG chatbot module
 BASE_DIR = Path(__file__).resolve().parent
 
-# Load environment variables from .env if present in rag-chatbot root
-ENV_PATH = BASE_DIR / ".env"
-load_dotenv(dotenv_path=ENV_PATH)
+# Load environment variables from rag-chatbot .env or parent root .env
+ENV_PATHS = [
+    BASE_DIR / ".env",
+    BASE_DIR.parent / ".env",
+    BASE_DIR.parent.parent / ".env",
+]
+for p in ENV_PATHS:
+    if p.is_file():
+        load_dotenv(dotenv_path=p, override=False)
+# Also standard auto-discovery
+load_dotenv(override=False)
 
 
 class Settings:

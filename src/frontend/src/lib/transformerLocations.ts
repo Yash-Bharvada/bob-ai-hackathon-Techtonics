@@ -21,10 +21,10 @@ export const CARTO_DARK_STYLE: StyleSpecification = {
     "carto-dark": {
       type: "raster",
       tiles: [
-        "https://a.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png",
-        "https://b.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png",
-        "https://c.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png",
-        "https://d.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}@2x.png",
+        "https://a.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png",
+        "https://b.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png",
+        "https://c.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png",
+        "https://d.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png",
       ],
       tileSize: 256,
       attribution:
@@ -49,10 +49,10 @@ export const CARTO_LIGHT_STYLE: StyleSpecification = {
     "carto-light": {
       type: "raster",
       tiles: [
-        "https://a.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}@2x.png",
-        "https://b.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}@2x.png",
-        "https://c.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}@2x.png",
-        "https://d.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}@2x.png",
+        "https://a.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png",
+        "https://b.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png",
+        "https://c.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png",
+        "https://d.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png",
       ],
       tileSize: 256,
       attribution:

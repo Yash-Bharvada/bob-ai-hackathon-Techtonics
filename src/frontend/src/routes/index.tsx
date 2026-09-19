@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { Activity, AlertTriangle, ArrowRight, ArrowUpRight, BrainCircuit, Check, ChevronDown, Clock3, CloudLightning, Database, Gauge, LogIn, Radio, ShieldCheck, Zap, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { GridDiagram } from "@/components/GridDiagram";
+import { SmallGridMap } from "@/components/SmallGridMap";
 import { TX115InterventionBanner } from "@/components/TX115InterventionBanner";
 import { techtonicsApi, type RankedAsset } from "@/lib/techtonicsApi";
 import { authSession } from "@/lib/authSession";
@@ -48,6 +48,7 @@ const defaultHistory = [
 function Home() {
   const [txHistory, setTxHistory] = useState(defaultHistory);
   const [topAsset, setTopAsset] = useState<RankedAsset | null>(null);
+  const [rankedList, setRankedList] = useState<RankedAsset[]>([]);
   const [gridMetrics, setGridMetrics] = useState({
     assetsMonitored: "18",
     criticalCount: "02",
@@ -74,6 +75,7 @@ function Home() {
       if (res.ranked_assets?.length) {
         const assets = res.ranked_assets;
         setTopAsset(assets[0]);
+        setRankedList(assets);
         const critical = assets.filter((a) => a.risk_tier === "HIGH" || a.risk_tier === "CRITICAL");
         const watch = assets.filter((a) => a.risk_tier === "MEDIUM");
         const avgRul = assets.reduce((s, a) => s + (a.RUL_days || 0), 0) / assets.length;
@@ -100,7 +102,7 @@ function Home() {
       <Problem />
       <Pipeline />
       <CinematicGrid />
-      <Dashboard metrics={gridMetrics} />
+      <Dashboard metrics={gridMetrics} rankedAssets={rankedList} />
       <FaultAnalysis topAsset={topAsset} />
       <Analytics historyData={txHistory} />
       <PlatformModules />
@@ -885,6 +887,7 @@ function Dashboard({
     watchCount: "02",
     meanRul: "89.4d",
   },
+  rankedAssets = [],
 }: {
   metrics?: {
     assetsMonitored: string;
@@ -893,7 +896,24 @@ function Dashboard({
     watchCount: string;
     meanRul: string;
   };
+  rankedAssets?: RankedAsset[];
 }) {
+  const liveUpdates = useMemo(() => {
+    const map: Record<string, { status: "risk" | "watch" | "stable"; healthScore: number; lastUpdated: string }> = {};
+    rankedAssets.forEach((a) => {
+      let status: "risk" | "watch" | "stable" = "stable";
+      if (a.risk_tier === "CRITICAL" || a.risk_tier === "HIGH" || a.health_index > 50) status = "risk";
+      else if (a.risk_tier === "MEDIUM" || a.health_index > 30) status = "watch";
+
+      map[a.asset_id] = {
+        status,
+        healthScore: a.health_index,
+        lastUpdated: "Live",
+      };
+    });
+    return map;
+  }, [rankedAssets]);
+
   return (
     <section className="mx-auto mt-28 w-full max-w-6xl px-4 sm:px-6">
       <div className="grid gap-8 lg:grid-cols-12 lg:gap-10 items-stretch">
@@ -992,8 +1012,12 @@ function Dashboard({
         </div>
 
         {/* Right Column: Anand District Sub-Transmission Telemetry Map */}
-        <div className="lg:col-span-7 w-full h-full">
-          <GridDiagram />
+        <div className="lg:col-span-7 w-full h-full flex flex-col">
+          <SmallGridMap
+            liveUpdates={liveUpdates}
+            minHeight="480px"
+            className="w-full h-full"
+          />
         </div>
       </div>
     </section>

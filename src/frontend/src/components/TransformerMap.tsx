@@ -37,6 +37,8 @@ export interface TransformerMapProps {
   >;
   style?: CSSProperties;
   className?: string;
+  /** When true, renders a compact layout suitable for dashboard cards */
+  compact?: boolean;
 }
 
 type ConnectionStatus = "connected" | "disconnected" | "loading";
@@ -97,6 +99,7 @@ export function TransformerMap({
   liveUpdates,
   style,
   className,
+  compact = false,
 }: TransformerMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -435,11 +438,17 @@ export function TransformerMap({
   return (
     <div
       className={className}
-      style={{ position: "relative", width: "100%", height: "100%", ...style }}
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        minHeight: style?.minHeight || (compact ? "300px" : "380px"),
+        ...style,
+      }}
     >
       <div
         ref={containerRef}
-        style={{ width: "100%", height: "100%", borderRadius: "inherit" }}
+        style={{ width: "100%", height: "100%", minHeight: "100%", borderRadius: "inherit" }}
         aria-label="Transformer location map"
         role="application"
       />
@@ -483,66 +492,81 @@ export function TransformerMap({
       )}
 
       {/* Tile connection status indicator */}
-      <div
-        className="absolute top-3 left-3 z-20 flex items-center gap-2 rounded-full border border-border/80 bg-background/90 backdrop-blur-md px-3 py-1 text-[11px] font-mono shadow-md pointer-events-none"
-        aria-live="polite"
-        aria-label={`Map tile status: ${tileStatus}`}
-      >
-        <span
-          className={`size-2 rounded-full inline-block ${
-            tileStatus === "connected"
-              ? "bg-emerald-500 animate-pulse"
+      {!compact ? (
+        <div
+          className="absolute top-3 left-3 z-20 flex items-center gap-2 rounded-full border border-border/80 bg-background/90 backdrop-blur-md px-3 py-1 text-[11px] font-mono shadow-md pointer-events-none"
+          aria-live="polite"
+          aria-label={`Map tile status: ${tileStatus}`}
+        >
+          <span
+            className={`size-2 rounded-full inline-block ${
+              tileStatus === "connected"
+                ? "bg-emerald-500 animate-pulse"
+                : tileStatus === "disconnected"
+                  ? "bg-amber-500"
+                  : "bg-amber-400 animate-ping"
+            }`}
+          />
+          <span className="text-foreground font-medium">
+            {tileStatus === "connected"
+              ? "Tiles Live"
               : tileStatus === "disconnected"
-                ? "bg-amber-500"
-                : "bg-amber-400 animate-ping"
-          }`}
-        />
-        <span className="text-foreground font-medium">
-          {tileStatus === "connected"
-            ? "Tiles Live"
-            : tileStatus === "disconnected"
-              ? "Pins Live (Offline Tiles)"
-              : "Connecting…"}
-        </span>
-        <span className="text-muted-foreground border-l border-border/60 pl-2">
-          {TRANSFORMER_LOCATIONS_FULL.length} Pins
-        </span>
-      </div>
+                ? "Pins Live (Offline Tiles)"
+                : "Connecting…"}
+          </span>
+          <span className="text-muted-foreground border-l border-border/60 pl-2">
+            {TRANSFORMER_LOCATIONS_FULL.length} Pins
+          </span>
+        </div>
+      ) : (
+        <div
+          className="absolute top-2.5 left-2.5 z-20 flex items-center gap-1.5 rounded-full border border-border/70 bg-background/85 backdrop-blur-md px-2.5 py-0.5 text-[10px] font-mono shadow-xs pointer-events-none"
+        >
+          <span
+            className={`size-1.5 rounded-full inline-block ${
+              tileStatus === "connected" ? "bg-emerald-500" : "bg-amber-500"
+            }`}
+          />
+          <span className="text-foreground font-medium">18 Substations</span>
+        </div>
+      )}
 
       {/* Quick Actions (Recenter & Style Switcher) */}
-      <div className="absolute top-3 right-14 z-20 flex items-center gap-1.5">
+      <div className={`absolute ${compact ? "top-2.5 right-12" : "top-3 right-14"} z-20 flex items-center gap-1.5`}>
         <button
           type="button"
           onClick={handleResetView}
           title="Recenter view on Anand District"
-          className="px-2.5 py-1 text-[11px] font-mono bg-background/90 backdrop-blur-md text-foreground/90 border border-border/80 hover:bg-secondary hover:text-foreground rounded-md shadow-sm transition-colors cursor-pointer"
+          className="px-2 py-0.5 text-[10px] font-mono bg-background/90 backdrop-blur-md text-foreground/90 border border-border/80 hover:bg-secondary hover:text-foreground rounded shadow-xs transition-colors cursor-pointer"
         >
-          Fit Bounds
+          Fit
         </button>
-        <div className="flex bg-background/90 backdrop-blur-md border border-border/80 rounded-md p-0.5 shadow-sm text-[10px] font-mono">
-          <button
-            type="button"
-            onClick={() => handleStyleChange("dark")}
-            className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
-              activeStyleKey === "dark"
-                ? "bg-primary text-primary-foreground font-semibold"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Dark
-          </button>
-          <button
-            type="button"
-            onClick={() => handleStyleChange("osm")}
-            className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
-              activeStyleKey === "osm"
-                ? "bg-primary text-primary-foreground font-semibold"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            OSM
-          </button>
-        </div>
+        {!compact && (
+          <div className="flex bg-background/90 backdrop-blur-md border border-border/80 rounded-md p-0.5 shadow-sm text-[10px] font-mono">
+            <button
+              type="button"
+              onClick={() => handleStyleChange("dark")}
+              className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                activeStyleKey === "dark"
+                  ? "bg-primary text-primary-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Dark
+            </button>
+            <button
+              type="button"
+              onClick={() => handleStyleChange("osm")}
+              className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                activeStyleKey === "osm"
+                  ? "bg-primary text-primary-foreground font-semibold"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              OSM
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

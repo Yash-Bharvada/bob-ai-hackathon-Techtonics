@@ -37,9 +37,19 @@ src/
 │   ├── grid_impact_ranker.py      ← 5-component composite ranking with criticality multiplier
 │   └── maintenance_plan.py        ← Fault-type-specific action codes + 7-day crew schedule
 │
+├── rag-chatbot/                   ← Standalone RAG Microservice (Voltrics AI)
+│   ├── config.py                  ← Auto-discovers root .env; Qdrant & Groq settings
+│   ├── requirements.txt           ← Qdrant, sentence-transformers, Groq
+│   ├── api/main.py                ← FastAPI service running on port 8001
+│   ├── chatbot/chain.py           ← Prompt assembly & Groq LLM inference
+│   ├── retriever/retriever.py     ← Dual-domain Qdrant vector retrieval
+│   └── ingestion/                 ← Document & CSV telemetry embedders
+│
 ├── backend/
-│   ├── main.py                    ← FastAPI app: 20+ endpoints (scoring, ranking, auth, weather, CSV)
+│   ├── main.py                    ← FastAPI app: 25+ endpoints (scoring, ranking, auth, weather, CSV)
 │   ├── auth_router.py             ← JWT + bcrypt + MongoDB Atlas + Google OAuth 2.0
+│   ├── rag_proxy.py               ← Internal reverse-proxy & supervisor for RAG microservice
+│   ├── services/                  ← SMS alert dispatching, deduplication, and testing
 │   ├── seed_user.py               ← Utility: create a demo operator account in MongoDB
 │   ├── test_endpoints.py          ← Smoke test all API endpoints
 │   └── verify_advisory.py         ← Verifies IBM Bob advisory generation end-to-end
@@ -51,9 +61,10 @@ src/
     └── src/
         ├── routes/
         │   ├── __root.tsx         ← Root layout: SiteNav + SiteFooter + CinematicLanding
-        │   ├── index.tsx          ← / Home: cinematic landing + TX-115 story + pipeline overview
+        │   ├── index.tsx          ← / Home: cinematic landing + TX-115 story + SmallGridMap
         │   ├── dashboard.tsx      ← /dashboard: KPI cards, RUL histogram, fault analysis
-        │   ├── grid.tsx           ← /grid: live grid console, asset inspector, maintenance plan
+        │   ├── grid.tsx           ← /grid: live grid console, SmallGridMap, 7-day work order
+        │   ├── map.tsx            ← /map: full-screen interactive GIS Substation map + telemetry
         │   ├── predict.tsx        ← /predict: DGA sliders, POST /api/score, CSV upload
         │   ├── technology.tsx     ← /technology: methodology, benchmarks, architecture
         │   └── login.tsx          ← /login: JWT auth, Google OAuth, register form
@@ -61,7 +72,9 @@ src/
         │   ├── SiteNav.tsx        ← Responsive navbar (desktop capsule + mobile slide-down)
         │   ├── SiteFooter.tsx
         │   ├── VoltraLogo.tsx     ← Custom SVG brand mark
-        │   ├── GridDiagram.tsx    ← Interactive Anand District topology map
+        │   ├── SmallGridMap.tsx   ← Embedded Anand District GIS map for dashboard and topology tab
+        │   ├── TransformerMap.tsx ← Interactive MapLibre GL map with CARTO raster tiles & popups
+        │   ├── LocationGrid.tsx   ← Real-time telemetry data grid for all 18 substations
         │   ├── TX115InterventionBanner.tsx ← 4-step intervention recovery showcase
         │   ├── IncidentReportModal.tsx     ← Community report + injection defence UI
         │   ├── AuthModal.tsx
