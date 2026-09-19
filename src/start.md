@@ -17,9 +17,9 @@ python3 -m uvicorn src.backend.main:app --host 0.0.0.0 --port 8000 & (cd src/fro
 
 #### Terminal 1: Core Backend & RAG Chatbot (Port 8000)
 ```powershell
-python -m uvicorn main:app --host 127.0.0.1 --port 8000 --app-dir src/backend
+rag-chatbot\.venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000 --app-dir src/backend
 ```
-*(The backend will automatically start the RAG service on internal port 8001 in the background and proxy `/rag/*` calls seamlessly).*
+*(The rag-chatbot venv contains all dependencies for both the backend and the RAG service. The backend will automatically start the RAG service on internal port 8001 in the background and proxy `/rag/*` calls seamlessly).*
 
 #### Terminal 2: Frontend (Port 3000)
 ```powershell
@@ -32,7 +32,7 @@ npm run dev
 ### Option 2: One-Line PowerShell Command (Launches both in separate windows)
 
 ```powershell
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "python -m uvicorn main:app --host 127.0.0.1 --port 8000 --app-dir src/backend"; Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd src/frontend; npm run dev"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "rag-chatbot\.venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000 --app-dir src/backend"; Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd src/frontend; npm run dev"
 ```
 
 ---

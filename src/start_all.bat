@@ -3,7 +3,7 @@ echo ====================================================
 echo Starting VOLTRA (Backend + RAG & Frontend)
 echo ====================================================
 
-start "VOLTRA Backend & RAG Chatbot (8000)" cmd /k "python -m uvicorn main:app --host 127.0.0.1 --port 8000 --app-dir src/backend"
+start "VOLTRA Backend & RAG Chatbot (8000)" cmd /k "rag-chatbot\.venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000 --app-dir src/backend"
 
 start "VOLTRA Frontend (3000)" cmd /k "cd src/frontend && npm run dev"
 

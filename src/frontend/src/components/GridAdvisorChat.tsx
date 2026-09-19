@@ -499,26 +499,32 @@ export function GridAdvisorChat() {
                     <span>{msg.timestamp}</span>
                   </div>
 
-                  {/* Message Content — rendered as Markdown */}
-                  <div className={`leading-relaxed break-words text-xs sm:text-sm font-sans prose prose-sm max-w-none
-                    prose-p:my-1 prose-p:leading-relaxed
-                    prose-em:italic
-                    prose-ul:my-1 prose-ul:pl-4 prose-ul:list-disc
-                    prose-ol:my-1 prose-ol:pl-4 prose-ol:list-decimal
-                    prose-li:my-0.5
-                    prose-code:rounded prose-code:px-1 prose-code:py-0.5 prose-code:font-mono prose-code:text-[11px]
-                    prose-pre:rounded-lg prose-pre:p-3 prose-pre:overflow-x-auto prose-pre:text-[11px]
-                    prose-h1:text-sm prose-h1:font-bold prose-h1:mt-2 prose-h1:mb-1
-                    prose-h2:text-xs prose-h2:font-bold prose-h2:mt-2 prose-h2:mb-0.5
-                    prose-h3:text-xs prose-h3:font-semibold prose-h3:mt-1.5 prose-h3:mb-0.5
-                    prose-blockquote:border-l-2 prose-blockquote:pl-3 prose-blockquote:italic
-                    prose-table:text-[11px] prose-th:font-semibold prose-th:text-left prose-th:py-1 prose-td:py-1
-                    ${msg.sender === "user"
-                      ? "prose-invert prose-strong:text-white prose-a:text-emerald-300 prose-code:bg-white/20 prose-pre:bg-white/10"
-                      : "dark:prose-invert prose-strong:text-foreground dark:prose-strong:text-white prose-a:text-emerald-600 dark:prose-a:text-emerald-400 prose-code:bg-muted dark:prose-code:bg-white/10 prose-pre:bg-muted dark:prose-pre:bg-white/5 prose-blockquote:border-border prose-blockquote:text-muted-foreground"
-                    }`}>
-                    <ReactMarkdown>{msg.text}</ReactMarkdown>
-                  </div>
+                  {/* Message Content */}
+                  {msg.sender === "user" ? (
+                    // User bubble — plain text, inherits the bubble's text-background colour
+                    <div className="whitespace-pre-wrap leading-relaxed break-words text-xs sm:text-sm font-sans">
+                      {msg.text}
+                    </div>
+                  ) : (
+                    // Assistant bubble — full markdown rendering
+                    <div className="leading-relaxed break-words text-xs sm:text-sm font-sans prose prose-sm dark:prose-invert max-w-none
+                      [&_p]:my-1 [&_p]:leading-relaxed
+                      [&_strong]:font-bold [&_strong]:text-foreground dark:[&_strong]:text-white
+                      [&_em]:italic
+                      [&_ul]:my-1 [&_ul]:pl-4 [&_ul]:list-disc
+                      [&_ol]:my-1 [&_ol]:pl-4 [&_ol]:list-decimal
+                      [&_li]:my-0.5
+                      [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5 [&_code]:font-mono [&_code]:text-[11px] dark:[&_code]:bg-white/10
+                      [&_pre]:rounded-lg [&_pre]:bg-muted dark:[&_pre]:bg-white/5 [&_pre]:p-3 [&_pre]:overflow-x-auto [&_pre]:text-[11px]
+                      [&_h1]:text-sm [&_h1]:font-bold [&_h1]:mt-2 [&_h1]:mb-1
+                      [&_h2]:text-xs [&_h2]:font-bold [&_h2]:mt-2 [&_h2]:mb-0.5
+                      [&_h3]:text-xs [&_h3]:font-semibold [&_h3]:mt-1.5 [&_h3]:mb-0.5
+                      [&_blockquote]:border-l-2 [&_blockquote]:border-border [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-muted-foreground
+                      [&_table]:text-[11px] [&_th]:font-semibold [&_th]:text-left [&_th]:py-1 [&_td]:py-1
+                      [&_a]:text-emerald-600 dark:[&_a]:text-emerald-400 [&_a]:underline">
+                      <ReactMarkdown>{msg.text}</ReactMarkdown>
+                    </div>
+                  )}
 
                   {/* Sources Section (if available) */}
                   {msg.sources && msg.sources.length > 0 && (
