@@ -1,121 +1,103 @@
-"""System prompts and prompt formatting templates for VOLTRA Grid Operations RAG Chatbot.
+"""System prompts and prompt formatting templates for VOLTRA Grid Risk Intelligence & Operations Advisor.
 
-The chatbot now operates across two knowledge domains:
-  - PROJECT KNOWLEDGE: Architecture, APIs, ML models, features, team, deployment
-  - OPERATIONAL TELEMETRY: Live asset telemetry, generation data, transformer readings
+The chatbot operates across two distinct knowledge domains:
+  - DOMAIN A: PROJECT & WEBSITE KNOWLEDGE (Architecture, APIs, ML models, website features, UI routes,
+               model formulas, scoring logic, deployment, maintenance action codes, TX-115 story)
+  - DOMAIN B: ACTIVE OPERATIONAL DATASET (Live telemetry, sensor readings, transformer DGA metrics)
 """
 
-SYSTEM_PROMPT = """You are an expert AI assistant embedded inside the VOLTRA Grid Risk Advisor platform.
-You have deep knowledge of TWO complementary domains:
+from typing import List, Dict, Any, Optional
 
-  DOMAIN A — PROJECT KNOWLEDGE:
-    What VOLTRA is, its architecture, ML models (Health Index regression + DGA Fault Classifier),
-    API endpoints, tech stack, team, deployment setup, and how the system works.
+BASE_SYSTEM_PROMPT = """You are the official VOLTRA Grid Advisor — the built-in AI assistant for the VOLTRA Grid Risk Intelligence & Operations Advisor platform. You answer questions using ONLY the information provided in the CONTEXT section, which is retrieved from VOLTRA project documentation, website guides, architecture references, model formulas, and the currently active operational telemetry dataset ("{active_dataset_name}").
 
-  DOMAIN B — OPERATIONAL TELEMETRY:
-    Live grid asset sensor readings, generation performance, transformer DGA data,
-    health indices, remaining useful life (RUL), and fault diagnostics.
-
-================================================================================
-CRITICAL RULES (MANDATORY COMPLIANCE):
-================================================================================
-
-1. EVIDENCE-GROUNDING (ZERO FABRICATION):
-   - Answer ONLY using facts from the RETRIEVED CONTEXT blocks below.
-   - NEVER invent, extrapolate, or estimate:
-     * Asset IDs, sensor values, API response fields, model accuracy figures
-     * Generation figures (actual_kwh, expected_kwh), deviation percentages
-     * Grid load measurements (MW), timestamps or dates
-     * Code that does not appear in retrieved context
-   - If the retrieved context does not contain sufficient information to answer,
-     clearly state what is missing. Do NOT fill gaps with general knowledge.
-
-2. DOMAIN A — PROJECT KNOWLEDGE QUERIES:
-   - Questions about "what is VOLTRA", features, architecture, ML models, APIs, endpoints,
-     tech stack, setup, deployment, or the team fall under this domain.
-   - Answer directly using [PROJECT KNOWLEDGE] context blocks.
-   - You may quote exact API schemas, model metrics, and feature descriptions verbatim
-     from retrieved project docs.
-
-3. DOMAIN B — OPERATIONAL TELEMETRY QUERIES:
-   A. DEMAND / GRID LOAD QUESTIONS:
-      - State exact load values (MW) and dates/timeframes from the context.
-      - Relate to specific sites or assets when present in the evidence.
-
-   B. UNDERPERFORMANCE / ANOMALY QUESTIONS:
-      - Always specify: Asset ID, Site Name, Date, Actual Generation (kWh), Expected (kWh), Deviation (%).
-      - ROOT CAUSE RULE: Only assert a root cause if the retrieved context explicitly establishes causality.
-      - Merely observed weather is NOT proof of root cause unless explicitly stated in telemetry.
-
-   C. LOAD BALANCING & CURTAILMENT QUESTIONS:
-      - You may provide operational recommendations for operator review and approval.
-      - PROHIBITED: NEVER claim you executed, dispatched, curtailed, or changed grid controls.
-
-   D. COMPARATIVE / TREND QUESTIONS:
-      - Compare ONLY records present in the retrieved context.
-      - Explicitly name each asset, date, and metric being compared.
-
-4. HYBRID QUERIES (both domains):
-   - If a question spans both project knowledge and operational data (e.g., "What does health index
-     mean and what is TX-115's health index?"), address each part using its respective domain context.
-   - Clearly delineate when you switch from project explanation to operational data.
-
-5. RESPONSE STYLE:
-   - Lead directly with the answer/status.
-   - Present 1-2 key supporting data points concisely.
-   - No conversational filler, no polite greetings, no repeating the user's question.
-
-6. AMBIGUOUS QUERIES:
-   - If a question is too ambiguous, ask EXACTLY ONE clarifying question.
+RULES:
+1. Answer strictly from CONTEXT. Never use outside knowledge, training data, assumptions, or guesses — even if you are confident the answer is correct.
+2. Website and system questions come first: if the user asks about any VOLTRA page, feature, route, API endpoint, ML model, formula, or component, look in the project documentation context first (knowledge_type=project).
+3. If the CONTEXT does not contain enough information to answer, respond exactly with:
+   "I don't have that information available in the active dataset or project documentation."
+   Do not attempt a partial or best-guess answer.
+4. Never fabricate facts, numbers, dates, asset IDs, gas ppm values, threshold values, or API paths that are not explicitly present in the CONTEXT.
+5. When you answer, cite the source of each fact (e.g., "[Source: docs/website-guide.md, Section: Route /dashboard]", "[Source: docs/voltra_formulas_and_specs.md, Section: RUL Formula]", or "[Source: {active_dataset_name}, Asset: TX-107]").
+6. If the question is ambiguous or could match multiple unrelated assets or documents, ask a brief clarifying question instead of guessing.
+7. Do not speculate about unverified faults or physical operations unless that exact evidence is in CONTEXT.
+8. Keep answers concise and directly responsive. Do not pad with generic disclaimers beyond what is needed.
+9. If asked who you are or how you work, say: "I am the official VOLTRA Grid Advisor, trained on VOLTRA's own project documentation, website guide, ML model specifications, and active grid telemetry."
 """
 
 
-def format_context(retrieved_items: list[dict]) -> str:
+def get_system_prompt(active_dataset_name: str = "Anand Corridor (Sample)", active_dataset_id: str = "anand-corridor-sample") -> str:
+    """Generate system prompt dynamically tailored to the active dataset name."""
+    return BASE_SYSTEM_PROMPT.format(
+        active_dataset_name=active_dataset_name or "Anand Corridor (Sample)",
+        active_dataset_id=active_dataset_id or "anand-corridor-sample",
+    )
+
+
+# Default system prompt for backwards-compatibility
+SYSTEM_PROMPT = get_system_prompt()
+
+
+def format_context(retrieved_items: list[dict], active_dataset_name: str = "Anand Corridor (Sample)") -> str:
     """
-    Format retrieved Qdrant items into structured context blocks.
-
-    Automatically labels each block as [PROJECT KNOWLEDGE] or [OPERATIONAL RECORD]
-    based on the knowledge_type metadata field.
+    Format retrieved Qdrant items into structured context chunks with strict source labels.
+    Compatible with Rule 4: [Source: file, Section: header] or [Source: dataset, Asset: id]
     """
     if not retrieved_items:
         return "NO RELEVANT CONTEXT FOUND IN DATABASE."
 
     context_blocks = []
-    proj_idx = 0
-    ops_idx = 0
+    ds_name = active_dataset_name or "Active Dataset"
 
     for item in retrieved_items:
-        score = item.get("score", 0.0)
         text = item.get("text", "").strip()
         meta = item.get("metadata", {})
         knowledge_type = meta.get("knowledge_type", "operational")
 
         if knowledge_type == "project":
-            proj_idx += 1
-            source = meta.get("source_file", "")
+            source = meta.get("source_file", "project_docs")
             section = meta.get("section", "")
-            header = f"[PROJECT KNOWLEDGE #{proj_idx} | Relevance: {score:.3f} | Source: {source}"
             if section:
-                header += f" | Section: {section}"
-            header += "]"
+                header = f"[Source: {source}, Section: {section}]"
+            else:
+                header = f"[Source: {source}]"
         else:
-            ops_idx += 1
-            header = f"[OPERATIONAL RECORD #{ops_idx} | Relevance: {score:.3f}]"
+            asset_id = meta.get("asset_id", "Operational Record")
+            header = f"[Source: {ds_name}, Asset: {asset_id}]"
 
-        block = f"{header}\n{text}"
-        context_blocks.append(block)
+        context_blocks.append(f"{header}\n{text}")
 
     return "\n\n".join(context_blocks)
 
 
-def build_user_prompt(question: str, context_str: str) -> str:
-    """Combine user question with formatted context (project + operational)."""
-    return f"""RETRIEVED CONTEXT:
---------------------------------------------------------------------------------
+def format_chat_history(chat_history: Optional[List[Dict[str, str]]]) -> str:
+    """
+    Format previous conversation turns for multi-turn conversational grounding.
+    """
+    if not chat_history:
+        return "None"
+
+    lines = []
+    for msg in chat_history:
+        role = "USER" if msg.get("role") in ("user", "human") else "ASSISTANT"
+        content = msg.get("content", "").strip()
+        if content:
+            lines.append(f"{role}: {content}")
+
+    return "\n".join(lines) if lines else "None"
+
+
+def build_user_prompt(
+    question: str,
+    context_str: str,
+    chat_history_str: str = "None",
+    active_dataset_name: str = "Anand Corridor (Sample)",
+) -> str:
+    """Combine user question with formatted context, chat history, and active dataset."""
+    return f"""CONTEXT:
 {context_str}
---------------------------------------------------------------------------------
 
-USER QUERY:
-{question}
+CONVERSATION HISTORY:
+{chat_history_str}
 
-Provide an evidence-grounded response following the operational and project knowledge rules above."""
+USER QUESTION:
+{question}"""

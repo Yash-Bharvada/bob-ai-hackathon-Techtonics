@@ -9,16 +9,15 @@ if str(BASE_DIR) not in sys.path:
 
 from config import settings
 from retriever.retriever import GridRetriever
-from chatbot.prompt_templates import SYSTEM_PROMPT, format_context, build_user_prompt
+from chatbot.prompt_templates import get_system_prompt, format_context, build_user_prompt, format_chat_history
+from datasets.dataset_manager import dataset_manager
 from groq import Groq, GroqError
-
-
 
 
 class RAGChatbotChain:
     """
     End-to-end RAG chain orchestrating dual-domain semantic retrieval from Qdrant
-    (project knowledge + operational telemetry) and LLM inference via Groq.
+    (project knowledge + active operational telemetry) and LLM inference via Groq.
     """
 
     def __init__(
@@ -65,6 +64,7 @@ class RAGChatbotChain:
             else:
                 source_entry = {
                     "knowledge_type": "operational",
+                    "dataset_id": meta.get("dataset_id"),
                     "asset_id": meta.get("asset_id"),
                     "asset_type": meta.get("asset_type"),
                     "site_name": meta.get("site_name"),
@@ -85,13 +85,20 @@ class RAGChatbotChain:
             sources.append({k: v for k, v in source_entry.items() if v is not None})
         return sources
 
-    def answer_question(self, question: str, top_k: Optional[int] = None) -> Dict[str, Any]:
+    def answer_question(
+        self,
+        question: str,
+        top_k: Optional[int] = None,
+        dataset_id: Optional[str] = None,
+        history: Optional[List[Dict[str, str]]] = None,
+    ) -> Dict[str, Any]:
         """
         Execute dual-domain RAG chain for the input question:
-        1. Query Qdrant for top-k relevant documents across both project and operational domains.
-        2. Format retrieved documents into prompt context (labeled by domain).
-        3. Send system prompt + context + query to Groq API.
-        4. Return dict with 'answer' and 'sources'.
+        1. Resolve active dataset metadata (using provided dataset_id or active registered dataset).
+        2. Query Qdrant for top-k relevant documents filtered strictly to active operational dataset + project knowledge.
+        3. Format retrieved documents into prompt context.
+        4. Send tailored system prompt + context + query to Groq API.
+        5. Return dict with 'answer', 'sources', and 'dataset' metadata.
         """
         clean_q = question.strip() if question else ""
         if not clean_q:
@@ -100,20 +107,43 @@ class RAGChatbotChain:
                 "sources": [],
             }
 
-        # Step 1: Retrieve context from both domains via hybrid retrieval
-        retrieved_items = self.retriever.retrieve_hybrid(query=clean_q, top_k=top_k)
+        # Step 1: Determine active dataset
+        if dataset_id:
+            active_meta = {"dataset_id": dataset_id, "name": dataset_id, "asset_count": 0}
+        else:
+            active_meta = dataset_manager.get_active_dataset()
 
-        # Step 2: Format context and prompt
-        context_str = format_context(retrieved_items)
-        user_prompt = build_user_prompt(question=clean_q, context_str=context_str)
+        active_id = active_meta.get("dataset_id")
+        active_name = active_meta.get("name", "Active Dataset")
 
-        # Step 3: Invoke Groq LLM
+        # Step 2: Retrieve context strictly isolating active operational dataset
+        retrieved_items = self.retriever.retrieve_hybrid(
+            query=clean_q,
+            top_k=top_k,
+            dataset_id=active_id,
+        )
+
+        # Step 3: Format context and prompt
+        context_str = format_context(retrieved_items, active_dataset_name=active_name)
+        chat_history_str = format_chat_history(history)
+        user_prompt = build_user_prompt(
+            question=clean_q,
+            context_str=context_str,
+            chat_history_str=chat_history_str,
+            active_dataset_name=active_name,
+        )
+        system_prompt = get_system_prompt(
+            active_dataset_name=active_name,
+            active_dataset_id=active_id,
+        )
+
+        # Step 4: Invoke Groq LLM
         client = self._get_groq_client()
         try:
             chat_completion = client.chat.completions.create(
                 model=settings.GROQ_MODEL,
                 messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
                 temperature=settings.GROQ_TEMPERATURE,
@@ -125,10 +155,15 @@ class RAGChatbotChain:
         except Exception as e:
             raise RuntimeError(f"Unexpected error communicating with LLM: {str(e)}") from e
 
-        # Step 4: Extract sources
+        # Step 5: Extract sources
         sources = self.format_sources(retrieved_items)
 
         return {
             "answer": answer_text,
             "sources": sources,
+            "dataset": {
+                "id": active_meta.get("dataset_id"),
+                "name": active_meta.get("name"),
+                "asset_count": active_meta.get("asset_count", 0),
+            },
         }

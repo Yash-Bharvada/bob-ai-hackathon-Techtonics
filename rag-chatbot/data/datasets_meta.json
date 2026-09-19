@@ -1,0 +1,59 @@
+{
+  "active_dataset_id": "anand-corridor-sample",
+  "datasets": {
+    "anand-corridor-sample": {
+      "dataset_id": "anand-corridor-sample",
+      "name": "Anand Corridor (Sample)",
+      "asset_count": 18,
+      "record_count": 18,
+      "status": "active",
+      "source_file": "anand_corridor_sample.csv",
+      "created_at": "2026-09-19T13:22:40.358033",
+      "assets": [
+        "TX-101",
+        "TX-102",
+        "TX-103",
+        "TX-104",
+        "TX-105",
+        "TX-106",
+        "TX-107",
+        "TX-108",
+        "TX-109",
+        "TX-110",
+        "TX-111",
+        "TX-112",
+        "TX-113",
+        "TX-114",
+        "TX-115",
+        "TX-116",
+        "TX-117",
+        "TX-118"
+      ]
+    },
+    "synth-fleet-alpha": {
+      "dataset_id": "synth-fleet-alpha",
+      "name": "Synth Fleet Alpha",
+      "asset_count": 2,
+      "record_count": 2,
+      "status": "inactive",
+      "source_file": "synth_fleet_alpha.csv",
+      "created_at": "2026-09-19T11:26:07.048449",
+      "assets": [
+        "TX-998",
+        "TX-999"
+      ]
+    },
+    "synth-fleet-beta": {
+      "dataset_id": "synth-fleet-beta",
+      "name": "Synth Fleet Beta",
+      "asset_count": 1,
+      "record_count": 1,
+      "status": "inactive",
+      "source_file": "synth_fleet_beta.csv",
+      "created_at": "2026-09-19T11:26:17.596615",
+      "assets": [
+        "TX-888"
+      ]
+    }
+  }
+}

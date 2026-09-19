@@ -1,9 +1,14 @@
 .git
 .venv
+**/.venv
 __pycache__
+**/__pycache__
 *.pyc
 .DS_Store
 node_modules
 src/frontend/node_modules
 src/frontend/.output
 signup page/
+scratch/
+rag-chatbot/.env
+demo/

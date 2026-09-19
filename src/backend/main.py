@@ -53,6 +53,7 @@ from pydantic import BaseModel
 from typing import Any, Dict, List, Optional
 
 from auth_router import router as auth_router
+from rag_proxy import router as rag_router, RAG_INTERNAL_URL, start_rag_service, stop_rag_service
 
 from pipeline.score_asset_risk import score_asset_risk, score_all_assets
 from pipeline.grid_impact_ranker import rank_assets
@@ -79,6 +80,9 @@ app.add_middleware(
 
 # ── Auth routes (/api/auth/*) ──────────────────────────────────────────────────
 app.include_router(auth_router)
+
+# ── RAG Chatbot internal proxy routes (/rag/*) ─────────────────────────────────
+app.include_router(rag_router, prefix="/rag", tags=["RAG Chatbot Proxy"])
 
 # ---------------------------------------------------------------------------
 # Cached data — loaded once at startup
@@ -147,7 +151,13 @@ def _load_cache() -> None:
 
 @app.on_event("startup")
 async def startup_event():
+    start_rag_service()
     _load_cache()
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    stop_rag_service()
 
 
 # ---------------------------------------------------------------------------
@@ -176,6 +186,30 @@ def _df_to_records(df: pd.DataFrame) -> list:
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "grid-risk-api", "version": "1.0.0"}
+
+
+@app.get("/health/deployment", summary="Deployment-level health check across all internal services")
+async def deployment_health():
+    """
+    Confirms liveness of both the primary BOB backend and internal RAG FastAPI service.
+    """
+    rag_status = "unavailable"
+    try:
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            resp = await client.get(f"{RAG_INTERNAL_URL}/health")
+            if resp.status_code == 200 and resp.json().get("status") == "ok":
+                rag_status = "ok"
+    except Exception:
+        rag_status = "unavailable"
+
+    return {
+        "status": "ok",
+        "deployment": "single-server",
+        "services": {
+            "bob_backend": {"status": "ok", "port": os.getenv("PORT", "8000")},
+            "rag_fastapi": {"status": rag_status, "internal_url": RAG_INTERNAL_URL},
+        }
+    }
 
 
 @app.get("/api/assets")
@@ -1696,7 +1730,7 @@ if FRONTEND_DIST.exists():
 @app.api_route("/{full_path:path}", methods=["GET", "POST", "HEAD"], include_in_schema=False)
 async def serve_frontend(request: Request, full_path: str):
     # Never intercept backend API routes
-    if full_path.startswith("api/") or full_path.startswith("events/") or full_path in ("health", "docs", "openapi.json"):
+    if full_path.startswith("api/") or full_path.startswith("events/") or full_path.startswith("rag/") or full_path in ("health", "health/deployment", "docs", "openapi.json"):
         raise HTTPException(status_code=404, detail="API route not found")
 
     # If it's a static file in public, serve directly

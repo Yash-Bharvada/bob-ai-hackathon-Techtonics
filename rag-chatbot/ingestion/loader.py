@@ -106,6 +106,7 @@ def format_operational_document(
     date_str: str,
     records: List[Dict[str, Any]],
     source_file: str,
+    dataset_id: str = "default",
 ) -> OperationalDocument:
     """
     Groups and aggregates records for an (asset_id, date) pair into a rich natural-language operational document.
@@ -143,7 +144,7 @@ def format_operational_document(
     # Generate Natural Language Document Text
     doc_lines = [
         f"OPERATIONAL ASSET SUMMARY: {asset_id} ({asset_type})",
-        f"Site: {site_name}",
+        f"Dataset: {dataset_id} | Site: {site_name}",
         f"Date: {date_str} | Telemetry Period: {time_range} ({record_count} intervals)",
         f"Performance Status: {perf_status}",
         f"- Total Actual Generation: {total_actual:,.2f} kWh",
@@ -154,11 +155,12 @@ def format_operational_document(
     ]
     doc_text = "\n".join(doc_lines)
 
-    # Deterministic Document ID: {asset_id}_{date_str}
-    doc_id = f"{asset_id}_{date_str}".replace(" ", "_")
+    # Deterministic Document ID: {dataset_id}_{asset_id}_{date_str}
+    doc_id = f"{dataset_id}_{asset_id}_{date_str}".replace(" ", "_")
 
     metadata = {
         "knowledge_type": "operational",
+        "dataset_id": dataset_id,
         "source_file": source_file,
         "asset_id": asset_id,
         "asset_type": asset_type,
@@ -180,13 +182,18 @@ def format_transformer_operational_document(
     row: Dict[str, str],
     row_idx: int,
     source_file: str,
+    dataset_id: str = "default",
 ) -> OperationalDocument:
     """Format a transformer or substation asset sensor reading row into an OperationalDocument."""
     asset_id = (
         row.get("asset_id")
         or row.get("Asset_ID")
         or row.get("asset")
+        or row.get("Asset")
         or row.get("id")
+        or row.get("ID")
+        or row.get("transformer_id")
+        or row.get("unit_id")
         or f"TX-ROW-{row_idx}"
     ).strip()
 
@@ -233,7 +240,7 @@ def format_transformer_operational_document(
 
     doc_lines = [
         f"OPERATIONAL ASSET SUMMARY: {asset_id} (Grid Substation Transformer Asset)",
-        f"Source File: {source_file} (Row {row_idx})",
+        f"Dataset: {dataset_id} | Source File: {source_file} (Row {row_idx})",
     ]
 
     if risk or hi or rul or fault:
@@ -253,9 +260,9 @@ def format_transformer_operational_document(
         doc_lines.extend(oil_metrics)
 
     handled = {k for k, _ in gas_keys} | {k for k, _ in oil_keys} | {
-        "asset_id", "Asset_ID", "asset", "id", "health_index", "RUL_days", "rul_days",
+        "asset_id", "Asset_ID", "asset", "Asset", "id", "ID", "health_index", "RUL_days", "rul_days",
         "risk_tier", "criticality_tier", "fault_type", "fault_prob", "health_index_score",
-        "site_name", "substation_name", "date", "timestamp"
+        "site_name", "substation_name", "date", "timestamp", "transformer_id", "unit_id"
     }
     other_lines = []
     for k, v in row.items():
@@ -267,7 +274,9 @@ def format_transformer_operational_document(
 
     doc_text = "\n".join(doc_lines)
     today_str = datetime.now().strftime("%Y-%m-%d")
-    doc_id = f"{asset_id}_row{row_idx}_{today_str}".replace(" ", "_")
+    date_val = row.get("date") or row.get("timestamp") or today_str
+    # Deterministic doc_id incorporating dataset_id + asset_id + row/date
+    doc_id = f"{dataset_id}_{asset_id}_row{row_idx}_{date_val}".replace(" ", "_").replace(":", "-")
 
     hi_val = None
     try:
@@ -285,11 +294,12 @@ def format_transformer_operational_document(
 
     metadata = {
         "knowledge_type": "operational",
+        "dataset_id": dataset_id,
         "source_file": source_file,
         "asset_id": asset_id,
         "asset_type": "Transformer",
         "site_name": row.get("substation_name") or row.get("site_name") or "Substation Fleet",
-        "date": row.get("date") or row.get("timestamp") or today_str,
+        "date": date_val,
         "health_index": hi_val,
         "rul_days": rul_val,
         "risk_tier": risk or "Standard",
@@ -302,22 +312,39 @@ def load_csv_from_string(
     csv_text: str,
     source_filename: str = "uploaded.csv",
     column_map: Dict[str, str] = COLUMN_MAP,
+    dataset_id: str = "default",
 ) -> List[OperationalDocument]:
     """
     Parse CSV text from memory. Automatically identifies whether the file is
     a renewable generation telemetry CSV or a transformer/substation sensor readings CSV,
-    and returns a list of rich OperationalDocument objects.
+    and returns a list of rich OperationalDocument objects with dataset_id stamped.
     """
     f = io.StringIO(csv_text.strip())
     reader = csv.DictReader(f)
     if reader.fieldnames is None:
         raise ValueError(f"CSV content in '{source_filename}' is empty or malformed.")
 
-    headers_lower = {h.strip().lower() for h in reader.fieldnames if h}
+    headers_clean = [h.strip() for h in reader.fieldnames if h and h.strip()]
+    if not headers_clean:
+        raise ValueError(f"CSV in '{source_filename}' does not contain any valid column headers.")
 
-    # Branch A: Renewable generation telemetry (has actual_kwh / expected_kwh)
+    headers_lower = {h.lower() for h in headers_clean}
+
+    # Verify at least one identifier column exists across any known schema
+    candidate_id_cols = {
+        "asset_id", "asset", "id", "transformer_id", "unit_id",
+        "equipment_id", "device_id", "station_id", "asset_name", "tx_id"
+    }
+    has_id_col = bool(headers_lower & candidate_id_cols)
     is_renewable = "actual_kwh" in headers_lower or "expected_kwh" in headers_lower
 
+    if not has_id_col and not is_renewable:
+        raise ValueError(
+            f"CSV Header Validation Failed: No recognized asset identifier column found in '{source_filename}'. "
+            f"Expected at least one of: {', '.join(sorted(candidate_id_cols))}."
+        )
+
+    # Branch A: Renewable generation telemetry (has actual_kwh / expected_kwh)
     if is_renewable:
         validate_csv_headers(reader.fieldnames, column_map)
 
@@ -390,6 +417,7 @@ def load_csv_from_string(
                 date_str=group["date_str"],
                 records=group["records"],
                 source_file=source_filename,
+                dataset_id=dataset_id,
             )
             documents.append(doc)
 
@@ -406,8 +434,12 @@ def load_csv_from_string(
             row=cleaned_row,
             row_idx=row_idx,
             source_file=source_filename,
+            dataset_id=dataset_id,
         )
         documents.append(doc)
+
+    if not documents:
+        raise ValueError(f"CSV in '{source_filename}' contains headers but no valid data rows.")
 
     return documents
 
@@ -415,6 +447,7 @@ def load_csv_from_string(
 def load_csv(
     file_path: Path | str,
     column_map: Dict[str, str] = COLUMN_MAP,
+    dataset_id: str = "default",
 ) -> List[OperationalDocument]:
     """
     Load a single CSV file, validate columns, group by asset_id + date, and return OperationalDocument list.
@@ -426,7 +459,7 @@ def load_csv(
     with open(path, mode="r", encoding="utf-8-sig") as f:
         content = f.read()
 
-    return load_csv_from_string(content, source_filename=path.name, column_map=column_map)
+    return load_csv_from_string(content, source_filename=path.name, column_map=column_map, dataset_id=dataset_id)
 
 
 def load_all_csvs(

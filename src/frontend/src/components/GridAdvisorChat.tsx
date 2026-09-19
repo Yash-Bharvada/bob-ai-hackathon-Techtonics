@@ -1,11 +1,15 @@
 import { useState, useEffect, useRef } from "react";
+import ReactMarkdown from "react-markdown";
 import { useRouterState } from "@tanstack/react-router";
 import {
   chatWithGridAdvisor,
   checkRagHealth,
+  getActiveDataset,
   type RagChatResponse,
   type RagChatSource,
+  type ActiveDatasetInfo,
 } from "@/lib/ragApi";
+import { gridDataSource } from "@/lib/gridDataSource";
 import {
   Sheet,
   SheetContent,
@@ -33,6 +37,7 @@ import {
   ShieldCheck,
   Flame,
   X,
+  Database,
 } from "lucide-react";
 
 interface ChatMessage {
@@ -45,130 +50,21 @@ interface ChatMessage {
 }
 
 const DEFAULT_SUGGESTIONS = [
-  "Why is TX-107 marked as Critical with D1 fault?",
-  "What is the RUL status and recovery plan for TX-115?",
-  "Explain IEEE C57.104 dissolved gas thresholds for active arcing.",
-  "Which Anand District substations require priority crew dispatch?",
+  "What pages and features are available on this website?",
+  "How do I run a what-if simulation on the Predict page?",
+  "What does the 7-day maintenance plan on the Dashboard show?",
+  "What is the status of TX-107 in the active dataset?",
+  "How do I inspect an asset on the Live Grid map?",
 ];
-
-/**
- * Built-in grounded knowledge base fallback for Voltrics AI.
- * Ensures the user receives real operational guidance on transformers,
- * DGA gases, and dispatch protocols even if the standalone RAG backend
- * on port 8001 is offline or initializing.
- */
-function getVoltricsFallbackResponse(query: string, focusedAsset?: string | null): RagChatResponse {
-  const q = query.toLowerCase();
-
-  if (q.includes("tx-107") || (focusedAsset === "TX-107" && !q.includes("tx-"))) {
-    return {
-      answer: `### TX-107 Diagnostics & Dispatch Analysis
-**Substation**: GIDC Industrial Phase-2 (66 kV)
-**Operational Status**: **CRITICAL** (Risk Score: 63/100, RUL: 33.2 days)
-
-**Key Telemetry & IEEE C57.104 Indicators**:
-• **Fault Class**: IEC D1 (Low-energy electrical discharge / partial arcing)
-• **Key Dissolved Gases**: Acetylene (C₂H₂) at 4.2 ppm (>2.0 ppm critical threshold) indicating active micro-arcing; Hydrogen (H₂) elevated at 148 ppm.
-• **Thermal Core Profile**: 82.4°C top-oil temperature with reduced radiator dissipation headroom under current peak industrial loading.
-
-**Voltrics AI Action Plan**:
-1. Dispatch Regional Substation Crew to GIDC Phase-2 within 24 hours.
-2. Conduct forced-air cooling fan relay verification and oil dielectric breakdown test.
-3. Re-route 15 MW load toward the Anand Central transmission corridor.`,
-      sources: [
-        { asset_id: "TX-107", site_name: "GIDC Industrial Phase-2", actual_kwh: 66000, deviation_pct: -18.4, weather: "Heatwave ambient 34.8°C" },
-        { asset_id: "IEEE-C57.104", site_name: "Standard DGA Guideline", weather: "Table 1 - D1 Fault Class" }
-      ]
-    };
-  }
-
-  if (q.includes("tx-115") || (focusedAsset === "TX-115" && !q.includes("tx-"))) {
-    return {
-      answer: `### TX-115 Telemetry & Status Brief
-**Substation**: Anand South Bulk Substation (66 kV)
-**Operational Status**: **WATCH / STABILIZED** (Health Index: 36.1, RUL: 97 days)
-
-**Telemetry Summary**:
-• **Fault Class**: IEC T2 (Thermal degradation 300°C–700°C)
-• **Thermal Gradient**: Core top-oil stabilized at 68.1°C with auxiliary radiator cooling active.
-• **Predictive Trajectory**: RUL successfully extended from 39 days to 97 days following corridor load balancing.
-
-**Voltrics AI Action Plan**:
-Maintain continuous SCADA online telemetry. Pinned for physical insulation inspection during the next regional maintenance window (Day 95).`,
-      sources: [
-        { asset_id: "TX-115", site_name: "Anand South Bulk Substation", actual_kwh: 66000, deviation_pct: -4.2, weather: "Ambient 31.2°C" },
-        { asset_id: "VOLTRA-ML-Model-1", site_name: "Health Index Regression", weather: "RandomForest R²=0.72" }
-      ]
-    };
-  }
-
-  if (q.includes("c57.104") || q.includes("ieee") || q.includes("gas") || q.includes("dga") || q.includes("threshold") || q.includes("arcing")) {
-    return {
-      answer: `### IEEE C57.104-2019 DGA Diagnostics Reference
-Voltrics AI applies the IEEE C57.104 4-condition assessment framework to dissolved transformer gases:
-
-1. **Acetylene (C₂H₂)**:
-   • Nominal: < 1 ppm | Watch: 1–2 ppm | **Critical**: > 2 ppm
-   • Indicates active electrical arcing (IEC Fault Classes D1 / D2).
-2. **Hydrogen (H₂)**:
-   • Nominal: < 100 ppm | Elevated: > 100 ppm
-   • Signals corona partial discharge and low-energy dielectric breakdown.
-3. **Ethylene (C₂H₄)**:
-   • Nominal: < 50 ppm | Thermal stress: > 50 ppm
-   • Indicates high-temperature oil cracking (> 700°C, Fault Class T3).
-4. **Methane (CH₄) & Ethane (C₂H₆)**:
-   • Signals low-temperature insulation degradation (< 300°C).
-
-VOLTRA Model 2 computes live Duval pentagon and Rogers gas ratio coordinates with 90.8% classification accuracy.`,
-      sources: [
-        { asset_id: "IEEE-C57.104-2019", site_name: "IEEE Standards Association", actual_kwh: 132000, deviation_pct: 0.0, weather: "Standard Atmospheric Reference" }
-      ]
-    };
-  }
-
-  if (q.includes("substation") || q.includes("priority") || q.includes("dispatch") || q.includes("crew") || q.includes("anand")) {
-    return {
-      answer: `### Anand District Transmission Corridor Dispatch Priorities
-Active monitored fleet: **18 Transformers** across 4 zones:
-
-• **Tier 1 (Immediate Dispatch — 24h Window)**:
-  - **TX-107** (GIDC Phase-2, 66 kV) — Acetylene spike & D1 arcing fault. Priority: Critical.
-  - **TX-112** (Borsad Industrial, 132 kV) — Elevated thermal gradient, RUL 39 days. Priority: Critical.
-
-• **Tier 2 (Elevated Watch)**:
-  - **TX-104** (Anand Central, 132 kV) — RUL 87.9 days.
-  - **TX-109** (Zone-C Node, 11 kV) — RUL 87.9 days.
-  - **TX-115** (Anand South, 66 kV) — Stabilized at 97 days RUL.
-
-All field crews are coordinated through the Anand Regional Dispatch Desk with automated injection-guarded incident feeds.`,
-      sources: [
-        { asset_id: "CORRIDOR-DISPATCH", site_name: "Anand Central Transmission Hub", actual_kwh: 132000, deviation_pct: -8.1, weather: "Corridor Live Telemetry" }
-      ]
-    };
-  }
-
-  // General grounded synthesis
-  return {
-    answer: `### Voltrics AI Operational Intelligence Summary
-Synthesizing live SCADA telemetry, DGA gas ratios, and weather stress for Anand District corridor:
-
-• **Monitored Fleet**: 18 transformers actively scored across Anand Urban, Industrial, and Bulk transmission corridors.
-• **Fleet Mean Health Index**: 35.8 (Model 1 Random Forest regression, R²=0.72).
-• **Critical Alerts**: 2 transformers (TX-107 & TX-112) require immediate field inspection.
-• **Ambient Weather Stress**: Real-time Open-Meteo readings applied to radiator bank dissipation models.
-
-Ask Voltrics AI to evaluate any specific transformer (e.g. *TX-107*, *TX-115*), explain IEEE C57.104 DGA gas thresholds, or generate dispatch advisories.`,
-    sources: [
-      { asset_id: "FLEET-SUMMARY", site_name: "Anand District Transmission Network", actual_kwh: 18, deviation_pct: 0.0, weather: "Open-Meteo Synced" }
-    ]
-  };
-}
 
 export function GridAdvisorChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputQuery, setInputQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [activeDataset, setActiveDataset] = useState<ActiveDatasetInfo>(() =>
+    gridDataSource.getActiveDatasetInfo()
+  );
   const [systemCsvInfo, setSystemCsvInfo] = useState<{
     filename: string;
     assets: string[];
@@ -255,16 +151,34 @@ export function GridAdvisorChat() {
       ]);
     };
 
+    // Fetch active dataset from backend on mount
+    getActiveDataset()
+      .then((info) => {
+        if (info) {
+          setActiveDataset(info);
+          gridDataSource.setActiveDatasetInfo(info);
+        }
+      })
+      .catch(() => {});
+
+    const handleDatasetActivated = (e: any) => {
+      if (e.detail) {
+        setActiveDataset(e.detail);
+      }
+    };
+
     window.addEventListener("open-grid-advisor" as any, handleOpenChat);
     window.addEventListener("open-voltrics-ai" as any, handleOpenChat);
     window.addEventListener("voltra-grid-asset-focused" as any, handleAssetFocused);
     window.addEventListener("voltra-system-csv-ingested" as any, handleSystemCsv);
+    window.addEventListener("voltra-dataset-activated" as any, handleDatasetActivated);
 
     return () => {
       window.removeEventListener("open-grid-advisor" as any, handleOpenChat);
       window.removeEventListener("open-voltrics-ai" as any, handleOpenChat);
       window.removeEventListener("voltra-grid-asset-focused" as any, handleAssetFocused);
       window.removeEventListener("voltra-system-csv-ingested" as any, handleSystemCsv);
+      window.removeEventListener("voltra-dataset-activated" as any, handleDatasetActivated);
     };
   }, []);
 
@@ -275,10 +189,20 @@ export function GridAdvisorChat() {
     }
   }, [messages, isLoading]);
 
-  // Contextual suggestion chips based on dynamic uploads, active route and selected asset
+  // Contextual suggestion chips based on active dataset, dynamic uploads, and selected asset
   const dynamicSuggestions = (() => {
     if (customSuggestions.length > 0) {
       return customSuggestions;
+    }
+    if (activeDataset?.assets && activeDataset.assets.length > 0) {
+      const a0 = activeDataset.assets[0];
+      const a1 = activeDataset.assets.length > 1 ? activeDataset.assets[1] : a0;
+      return [
+        `What is the operational status and risk tier of ${a0}?`,
+        `Explain ${a0}'s telemetry readings and diagnostic indicators.`,
+        `Compare ${a0} and ${a1} in the active dataset.`,
+        "How does VOLTRA evaluate asset anomalies?",
+      ];
     }
     if (isGridRoute && focusedAssetId) {
       return [
@@ -290,8 +214,6 @@ export function GridAdvisorChat() {
     }
     return DEFAULT_SUGGESTIONS;
   })();
-
-
 
   const handleSend = async (overridePrompt?: string) => {
     const query = (overridePrompt ?? inputQuery).trim();
@@ -310,8 +232,26 @@ export function GridAdvisorChat() {
     setIsLoading(true);
 
     try {
-      // Try the standalone RAG service on port 8001
-      const response: RagChatResponse = await chatWithGridAdvisor(query);
+      // Build conversation history from previous turns (exclude error alerts)
+      const historyPayload = messages
+        .filter((m) => !m.isError && m.text)
+        .slice(-6)
+        .map((m) => ({
+          role: m.sender,
+          content: m.text,
+        }));
+
+      // Send inquiry to RAG service
+      const response: RagChatResponse = await chatWithGridAdvisor(query, undefined, historyPayload);
+
+      if (response.dataset) {
+        setActiveDataset((prev) => ({
+          ...prev,
+          dataset_id: response.dataset?.id || prev.dataset_id,
+          name: response.dataset?.name || prev.name,
+          asset_count: response.dataset?.asset_count ?? prev.asset_count,
+        }));
+      }
 
       const assistantMsg: ChatMessage = {
         id: `asst-${Date.now()}`,
@@ -323,18 +263,18 @@ export function GridAdvisorChat() {
 
       setMessages((prev) => [...prev, assistantMsg]);
       setApiOnline(true);
-    } catch {
-      // Graceful fallback to built-in Voltrics AI grounded domain knowledge
-      const fallback = getVoltricsFallbackResponse(query, focusedAssetId);
+    } catch (err: any) {
+      // Zero mock: truthfully report connection status or missing data
       const assistantMsg: ChatMessage = {
-        id: `asst-${Date.now()}`,
+        id: `asst-err-${Date.now()}`,
         sender: "assistant",
-        text: fallback.answer,
-        sources: fallback.sources,
+        text: `⚠️ **Advisory Notice**: ${err?.message || "Voltrics AI is currently unavailable. Please ensure the backend server is running."}`,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        isError: true,
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
+      setApiOnline(false);
     } finally {
       setIsLoading(false);
       setTimeout(() => inputRef.current?.focus(), 50);
@@ -455,16 +395,16 @@ export function GridAdvisorChat() {
                 </div>
               </div>
 
-              {/* Active System CSV context banner if synced */}
-              {systemCsvInfo && (
-                <div className="mt-2.5 flex items-center justify-between rounded-lg bg-lime/10 border border-lime/25 px-2.5 py-1.5 text-[11px] text-lime font-medium animate-in fade-in">
-                  <div className="flex items-center gap-1.5 truncate">
-                    <CheckCircle2 className="size-3.5 shrink-0" />
-                    <span className="truncate">Active CSV: <strong>{systemCsvInfo.filename}</strong> ({systemCsvInfo.count} rows)</span>
-                  </div>
-                  <span className="font-mono text-[10px] text-muted-foreground shrink-0">Synced</span>
+              {/* Active Dataset context banner */}
+              <div className="mt-2.5 flex items-center justify-between rounded-lg bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1.5 text-[11px] text-emerald-700 dark:text-[#d2f831] font-medium animate-in fade-in">
+                <div className="flex items-center gap-1.5 truncate">
+                  <Database className="size-3.5 shrink-0 text-emerald-600 dark:text-[#d2f831]" />
+                  <span className="truncate">Active Data: <strong>{activeDataset.name}</strong> ({activeDataset.asset_count} assets)</span>
                 </div>
-              )}
+                <span className="font-mono text-[9px] uppercase tracking-wider rounded bg-emerald-500/15 px-1.5 py-0.5 text-emerald-700 dark:text-[#d2f831]">
+                  {activeDataset.status || "active"}
+                </span>
+              </div>
 
               {/* Context bar if on /grid or asset focused */}
               {isGridRoute && (
@@ -559,9 +499,25 @@ export function GridAdvisorChat() {
                     <span>{msg.timestamp}</span>
                   </div>
 
-                  {/* Message Content */}
-                  <div className="whitespace-pre-wrap leading-relaxed break-words text-xs sm:text-sm font-sans">
-                    {msg.text}
+                  {/* Message Content — rendered as Markdown */}
+                  <div className={`leading-relaxed break-words text-xs sm:text-sm font-sans prose prose-sm max-w-none
+                    prose-p:my-1 prose-p:leading-relaxed
+                    prose-em:italic
+                    prose-ul:my-1 prose-ul:pl-4 prose-ul:list-disc
+                    prose-ol:my-1 prose-ol:pl-4 prose-ol:list-decimal
+                    prose-li:my-0.5
+                    prose-code:rounded prose-code:px-1 prose-code:py-0.5 prose-code:font-mono prose-code:text-[11px]
+                    prose-pre:rounded-lg prose-pre:p-3 prose-pre:overflow-x-auto prose-pre:text-[11px]
+                    prose-h1:text-sm prose-h1:font-bold prose-h1:mt-2 prose-h1:mb-1
+                    prose-h2:text-xs prose-h2:font-bold prose-h2:mt-2 prose-h2:mb-0.5
+                    prose-h3:text-xs prose-h3:font-semibold prose-h3:mt-1.5 prose-h3:mb-0.5
+                    prose-blockquote:border-l-2 prose-blockquote:pl-3 prose-blockquote:italic
+                    prose-table:text-[11px] prose-th:font-semibold prose-th:text-left prose-th:py-1 prose-td:py-1
+                    ${msg.sender === "user"
+                      ? "prose-invert prose-strong:text-white prose-a:text-emerald-300 prose-code:bg-white/20 prose-pre:bg-white/10"
+                      : "dark:prose-invert prose-strong:text-foreground dark:prose-strong:text-white prose-a:text-emerald-600 dark:prose-a:text-emerald-400 prose-code:bg-muted dark:prose-code:bg-white/10 prose-pre:bg-muted dark:prose-pre:bg-white/5 prose-blockquote:border-border prose-blockquote:text-muted-foreground"
+                    }`}>
+                    <ReactMarkdown>{msg.text}</ReactMarkdown>
                   </div>
 
                   {/* Sources Section (if available) */}
@@ -585,7 +541,60 @@ export function GridAdvisorChat() {
                       {expandedSources[msg.id] && (
                         <div className="mt-2 space-y-2">
                           {msg.sources.map((src, sIdx) => {
+                            const isProject = src.knowledge_type === "project";
                             const dev = src.deviation_pct;
+
+                            if (isProject) {
+                              // ── Project / documentation source card ──
+                              const sourceFile = String(src.source_file || "");
+                              const fileName = sourceFile.split("/").pop() || sourceFile;
+                              const section = src.section ? String(src.section) : null;
+                              const docType = String(src.doc_type || "doc").toUpperCase();
+                              const score = typeof src.relevance_score === "number"
+                                ? src.relevance_score.toFixed(3)
+                                : null;
+                              return (
+                                <div
+                                  key={sIdx}
+                                  className="rounded-lg border border-violet-500/30 dark:border-violet-400/25 bg-violet-500/5 dark:bg-violet-900/10 p-2.5 text-[11px] space-y-1"
+                                >
+                                  {/* File name + doc-type badge */}
+                                  <div className="flex items-center justify-between gap-1">
+                                    <div className="flex items-center gap-1.5 font-mono font-bold text-violet-700 dark:text-violet-300 min-w-0">
+                                      <Cpu className="size-3 shrink-0" />
+                                      <span className="truncate" title={sourceFile}>{fileName}</span>
+                                    </div>
+                                    <span className="shrink-0 font-mono text-[9px] font-semibold px-1.5 py-0.5 rounded bg-violet-500/15 text-violet-700 dark:text-violet-300 border border-violet-500/20">
+                                      {docType}
+                                    </span>
+                                  </div>
+
+                                  {/* Full relative path */}
+                                  {sourceFile !== fileName && (
+                                    <div className="font-mono text-[10px] text-muted-foreground dark:text-neutral-500 truncate" title={sourceFile}>
+                                      {sourceFile}
+                                    </div>
+                                  )}
+
+                                  {/* Section heading (nearest markdown heading in chunk) */}
+                                  {section && (
+                                    <div className="flex items-center gap-1 text-[10px] text-violet-600 dark:text-violet-400 font-medium">
+                                      <ShieldCheck className="size-3 shrink-0" />
+                                      <span className="truncate">{section}</span>
+                                    </div>
+                                  )}
+
+                                  {/* Relevance score */}
+                                  {score && (
+                                    <div className="font-mono text-[10px] text-muted-foreground dark:text-neutral-500">
+                                      Relevance: {score}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            }
+
+                            // ── Operational telemetry source card ──
                             return (
                               <div
                                 key={sIdx}

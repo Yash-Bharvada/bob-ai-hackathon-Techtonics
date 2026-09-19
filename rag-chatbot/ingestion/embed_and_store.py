@@ -13,8 +13,9 @@ from qdrant_client import QdrantClient, models
 from sentence_transformers import SentenceTransformer
 
 from config import settings
-from ingestion.loader import load_all_csvs, OperationalDocument
+from ingestion.loader import load_all_csvs, load_csv, OperationalDocument
 from ingestion.project_loader import load_project_documents, ProjectDocument
+from datasets.dataset_manager import dataset_manager, DEFAULT_DATASET_ID, DEFAULT_DATASET_NAME
 
 
 def get_qdrant_client() -> QdrantClient:
@@ -49,14 +50,21 @@ def generate_deterministic_id(doc_id: str) -> str:
 def index_documents(
     documents: List[OperationalDocument],
     collection_name: str = settings.QDRANT_COLLECTION,
-    recreate: bool = True,
-) -> None:
+    recreate: bool = False,
+) -> dict:
     """
     Embed and store operational documents into Qdrant collection using SentenceTransformer.
+    Uses upsert by default to preserve project documentation and other datasets.
     """
     if not documents:
         print("[Ingestion] No documents to index. Exiting.")
-        return
+        return {
+            "status": "skipped",
+            "documents_indexed": 0,
+            "assets": [],
+            "dates": [],
+            "dataset_id": None,
+        }
 
     client = get_qdrant_client()
 
@@ -73,8 +81,7 @@ def index_documents(
     vector_dim = len(vectors[0])
     print(f"[SentenceTransformer] Generated {len(vectors)} vectors (dimension: {vector_dim}).")
 
-
-    # If recreate is requested or collection doesn't exist, create it
+    # If recreate is requested, delete and recreate collection
     if client.collection_exists(collection_name):
         if recreate:
             print(f"[Qdrant] Deleting existing collection '{collection_name}' for clean rebuild...")
@@ -97,12 +104,27 @@ def index_documents(
             ),
         )
 
+    # Ensure payload indices for fast filtered queries
+    for field_name in ["knowledge_type", "dataset_id", "asset_id"]:
+        try:
+            client.create_payload_index(
+                collection_name=collection_name,
+                field_name=field_name,
+                field_schema=models.PayloadSchemaType.KEYWORD,
+            )
+        except Exception:
+            pass
+
     # Prepare point payloads
     points = []
+    dataset_ids = set()
     for doc, point_id, vector in zip(documents, ids, vectors):
+        ds_id = doc.metadata.get("dataset_id", "default")
+        dataset_ids.add(ds_id)
         payload = {
             "document": doc.text,
             "doc_id": doc.doc_id,
+            "dataset_id": ds_id,
             **doc.metadata,
         }
         points.append(
@@ -120,15 +142,84 @@ def index_documents(
     )
 
     print(f"[Qdrant] Successfully indexed {len(documents)} documents.")
-    for doc in documents:
-        print(f"  [+] {doc.doc_id} -> Point ID: {generate_deterministic_id(doc.doc_id)}")
+    primary_dataset_id = list(dataset_ids)[0] if dataset_ids else "default"
+    assets_found = sorted(list({doc.metadata.get("asset_id") for doc in documents if doc.metadata.get("asset_id")}))
+    dates_found = sorted(list({doc.metadata.get("date") for doc in documents if doc.metadata.get("date")}))
 
     return {
         "status": "success",
+        "dataset_id": primary_dataset_id,
         "documents_indexed": len(documents),
-        "assets": sorted(list({doc.metadata.get("asset_id") for doc in documents if doc.metadata.get("asset_id")})),
-        "dates": sorted(list({doc.metadata.get("date") for doc in documents if doc.metadata.get("date")})),
+        "assets": assets_found,
+        "dates": dates_found,
     }
+
+
+def ensure_default_dataset_indexed(
+    collection_name: str = settings.QDRANT_COLLECTION,
+    force_reindex: bool = False,
+) -> dict:
+    """
+    Ensures that the default Anand Corridor sample dataset (18 assets) is indexed in Qdrant.
+    Checks if points with dataset_id='anand-corridor-sample' exist; if not, loads and indexes them.
+    """
+    client = get_qdrant_client()
+    default_csv_path = BASE_DIR / "data" / "raw" / "anand_corridor_sample.csv"
+
+    if not default_csv_path.exists():
+        # Fallback to create_default_dataset
+        import subprocess
+        create_script = BASE_DIR / "data" / "create_default_dataset.py"
+        if create_script.exists():
+            subprocess.run([sys.executable, str(create_script)], check=True)
+
+    if not default_csv_path.exists():
+        print(f"[Default Dataset] Warning: {default_csv_path} not found.")
+        return {"status": "error", "message": "Default CSV file not found"}
+
+    # Check if points already exist in collection
+    if not force_reindex and client.collection_exists(collection_name):
+        try:
+            res = client.scroll(
+                collection_name=collection_name,
+                scroll_filter=models.Filter(
+                    must=[
+                        models.FieldCondition(
+                            key="dataset_id",
+                            match=models.MatchValue(value=DEFAULT_DATASET_ID),
+                        )
+                    ]
+                ),
+                limit=1,
+            )
+            points, _ = res
+            if points:
+                print(f"[Default Dataset] Anand Corridor sample dataset '{DEFAULT_DATASET_ID}' already indexed in Qdrant.")
+                return {"status": "already_indexed", "dataset_id": DEFAULT_DATASET_ID}
+        except Exception as e:
+            print(f"[Default Dataset] Could not check existing dataset: {e}")
+
+    print(f"[Default Dataset] Indexing Anand Corridor 18-asset default dataset from {default_csv_path}...")
+    docs = load_csv(default_csv_path, dataset_id=DEFAULT_DATASET_ID)
+    summary = index_documents(
+        documents=docs,
+        collection_name=collection_name,
+        recreate=False,
+    )
+
+    # Register in dataset_manager
+    dataset_manager.register_dataset(
+        dataset_id=DEFAULT_DATASET_ID,
+        name=DEFAULT_DATASET_NAME,
+        asset_count=len(summary.get("assets", [])),
+        record_count=len(docs),
+        source_file="anand_corridor_sample.csv",
+        assets=summary.get("assets", []),
+        set_active=True,
+    )
+
+    print(f"[Default Dataset] Successfully indexed and activated default dataset '{DEFAULT_DATASET_ID}' ({len(docs)} records).")
+    return summary
 
 def index_project_documents(
     collection_name: str = settings.QDRANT_COLLECTION,

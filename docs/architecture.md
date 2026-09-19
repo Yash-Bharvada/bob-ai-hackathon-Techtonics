@@ -148,12 +148,14 @@ Google → GET /api/auth/google/callback → upsert MongoDB → JWT → redirect
 Frontend → stores JWT in localStorage → attached to all subsequent API calls
 ```
 
-### 6. Docker deployment
+### 6. Docker & Single-Server Deployment
 ```
 Stage 1 (Node 20): npm install + vite build → .output/ (Nitro SSR bundle)
-Stage 2 (Python 3.11): pip install + copy src/ + copy .output/
-start.sh: node .output/server/index.mjs on :3000 (background)
-          uvicorn main:app on :8000 (foreground, proxies /* to Nitro)
+Stage 2 (Python 3.11): pip install (src/ + rag-chatbot/ requirements) + copy src/, rag-chatbot/, .output/
+start.sh (Supervisor):
+  ├── node .output/server/index.mjs on :3000 (SSR internal)
+  ├── uvicorn api.main:app on :8001 (RAG FastAPI internal)
+  └── uvicorn src.backend.main:app on :$PORT (Public entry: proxies /* to Nitro & /rag/* to :8001)
 ```
 
 ---

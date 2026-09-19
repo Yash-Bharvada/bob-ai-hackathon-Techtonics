@@ -58,6 +58,11 @@ import {
 } from "@/lib/techtonicsApi";
 import { initialGridAssets } from "@/lib/gridData";
 import { toast } from "sonner";
+import {
+  getActiveDataset,
+  uploadDatasetCsv,
+  type ActiveDatasetInfo,
+} from "@/lib/ragApi";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -352,6 +357,9 @@ function DashboardPage() {
   const [dataSource, setDataSource] = useState<DataSourceType>(() =>
     gridDataSource.getDataSource(authSession.isAuthenticated()),
   );
+  const [activeDatasetMeta, setActiveDatasetMeta] = useState<ActiveDatasetInfo>(() =>
+    gridDataSource.getActiveDatasetInfo()
+  );
 
   const [clock, setClock] = useState("");
   const [dark, setDark] = useState(true);
@@ -392,6 +400,26 @@ function DashboardPage() {
 
   // CSV upload ref
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Sync active dataset from RAG service on mount & on activation events
+  useEffect(() => {
+    getActiveDataset()
+      .then((info) => {
+        if (info) {
+          setActiveDatasetMeta(info);
+          gridDataSource.setActiveDatasetInfo(info);
+        }
+      })
+      .catch(() => {});
+
+    const handleDatasetActivated = (e: any) => {
+      if (e.detail) {
+        setActiveDatasetMeta(e.detail);
+      }
+    };
+    window.addEventListener("voltra-dataset-activated", handleDatasetActivated);
+    return () => window.removeEventListener("voltra-dataset-activated", handleDatasetActivated);
+  }, []);
 
   // 1. Clock & Theme initialisation
   useEffect(() => {
@@ -758,62 +786,84 @@ function DashboardPage() {
   // Custom CSV File Upload
   const handleCsvUpload = async (file?: File) => {
     if (!file) return;
-    toast.loading("Parsing & scoring CSV with Model 1 + Model 2...", { id: "csv-score" });
+    toast.loading("Uploading CSV to RAG dataset engine & Qdrant Cloud...", { id: "csv-score" });
     try {
-      const res = await techtonicsApi.scoreCSV(file);
-      if (!res.results || res.results.length === 0) {
-        throw new Error("No valid transformer records found in CSV.");
+      // 1. Upload, parse, embed, and activate dataset in RAG engine
+      const ragRes = await uploadDatasetCsv(file);
+      setActiveDatasetMeta(ragRes);
+      gridDataSource.setActiveDatasetInfo(ragRes);
+
+      // 2. Score with ML pipeline if transformer schema to update dashboard cards
+      toast.loading("Scoring records with Model 1 + Model 2...", { id: "csv-score" });
+      try {
+        const res = await techtonicsApi.scoreCSV(file);
+        if (res.results && res.results.length > 0) {
+          const converted: RankedAsset[] = res.results.map((row: CsvScoreRow, idx: number) => {
+            const hi = row.health_index;
+            const rul = row.RUL_days;
+            const composite = Number(
+              (0.35 * (hi / 100) + 0.25 * Math.max(0, 1 - rul / 120) + 0.2 * (row.fault_prob || 0.8)).toFixed(3),
+            );
+            const tier: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" =
+              hi >= 50 || rul < 40
+                ? "CRITICAL"
+                : hi >= 30 || rul < 80
+                ? "HIGH"
+                : hi >= 20
+                ? "MEDIUM"
+                : "LOW";
+
+            return {
+              rank: idx + 1,
+              asset_id: row.asset_id || `TX-CUSTOM-${idx + 1}`,
+              substation_name: `${location.city.split(",")[0].trim()} Substation`,
+              grid_zone: `${location.city.split(",")[0].trim()} Corridor`,
+              criticality_tier: tier === "CRITICAL" ? "Critical" : tier === "HIGH" ? "High" : "Standard",
+              health_index: hi,
+              RUL_days: rul,
+              fault_type: row.fault_type || "NF",
+              fault_prob: row.fault_prob || 0.9,
+              risk_tier: tier,
+              composite_score: composite,
+              mva_rating: 25.0,
+              voltage_kv: "66kV",
+              top_3_shap: row.top_3_shap || [
+                ["Hydrogen", 18.5],
+                ["Water content", 14.2],
+                ["Power factor", 9.1],
+              ],
+              core_temp_c: 65.0,
+              load_pct: 70.0,
+              current_load_mw: 17.5,
+            };
+          });
+
+          gridDataSource.setCustomAssets(converted);
+          setDataSource("custom");
+          setRankedAssets(converted);
+        }
+      } catch {
+        // Even if file is renewable/grid instead of transformer format, RAG ingestion succeeded
+        setDataSource("custom");
       }
 
-      const converted: RankedAsset[] = res.results.map((row: CsvScoreRow, idx: number) => {
-        const hi = row.health_index;
-        const rul = row.RUL_days;
-        const composite = Number(
-          (0.35 * (hi / 100) + 0.25 * Math.max(0, 1 - rul / 120) + 0.2 * (row.fault_prob || 0.8)).toFixed(3),
-        );
-        const tier: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" =
-          hi >= 50 || rul < 40
-            ? "CRITICAL"
-            : hi >= 30 || rul < 80
-            ? "HIGH"
-            : hi >= 20
-            ? "MEDIUM"
-            : "LOW";
-
-        return {
-          rank: idx + 1,
-          asset_id: row.asset_id || `TX-CUSTOM-${idx + 1}`,
-          substation_name: `${location.city.split(",")[0].trim()} Substation`,
-          grid_zone: `${location.city.split(",")[0].trim()} Corridor`,
-          criticality_tier: tier === "CRITICAL" ? "Critical" : tier === "HIGH" ? "High" : "Standard",
-          health_index: hi,
-          RUL_days: rul,
-          fault_type: row.fault_type || "NF",
-          fault_prob: row.fault_prob || 0.9,
-          risk_tier: tier,
-          composite_score: composite,
-          mva_rating: 25.0,
-          voltage_kv: "66kV",
-          top_3_shap: row.top_3_shap || [
-            ["Hydrogen", 18.5],
-            ["Water content", 14.2],
-            ["Power factor", 9.1],
-          ],
-          core_temp_c: 65.0,
-          load_pct: 70.0,
-          current_load_mw: 17.5,
-        };
-      });
-
-      gridDataSource.setCustomAssets(converted);
-      setDataSource("custom");
-      setRankedAssets(converted);
       setModal(null);
-      toast.success(`Successfully scored ${converted.length} custom transformers!`, {
+      toast.success(`Active dataset: "${ragRes.name}" (${ragRes.asset_count} assets synchronized with Grid Advisor)`, {
         id: "csv-score",
       });
+
+      // Broadcast event to chatbot
+      window.dispatchEvent(
+        new CustomEvent("voltra-system-csv-ingested", {
+          detail: {
+            filename: file.name,
+            assets: ragRes.assets || [],
+            count: ragRes.record_count,
+          },
+        })
+      );
     } catch (err: any) {
-      toast.error(err.message || "Failed to parse and score CSV.", { id: "csv-score" });
+      toast.error(err.message || "Failed to upload and activate CSV dataset.", { id: "csv-score" });
     }
   };
 
@@ -909,14 +959,10 @@ function DashboardPage() {
                 className="rounded-lg border border-border bg-card px-3.5 py-2 text-left hover:border-primary/40 transition-all cursor-pointer shadow-sm dark:border-white/[0.1] dark:bg-[#111216]/90 dark:hover:border-white/20"
               >
                 <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground dark:text-neutral-400 font-mono">
-                  Data source · {displayAssets.length} assets
+                  Data source · {activeDatasetMeta?.asset_count ?? displayAssets.length} assets
                 </p>
                 <p className="mt-0.5 text-xs font-semibold text-foreground dark:text-white">
-                  {dataSource === "anand"
-                    ? "Anand Corridor (Sample)"
-                    : dataSource === "custom"
-                    ? "Custom Upload"
-                    : "No Dataset Active"}
+                  {activeDatasetMeta?.name || (dataSource === "anand" ? "Anand Corridor (Sample)" : "Custom Upload")}
                 </p>
               </button>
 
@@ -1909,14 +1955,24 @@ function DashboardPage() {
             <div
               role="button"
               tabIndex={0}
-              onClick={() => {
+              onClick={async () => {
+                try {
+                  const res = await activateDataset("anand-corridor-sample");
+                  setActiveDatasetMeta(res);
+                  gridDataSource.setActiveDatasetInfo(res);
+                } catch {}
                 gridDataSource.setAnandData();
                 setDataSource("anand");
                 toast.success("Loaded Anand corridor baseline sample (18 assets)");
                 setModal(null);
               }}
-              onKeyDown={(e) => {
+              onKeyDown={async (e) => {
                 if (e.key === "Enter" || e.key === " ") {
+                  try {
+                    const res = await activateDataset("anand-corridor-sample");
+                    setActiveDatasetMeta(res);
+                    gridDataSource.setActiveDatasetInfo(res);
+                  } catch {}
                   gridDataSource.setAnandData();
                   setDataSource("anand");
                   toast.success("Loaded Anand corridor baseline sample (18 assets)");

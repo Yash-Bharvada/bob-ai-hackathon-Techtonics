@@ -13,7 +13,7 @@ load_dotenv(dotenv_path=ENV_PATH)
 class Settings:
     # Groq Settings
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "").strip()
-    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile").strip()
+    GROQ_MODEL: str = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b").strip()
     GROQ_TEMPERATURE: float = float(os.getenv("GROQ_TEMPERATURE", "0.1"))
     GROQ_MAX_COMPLETION_TOKENS: int = int(os.getenv("GROQ_MAX_COMPLETION_TOKENS", "1024"))
 
@@ -32,11 +32,15 @@ class Settings:
 
     # Embedding & Retrieval Settings
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5").strip()
-    TOP_K: int = int(os.getenv("TOP_K", "4"))
+    TOP_K: int = int(os.getenv("TOP_K", "8"))
 
     # API Settings
     API_HOST: str = os.getenv("API_HOST", "0.0.0.0").strip()
-    API_PORT: int = int(os.getenv("API_PORT", "8001"))
+    API_PORT: int = int(os.getenv("RAG_PORT", os.getenv("API_PORT", "8001")))
+    ALLOWED_ORIGINS: str = os.getenv(
+        "ALLOWED_ORIGINS",
+        "http://127.0.0.1:8000,http://localhost:8000,http://localhost:3000,http://127.0.0.1:3000"
+    ).strip()
 
     # Data paths
     DATA_RAW_DIR: Path = BASE_DIR / "data" / "raw"

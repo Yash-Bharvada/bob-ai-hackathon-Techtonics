@@ -4,6 +4,7 @@ import { gridDataSource, type DataSourceType } from "@/lib/gridDataSource";
 interface DataSourceBadgeProps {
   dataSource: DataSourceType;
   assetCount: number;
+  datasetName?: string;
   onReset: () => void;
   onUploadClick?: () => void;
 }
@@ -11,10 +12,13 @@ interface DataSourceBadgeProps {
 export function DataSourceBadge({
   dataSource,
   assetCount,
+  datasetName,
   onReset,
   onUploadClick,
 }: DataSourceBadgeProps) {
   if (dataSource === "none") return null;
+
+  const displayName = datasetName || (dataSource === "anand" ? "Anand Corridor (Sample)" : "Custom Upload");
 
   return (
     <div className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-card/90 px-3 py-1.5 text-xs shadow-xs">
@@ -22,12 +26,12 @@ export function DataSourceBadge({
         {dataSource === "anand" ? (
           <>
             <Database className="size-3.5 text-emerald-400" />
-            <span>Dataset: <strong className="text-foreground">Anand Corridor (Sample)</strong></span>
+            <span>Dataset: <strong className="text-foreground">{displayName} ({assetCount} Assets)</strong></span>
           </>
         ) : (
           <>
             <FileSpreadsheet className="size-3.5 text-blue-400" />
-            <span>Dataset: <strong className="text-foreground">Custom Upload ({assetCount} Assets)</strong></span>
+            <span>Dataset: <strong className="text-foreground">{displayName} ({assetCount} Assets)</strong></span>
           </>
         )}
       </span>
