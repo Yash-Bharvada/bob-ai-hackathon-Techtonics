@@ -75,28 +75,28 @@ class IngestionResponse(BaseModel):
 chain_instance: Optional[RAGChatbotChain] = None
 
 
+def get_chain() -> RAGChatbotChain:
+    """Lazy-load the RAG chain and ensure models are initialized on demand."""
+    global chain_instance
+    if chain_instance is None:
+        settings.validate()
+        chain_instance = RAGChatbotChain()
+        print(f"[RAG-API] RAG chain initialized on-demand in {settings.QDRANT_MODE} mode.")
+        try:
+            ensure_default_dataset_indexed(settings.QDRANT_COLLECTION)
+        except Exception as e:
+            print(f"[RAG-API] Notice: Default dataset check deferred: {e}", file=sys.stderr)
+    return chain_instance
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Lifespan context manager:
-    1. Initialize RAG chain instance.
-    2. Seed default 18-asset Anand Corridor sample dataset if missing.
+    Keeps container startup lightweight to prevent OOM kills on memory-constrained hosts.
+    Heavy embedding models and index verification lazy-load on the first chat request.
     """
-    global chain_instance
-    try:
-        settings.validate()
-        chain_instance = RAGChatbotChain()
-        print(f"[RAG-API] RAG chain initialized in {settings.QDRANT_MODE} Qdrant mode.")
-    except Exception as e:
-        print(f"[RAG-API] Startup warning (chain will lazy-load on request): {e}", file=sys.stderr)
-        chain_instance = None
-
-    # Ensure default dataset exists in Qdrant and registry
-    try:
-        ensure_default_dataset_indexed(settings.QDRANT_COLLECTION)
-    except Exception as e:
-        print(f"[RAG-API] Notice: Default dataset check deferred: {e}", file=sys.stderr)
-
+    print(f"[RAG-API] Service initialized (mode: {settings.QDRANT_MODE}). Lazy loading enabled.")
     yield
     print("[RAG-API] Service shutting down.")
 
@@ -156,11 +156,8 @@ async def chat_endpoint(request: ChatRequest):
             detail="The 'message' field cannot be empty or whitespace-only.",
         )
 
-    try:
-        if chain_instance is None:
-            chain_instance = RAGChatbotChain()
-
-        result = chain_instance.answer_question(
+        chain = get_chain()
+        result = chain.answer_question(
             question=query_text,
             top_k=request.top_k,
             dataset_id=request.dataset_id,
