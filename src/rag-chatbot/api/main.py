@@ -156,6 +156,7 @@ async def chat_endpoint(request: ChatRequest):
             detail="The 'message' field cannot be empty or whitespace-only.",
         )
 
+    try:
         chain = get_chain()
         result = chain.answer_question(
             question=query_text,
