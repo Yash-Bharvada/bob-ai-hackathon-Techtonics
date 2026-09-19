@@ -20,13 +20,17 @@ Endpoints:
 """
 
 import ast
+import asyncio
 import io
 import json
+import logging
 import os
 import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+logger = logging.getLogger("voltra.backend")
 
 # Load .env from the backend directory before anything else
 from dotenv import load_dotenv
@@ -58,6 +62,8 @@ from rag_proxy import router as rag_router, RAG_INTERNAL_URL, start_rag_service,
 from pipeline.score_asset_risk import score_asset_risk, score_all_assets
 from pipeline.grid_impact_ranker import rank_assets
 from pipeline.maintenance_plan import generate_maintenance_plan
+
+from services.sms_alert import send_fault_alert, validate_config as _sms_validate_config
 
 DATA_DIR = SRC_DIR / "data"
 
@@ -153,6 +159,7 @@ def _load_cache() -> None:
 async def startup_event():
     start_rag_service()
     _load_cache()
+    _sms_validate_config()
 
 
 @app.on_event("shutdown")
@@ -259,7 +266,7 @@ def get_ranked():
 
 
 @app.get("/api/asset/{asset_id}")
-def get_asset_detail(asset_id: str, generate_advisory: bool = True):
+async def get_asset_detail(asset_id: str, generate_advisory: bool = True):
     """
     Single-asset detail view: model scores, SHAP top-3, advisory text.
     Advisory generation calls IBM Bob with graceful fallback.
@@ -326,6 +333,12 @@ def get_asset_detail(asset_id: str, generate_advisory: bool = True):
         result["composite_score"] = float(ranked_row.iloc[0]["composite_score"])
         result["rank"] = int(ranked_row.iloc[0]["rank"])
 
+    # Fire-and-forget SMS fault alert — never blocks or breaks the response
+    try:
+        asyncio.create_task(send_fault_alert(result))
+    except Exception:
+        pass
+
     return result
 
 
@@ -383,7 +396,7 @@ class SensorReading(BaseModel):
 
 
 @app.post("/api/score")
-def score_adhoc(reading: SensorReading):
+async def score_adhoc(reading: SensorReading):
     """
     Score an ad-hoc sensor reading (JSON body).
     Field names with underscores are mapped back to spaced versions for Model 1.
@@ -419,6 +432,12 @@ def score_adhoc(reading: SensorReading):
         result["fault_prob"] = result.pop("fault_confidence", 0.0)
     result["top_3_shap"] = result.pop("top3_shap_features", [])
     result.pop("fault_confidence", None)
+
+    # Fire-and-forget SMS fault alert — never blocks or breaks the response
+    try:
+        asyncio.create_task(send_fault_alert(result))
+    except Exception:
+        pass
 
     return result
 
@@ -519,6 +538,50 @@ def download_sample_csv():
         io.BytesIO(content.encode()),
         media_type="text/csv",
         headers={"Content-Disposition": 'attachment; filename="voltra_sample_readings.csv"'},
+    )
+
+
+@app.get("/api/transformers/locations/csv")
+def download_transformer_locations_csv():
+    """Download the complete CSV of all 18 Anand grid transformer locations and geographic metadata."""
+    csv_path = DATA_DIR / "transformer_locations.csv"
+    if not csv_path.exists():
+        csv_path = SRC_DIR.parent / "transformer_locations.csv"
+    if not csv_path.exists():
+        raise HTTPException(404, "transformer_locations.csv not found")
+    with open(csv_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    return StreamingResponse(
+        io.BytesIO(content.encode("utf-8")),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="transformer_locations.csv"'},
+    )
+
+
+@app.get("/api/transformers/locations")
+def get_transformer_locations():
+    """Return all 18 transformer locations and GIS attributes as JSON records."""
+    csv_path = DATA_DIR / "transformer_locations.csv"
+    if not csv_path.exists():
+        csv_path = SRC_DIR.parent / "transformer_locations.csv"
+    if not csv_path.exists():
+        raise HTTPException(404, "transformer_locations.csv not found")
+    df = pd.read_csv(csv_path)
+    return {"total": len(df), "locations": df.to_dict(orient="records")}
+
+
+@app.get("/api/docs/model-formulas/docx")
+def download_model_formulas_docx():
+    """Download the complete Word document (.docx) containing all mathematical models, formulas, and value analysis."""
+    docx_path = SRC_DIR.parent / "docs" / "VOLTRA_MODEL_FORMULAS_AND_SPECS.docx"
+    if not docx_path.exists():
+        docx_path = SRC_DIR.parent / "VOLTRA_MODEL_FORMULAS_AND_SPECS.docx"
+    if not docx_path.exists():
+        raise HTTPException(404, "VOLTRA_MODEL_FORMULAS_AND_SPECS.docx not found")
+    return FileResponse(
+        docx_path,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        filename="VOLTRA_MODEL_FORMULAS_AND_SPECS.docx"
     )
 
 
