@@ -149,7 +149,7 @@ function LiveStreamPage() {
     if (!tick || !tick.sensor_telemetry || !tick.live_ml_output) return;
     const timeStr = new Date().toLocaleTimeString("en-GB", { hour12: false });
     const entry: InferenceLogEntry = {
-      id: `${tick.asset_id}-${tick.day}-${Date.now()}`,
+      id: `${tick.asset_id}-${tick.day}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       day: tick.day,
       timestamp: timeStr,
       assetId: tick.asset_id,

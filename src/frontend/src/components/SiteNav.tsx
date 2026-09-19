@@ -9,8 +9,9 @@ const NAV_LINKS = [
   { to: "/", label: "Home" },
   { to: "/stream", label: "Live Stream" },
   { to: "/dashboard", label: "Dashboard" },
-  { to: "/grid", label: "Live Grid" },
-  { to: "/blackout", label: "Blackout Defense" },
+  { to: "/grid", label: "Grid" },
+  { to: "/map", label: "Map" },
+  { to: "/blackout", label: "Blackout" },
   { to: "/predict", label: "Prediction" },
   { to: "/technology", label: "Technology" },
 ] as const;
@@ -112,7 +113,6 @@ export function SiteNav() {
       {/* ── Floating Premium Compact Glassmorphic Top Bar ─────────────────────────────────────────────── */}
       <header className="sticky top-2 sm:top-3 z-50 mx-auto w-[calc(100%-1rem)] max-w-5xl rounded-full border border-white/[0.12] bg-[#0c0d11]/90 shadow-[0_12px_36px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.15)] backdrop-blur-2xl transition-all mb-3 sm:mb-4">
         <div className="flex h-11 sm:h-12 w-full items-center justify-between px-3 sm:px-5 gap-3">
-
           {/* Left: Brand - Voltra Logo with Name (Only VOLTRA, white text) */}
           <Link
             to="/"
@@ -139,10 +139,10 @@ export function SiteNav() {
                     active
                       ? "bg-white/[0.12] text-white shadow-sm font-bold border border-white/[0.08]"
                       : isStream
-                      ? "text-red-400 font-bold hover:bg-white/[0.06] hover:text-red-300"
-                      : isLiveGrid
-                      ? "text-[#d2f831] font-bold hover:bg-white/[0.06] hover:text-[#e4ff54]"
-                      : "text-neutral-400 hover:text-white hover:bg-white/[0.06] font-semibold"
+                        ? "text-red-400 font-bold hover:bg-white/[0.06] hover:text-red-300"
+                        : isLiveGrid
+                          ? "text-[#d2f831] font-bold hover:bg-white/[0.06] hover:text-[#e4ff54]"
+                          : "text-neutral-400 hover:text-white hover:bg-white/[0.06] font-semibold"
                   }`}
                 >
                   <span className="inline-flex items-center gap-1.5">
@@ -161,7 +161,6 @@ export function SiteNav() {
 
           {/* Right: Actions */}
           <div className="flex items-center gap-2 shrink-0">
-
             {/* Auth Pill — signed in (desktop) */}
             {isAuthenticated && (
               <div className="hidden items-center gap-1 sm:flex">
@@ -244,7 +243,6 @@ export function SiteNav() {
         }`}
       >
         <nav className="mx-3 mt-2 mb-4 overflow-hidden rounded-2xl border border-border bg-background/95 shadow-2xl backdrop-blur-2xl">
-
           {/* Nav links */}
           <div className="p-2">
             {NAV_LINKS.map((l) => {
@@ -255,9 +253,7 @@ export function SiteNav() {
                   to={l.to}
                   onClick={() => setOpen(false)}
                   className={`flex items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold transition-colors ${
-                    active
-                      ? "bg-primary text-primary-foreground"
-                      : "text-foreground hover:bg-muted"
+                    active ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-muted"
                   }`}
                 >
                   <span>{l.label}</span>
@@ -313,7 +309,9 @@ export function SiteNav() {
                     <User className="size-3.5 text-muted-foreground" />
                     <span className="text-sm font-semibold text-foreground">{profile!.name}</span>
                   </div>
-                  <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[100px]">{profile!.role}</span>
+                  <span className="text-[10px] font-mono text-muted-foreground truncate max-w-[100px]">
+                    {profile!.role}
+                  </span>
                 </div>
                 <button
                   type="button"

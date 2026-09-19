@@ -62,6 +62,7 @@ from rag_proxy import router as rag_router, RAG_INTERNAL_URL, start_rag_service,
 from pipeline.score_asset_risk import score_asset_risk, score_all_assets
 from pipeline.grid_impact_ranker import rank_assets
 from pipeline.maintenance_plan import generate_maintenance_plan
+from pipeline.duval import calculate_duval_triangle
 
 from services.sms_alert import send_fault_alert, validate_config as _sms_validate_config
 
@@ -333,6 +334,15 @@ async def get_asset_detail(asset_id: str, generate_advisory: bool = True):
         result["composite_score"] = float(ranked_row.iloc[0]["composite_score"])
         result["rank"] = int(ranked_row.iloc[0]["rank"])
 
+    # Calculate real-time Duval Triangle 1 coordinates & zone from actual latest telemetry
+    ch4_latest = float(latest.get("Methane", 0.0) or 0.0)
+    c2h4_latest = float(latest.get("Ethylene", 0.0) or 0.0)
+    c2h2_latest = float(latest.get("Acethylene", 0.0) or 0.0)
+    duval = calculate_duval_triangle(ch4_latest, c2h4_latest, c2h2_latest)
+    pred_fault = str(result.get("fault_type", "NF"))
+    duval["zone_agreement"] = bool(duval["zone"] == pred_fault or (duval["zone"] in ("D1", "D2") and pred_fault in ("D1", "D2")) or (duval["zone"] in ("T1", "T2", "T3") and pred_fault in ("T1", "T2", "T3")))
+    result["duval_analysis"] = duval
+
     # Fire-and-forget SMS fault alert — never blocks or breaks the response
     try:
         asyncio.create_task(send_fault_alert(result))
@@ -342,11 +352,245 @@ async def get_asset_detail(asset_id: str, generate_advisory: bool = True):
     return result
 
 
+@app.get("/api/asset/{asset_id}/duval-trajectory")
+def get_asset_duval_trajectory(asset_id: str):
+    """
+    Return the genuine 90-day time-series Duval Triangle coordinates for an asset.
+    Calculates exact %CH4, %C2H4, %C2H2 and Duval zone for every historical day from actual telemetry.
+    """
+    _load_cache()
+    ts = _cache.get("timeseries", pd.DataFrame())
+    if ts.empty:
+        raise HTTPException(404, "Time-series data not loaded.")
+    asset_ts = ts[ts["asset_id"] == asset_id]
+    if asset_ts.empty:
+        raise HTTPException(404, f"Asset '{asset_id}' not found.")
+
+    sorted_ts = asset_ts.sort_values("day")
+    trajectory = []
+    for _, row in sorted_ts.iterrows():
+        ch4 = float(row.get("Methane", 0.0) or 0.0)
+        c2h4 = float(row.get("Ethylene", 0.0) or 0.0)
+        c2h2 = float(row.get("Acethylene", 0.0) or 0.0)
+        duval = calculate_duval_triangle(ch4, c2h4, c2h2)
+        trajectory.append({
+            "day": int(row.get("day", 0)),
+            "date": str(row.get("date", "")),
+            "pct_ch4": duval["pct_ch4"],
+            "pct_c2h4": duval["pct_c2h4"],
+            "pct_c2h2": duval["pct_c2h2"],
+            "zone": duval["zone"],
+            "zone_name": duval["zone_name"],
+            "ch4_ppm": round(ch4, 1),
+            "c2h4_ppm": round(c2h4, 1),
+            "c2h2_ppm": round(c2h2, 1),
+            "health_index": round(float(row.get("health_index", 13.4)), 1),
+            "rul_days": round(float(row.get("RUL_days", 180.0)), 1),
+        })
+    return {
+        "asset_id": asset_id,
+        "total_days": len(trajectory),
+        "trajectory": trajectory
+    }
+
+
+def _build_combined_7day_grid_plan(actions: list) -> list:
+    """
+    Construct a synchronized, realistic 7-day grid-wide maintenance schedule across
+    all 18 transformers in Anand District, incorporating IEEE C57 and IEC 60599 standards.
+    """
+    from datetime import date, timedelta
+    today = date.today()
+
+    # Substation mapping from registry
+    sub_map = {}
+    for r in _cache.get("registry", []):
+        sub_map[r["asset_id"]] = r.get("substation_name", f"{r.get('grid_zone', 'Anand')} Substation")
+
+    # Asset lookup by ID for quick stats
+    action_dict = {a["asset_id"]: a for a in actions}
+
+    # Day configurations
+    day_configs = [
+        {
+            "day": 1,
+            "title": "Day 1: Emergency Arcing Isolation & Critical LOTO Disconnect",
+            "theme": "Immediate Outage Prevention & Fault Containment",
+            "crew": "HV Substation Emergency Response Team (Lead + 3 Linemen)",
+            "primary_permit": "PTW Class-A / LOTO 33kV Line Isolator",
+            "assets": ["TX-107", "TX-112"],
+            "tasks": [
+                ("TX-107", "Execute LOTO on 33kV incomer and rack out vacuum circuit breaker.", "CRITICAL", 3.0, "PTW Class-A", ["Calibrated HV Proximity Detector", "Safety Padlocks"]),
+                ("TX-107", "Apply 3-phase short-circuit earthing clusters to HV and LV bushings.", "CRITICAL", 2.0, "PTW Class-A", ["Grounding Rods", "Hotstick 36kV"]),
+                ("TX-107", "Conduct acoustic partial discharge & ultrasonic arcing scan across tank perimeter.", "HIGH", 2.5, "Diagnostic", ["Acoustic UHF Sensor Suite"]),
+                ("TX-112", "Emergency load shedding: Reroute 8.5 MVA feeder load to redundant bus bar.", "CRITICAL", 1.5, "PTW Class-B", ["SCADA Operator Console"]),
+                ("TX-112", "Thermal baseline infrared imaging of bushing terminals and main tank joints.", "HIGH", 2.0, "Non-invasive", ["FLIR T865 Camera"]),
+            ]
+        },
+        {
+            "day": 2,
+            "title": "Day 2: Precision DGA Oil Sampling & Dielectric BDV Screening",
+            "theme": "Dissolved Gas Analysis & Chemical Characterization",
+            "crew": "Certified Oil Chemistry & Lab Mobile Diagnostic Unit (2 Chemists)",
+            "primary_permit": "PTW Class-B (Oil Sampling Valve Access)",
+            "assets": ["TX-107", "TX-112", "TX-104", "TX-115"],
+            "tasks": [
+                ("TX-107", "Extract 500 mL oil via hermetically sealed glass syringe under positive pressure.", "CRITICAL", 1.5, "PTW Class-B", ["Glass Syringes", "Three-way Stopcocks"]),
+                ("TX-112", "Run on-site gas chromatography for key fault gases (C2H2, CH4, C2H4, H2).", "HIGH", 2.5, "Lab", ["Transport X Portable DGA Unit"]),
+                ("TX-104", "Karl Fischer coulometric titration for ppm moisture in oil (ASTM D1533).", "HIGH", 2.0, "Lab", ["Karl Fischer Coulometer"]),
+                ("TX-104", "Dielectric breakdown voltage (BDV) test per IEC 60156 (6 consecutive sparks).", "MEDIUM", 1.5, "Lab", ["Automatic BDV Tester 100kV"]),
+                ("TX-115", "Post-intervention baseline oil test to confirm stabilized thermal markers.", "MEDIUM", 2.0, "PTW Class-B", ["DGA Syringe Kit"]),
+            ]
+        },
+        {
+            "day": 3,
+            "title": "Day 3: HV Winding Insulation & Sweep Frequency Response (SFRA)",
+            "theme": "Core Structural Integrity & Winding Deformation Check",
+            "crew": "HV Diagnostic & Relay Protection Specialists (2 Engineers)",
+            "primary_permit": "PTW Class-A (De-energized & Earthed)",
+            "assets": ["TX-101", "TX-102", "TX-107", "TX-112"],
+            "tasks": [
+                ("TX-107", "Sweep Frequency Response Analysis (SFRA) 20 Hz to 2 MHz for winding displacement.", "HIGH", 3.5, "PTW Class-A", ["Omicron FRAnalyzer", "BNC Coaxial Leads"]),
+                ("TX-112", "DC winding resistance measurement across all tapping positions (R-Y, Y-B, B-R).", "HIGH", 3.0, "PTW Class-A", ["Micro-Ohmmeter 10A"]),
+                ("TX-101", "Insulation Resistance (IR) & Polarization Index (PI) test at 5 kV DC.", "MEDIUM", 2.0, "PTW Class-A", ["Megger S1-568"]),
+                ("TX-102", "Core-to-ground and frame-to-ground insulation resistance measurement (>100 MΩ).", "ROUTINE", 1.5, "PTW Class-A", ["1 kV Insulation Tester"]),
+            ]
+        },
+        {
+            "day": 4,
+            "title": "Day 4: Bushing Tan-Delta (10kV) & On-Load Tap Changer (OLTC) Overhaul",
+            "theme": "External Insulation & Mechanical Switching Systems",
+            "crew": "Substation Bushing & Mechanical Overhaul Crew (3 Technicians)",
+            "primary_permit": "PTW Class-A (Work at Height & De-energized)",
+            "assets": ["TX-103", "TX-105", "TX-108", "TX-114"],
+            "tasks": [
+                ("TX-103", "Doble 10 kV power factor & C1/C2 capacitance measurement on HV bushings.", "HIGH", 3.0, "PTW Class-A", ["Doble M4100 Analyzer"]),
+                ("TX-105", "Inspect on-load tap changer diverter switch contacts for pitting and carbonization.", "HIGH", 4.0, "PTW Class-A", ["Contact Resistance Meter", "Feeler Gauges"]),
+                ("TX-108", "Dynamic resistance measurement (DRM) during motorized tap transitions.", "MEDIUM", 2.5, "PTW Class-A", ["OLTC Analyzer"]),
+                ("TX-114", "Desiccant inspection: Replace saturated silica gel in dehydrating breathers.", "ROUTINE", 1.5, "Non-invasive", ["Fresh Silica Gel", "Oil Cup Seal"]),
+            ]
+        },
+        {
+            "day": 5,
+            "title": "Day 5: Radiator Bank Descaling & Cooling System Overhaul",
+            "theme": "Thermal Dissipation Margin & Forced Cooling Restoration",
+            "crew": "Substation Mechanical & Maintenance Crew (3 Technicians)",
+            "primary_permit": "PTW Class-C (Auxiliary Low-Voltage Only)",
+            "assets": ["TX-104", "TX-106", "TX-110", "TX-115"],
+            "tasks": [
+                ("TX-104", "Pressure-wash radiator cooling fins to strip atmospheric dust and debris.", "HIGH", 3.0, "PTW Class-C", ["Industrial Pressure Washer"]),
+                ("TX-104", "Test auto-start sequencing and current draw for ONAF fan stages 1 and 2.", "HIGH", 2.0, "PTW Class-C", ["Clamp Multimeter", "Thermal Relay Tester"]),
+                ("TX-106", "Oil circulation forced-pump bearing vibration and acoustic signature analysis.", "MEDIUM", 2.0, "Non-invasive", ["Vibration Pen", "Stethoscope"]),
+                ("TX-110", "Calibrate Winding Temperature (WTI) and Oil Temperature (OTI) capillary gauges.", "MEDIUM", 2.5, "PTW Class-C", ["Calibration Oil Bath"]),
+                ("TX-115", "Inspect refurbished fan bearings on TX-115; record top-oil temp differential.", "ROUTINE", 1.5, "Non-invasive", ["IR Thermometer"]),
+            ]
+        },
+        {
+            "day": 6,
+            "title": "Day 6: Mobile Vacuum Degassing & High-Throughput Oil Filtration",
+            "theme": "Dielectric Fluid Dehydration & Contaminant Extraction",
+            "crew": "Mobile Transformer Oil Filtration Unit (Senior Operator + Assistant)",
+            "primary_permit": "PTW Class-A (Auxiliary Power & Hot Oil Circulation)",
+            "assets": ["TX-107", "TX-112", "TX-113", "TX-116"],
+            "tasks": [
+                ("TX-107", "Connect 6,000 L/hr vacuum oil purifier; circulate oil under <1 mbar vacuum at 60°C.", "CRITICAL", 6.0, "PTW Class-A", ["Mobile Vacuum Filtration Rig"]),
+                ("TX-107", "0.5-micron multi-stage particulate filtering to eliminate carbonized particulates.", "HIGH", 4.0, "PTW Class-A", ["Micronic Filter Cartridges"]),
+                ("TX-112", "Vacuum dehydration cycle to reduce dissolved water content below 10 ppm.", "HIGH", 5.0, "PTW Class-A", ["Vacuum Plant Stage-2"]),
+                ("TX-113", "Dielectric breakdown voltage re-test confirming BDV > 65 kV post-filtration.", "MEDIUM", 2.0, "Lab", ["BDV Test Cell"]),
+                ("TX-116", "Check conservator nitrogen blanket pressure / air cell integrity.", "ROUTINE", 1.5, "Non-invasive", ["N2 Pressure Gauge"]),
+            ]
+        },
+        {
+            "day": 7,
+            "title": "Day 7: Protection Relay Recalibration & Phased Grid Re-Energization",
+            "theme": "Pre-Commissioning Clearance & Phased Load Restoration",
+            "crew": "Senior Commissioning Engineer & Load Dispatch Operators (2 Engineers)",
+            "primary_permit": "Commissioning Clearance & System Operator Consent",
+            "assets": ["TX-107", "TX-112", "TX-104", "TX-115", "TX-117", "TX-118"],
+            "tasks": [
+                ("TX-107", "Trip circuit testing: Verify differential 87T, overcurrent 50/51, and Buchholz 63.", "CRITICAL", 3.0, "Protection", ["Secondary Injection Test Set"]),
+                ("TX-107", "Remove safety earthing clusters, cancel PTW, issue clearance to State Load Dispatch.", "CRITICAL", 1.5, "PTW Clearance", ["Ground Removal Checklist"]),
+                ("TX-107", "Energize transformer under zero load for 2 hours; verify core humming and no-load loss.", "HIGH", 2.5, "Grid Sync", ["Acoustic & Voltage Monitor"]),
+                ("TX-112", "Synchronize to 33kV bus and step load up to 25%, 50%, and 100% in 1-hour increments.", "CRITICAL", 3.0, "Grid Sync", ["SCADA Telemetry System"]),
+                ("TX-104", "Post-maintenance thermographic verification under full operating load.", "HIGH", 2.0, "Non-invasive", ["FLIR T865 Camera"]),
+                ("TX-117", "Routine baseline DGA check on feeder transformer TX-117.", "ROUTINE", 1.5, "Non-invasive", ["DGA Syringe"]),
+                ("TX-118", "Routine baseline DGA check on feeder transformer TX-118.", "ROUTINE", 1.5, "Non-invasive", ["DGA Syringe"]),
+            ]
+        }
+    ]
+
+    result = []
+    for cfg in day_configs:
+        day_idx = cfg["day"]
+        day_date = today + timedelta(days=day_idx - 1)
+        date_str = f"Day {day_idx} ({day_date.strftime('%b %d, %Y')})"
+
+        task_objects = []
+        for t_idx, (aid, desc, priority, est_hours, permit, tools) in enumerate(cfg["tasks"], start=1):
+            act_info = action_dict.get(aid, {})
+            task_objects.append({
+                "id": f"TASK-GRID-D{day_idx}-{aid}-{t_idx}",
+                "asset_id": aid,
+                "substation": sub_map.get(aid, f"{aid} Substation"),
+                "grid_zone": act_info.get("grid_zone", "Zone-A"),
+                "fault_type": act_info.get("fault_type", "NF"),
+                "risk_tier": act_info.get("risk_tier", "MEDIUM"),
+                "health_index": act_info.get("health_index", 40.0),
+                "rul_days": act_info.get("RUL_days", 90.0),
+                "task_title": desc.split(":")[0] if ":" in desc else desc[:50],
+                "task_detail": desc,
+                "priority": priority,
+                "crew": cfg["crew"],
+                "permit": permit,
+                "estimated_hours": est_hours,
+                "tools": tools,
+                "completed": False,
+            })
+
+        active_subs = list({sub_map.get(aid, aid) for aid in cfg["assets"]})
+        result.append({
+            "day": day_idx,
+            "date": date_str,
+            "title": cfg["title"],
+            "theme": cfg["theme"],
+            "primary_crew": cfg["crew"],
+            "primary_permit": cfg["primary_permit"],
+            "scheduled_assets": cfg["assets"],
+            "active_substations": active_subs,
+            "total_estimated_hours": sum(t["estimated_hours"] for t in task_objects),
+            "tasks": task_objects,
+        })
+
+    return result
+
+
 @app.get("/api/plan")
 def get_plan():
-    """Return the full maintenance plan with crew pre-positioning."""
+    """Return the full maintenance plan with crew pre-positioning and combined 7-day checklist."""
     _load_cache()
-    return _cache["plan"]
+    raw_plan = _cache.get("plan", {})
+    plan = dict(raw_plan)
+    actions = plan.get("asset_actions", [])
+
+    # Ensure backwards compatibility: both top_10_actions and asset_actions
+    plan["asset_actions"] = actions
+    plan["top_10_actions"] = actions[:10]
+
+    # Combined 7-day grid schedule with detailed interactive checklists
+    combined_plan = _build_combined_7day_grid_plan(actions)
+    plan["combined_7day_plan"] = combined_plan
+
+    # Calculate grid-wide stats
+    total_tasks = sum(len(d["tasks"]) for d in combined_plan)
+    critical_tasks = sum(1 for d in combined_plan for t in d["tasks"] if t.get("priority") in ("CRITICAL", "HIGH"))
+    plan["grid_stats"] = {
+        "total_tasks": total_tasks,
+        "critical_tasks": critical_tasks,
+        "active_crews": 4,
+        "total_assets_scheduled": len(actions),
+        "estimated_total_hours": round(sum(t.get("estimated_hours", 2.0) for d in combined_plan for t in d["tasks"]), 1),
+    }
+    return plan
 
 
 @app.get("/api/weather")
@@ -432,6 +676,28 @@ async def score_adhoc(reading: SensorReading):
         result["fault_prob"] = result.pop("fault_confidence", 0.0)
     result["top_3_shap"] = result.pop("top3_shap_features", [])
     result.pop("fault_confidence", None)
+
+    # Real-time Duval Triangle calculation from adhoc sensor values
+    ch4_adhoc = float(sensor_dict.get("Methane", 0.0) or 0.0)
+    c2h4_adhoc = float(sensor_dict.get("Ethylene", 0.0) or 0.0)
+    c2h2_adhoc = float(sensor_dict.get("Acethylene", 0.0) or 0.0)
+    duval_adhoc = calculate_duval_triangle(ch4_adhoc, c2h4_adhoc, c2h2_adhoc)
+    pred_fault_adhoc = str(result.get("fault_type", "NF"))
+    duval_adhoc["zone_agreement"] = bool(duval_adhoc["zone"] == pred_fault_adhoc or (duval_adhoc["zone"] in ("D1", "D2") and pred_fault_adhoc in ("D1", "D2")) or (duval_adhoc["zone"] in ("T1", "T2", "T3") and pred_fault_adhoc in ("T1", "T2", "T3")))
+    result["duval_analysis"] = duval_adhoc
+
+    if not result.get("advisory_text"):
+        hi = result.get("health_index", 0.0)
+        rul = result.get("RUL_days", 0.0)
+        f_type = result.get("fault_type", "NF")
+        f_conf = int(result.get("fault_prob", 0.0) * 100)
+        tier = result.get("risk_tier", "NOMINAL")
+        z_name = duval_adhoc.get("zone_name", "")
+        z_code = duval_adhoc.get("zone", "")
+        result["advisory_text"] = (
+            f"{tier} RISK: {reading.asset_id} evaluated with Health Index {hi:.1f} and approximately {rul:.0f} days RUL. "
+            f"Model 2 predicts {f_type} fault ({f_conf}% confidence). Duval Triangle 1 confirms Zone {z_code} ({z_name})."
+        )
 
     # Fire-and-forget SMS fault alert — never blocks or breaks the response
     try:
@@ -729,7 +995,7 @@ async def generate_groq_report(req: GroqReportRequest):
     )
 
     if groq_key:
-        for model_name in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]:
+        for model_name in ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]:
             try:
                 async with httpx.AsyncClient(timeout=15.0) as client:
                     res = await client.post(
@@ -780,6 +1046,309 @@ async def generate_groq_report(req: GroqReportRequest):
             {"priority": "LOW", "action": "Review corridor load curtailment contingency protocols", "impact": "Protects asset during scheduled grid peak", "timeline": "Current operating shift"}
         ]
     }
+
+
+# ---------------------------------------------------------------------------
+# Single Asset 7-Day Maintenance Plan (Groq LPU Powered)
+# ---------------------------------------------------------------------------
+
+class SingleAsset7DayPlanRequest(BaseModel):
+    asset_id: str
+    substation: Optional[str] = None
+    grid_zone: Optional[str] = None
+    health_index: Optional[float] = 50.0
+    rul_days: Optional[float] = 45.0
+    fault_type: Optional[str] = "D1"
+    duval_zone: Optional[str] = None
+    load_mw: Optional[float] = 20.0
+    rated_mva: Optional[float] = 25.0
+    ambient_temp_c: Optional[float] = 30.0
+    c2h2_ppm: Optional[float] = 0.0
+    ch4_ppm: Optional[float] = 0.0
+    c2h4_ppm: Optional[float] = 0.0
+    h2_ppm: Optional[float] = 0.0
+
+
+def _build_deterministic_asset_7day_plan(req: SingleAsset7DayPlanRequest) -> dict:
+    from datetime import date, timedelta
+    today = date.today()
+
+    hi = req.health_index or 50.0
+    rul = req.rul_days or 45.0
+    fault = req.fault_type or "D1"
+    is_critical = hi >= 65 or rul <= 20 or fault in ("D2", "T3")
+    is_high = hi >= 50 or rul <= 40 or fault in ("D1", "T2", "PD")
+
+    tier = "CRITICAL" if is_critical else ("HIGH" if is_high else "MEDIUM")
+    urgency = "IMMEDIATE 24-48H DISPATCH" if is_critical else ("PRIORITY 72H DISPATCH" if is_high else "SCHEDULED 7-DAY WORK ORDER")
+
+    # Fault-specific mechanism
+    mechanisms = {
+        "D1": "Low-energy electrical arcing / partial tracking across tap-changer contacts or bushing barriers.",
+        "D2": "High-energy electrical arcing with rapid gas generation and thermal decomposition of oil.",
+        "T1": "Low-temperature thermal fault (<300°C) caused by localized overloading or cooling obstruction.",
+        "T2": "Medium-temperature thermal fault (300°C–700°C) with paper carbonization and localized hotspotting.",
+        "T3": "High-temperature thermal fault (>700°C) involving severe winding hot-spot or circulating core eddy currents.",
+        "PD": "Partial discharge inception within void inclusions of solid dielectric pressboard insulation.",
+        "NF": "Normal baseline operation with nominal dissolved gas equilibrium and healthy dielectric dissipation."
+    }
+    primary_mech = mechanisms.get(fault, f"Progressive dielectric/thermal stress classified under IEC {fault}.")
+
+    days = [
+        {
+            "day": 1,
+            "title": "Day 1: Emergency Diagnostic & Safety Isolation (PTW/LOTO)",
+            "phase": "Immediate Fault Containment & Electrical Clearance",
+            "crew_required": "HV Substation Emergency Response Team (Lead + 3 Linemen)",
+            "isolation_needed": True,
+            "permit_type": "PTW Class-A / LOTO 33kV Line Isolator",
+            "duration_hours": 4.5,
+            "tasks": [
+                {"id": f"D1-T1", "text": "Execute Lock-Out Tag-Out (LOTO) on primary 33kV and secondary 11kV circuit breakers.", "priority": "CRITICAL", "completed": False},
+                {"id": f"D1-T2", "text": "Verify zero potential with calibrated high-voltage proximity detector on all three phases.", "priority": "CRITICAL", "completed": False},
+                {"id": f"D1-T3", "text": "Install temporary 3-phase short-circuit earthing clusters on HV and LV bushings per CEA/IEEE guidelines.", "priority": "CRITICAL", "completed": False},
+                {"id": f"D1-T4", "text": "Perform acoustic UHF and ultrasonic perimeter scan for localized discharge resonance.", "priority": "HIGH", "completed": False}
+            ],
+            "tools": ["Calibrated 36kV Hotstick", "HV Proximity Detector", "Safety Earth Clusters", "Acoustic UHF Scanner"],
+            "safety_protocol": "Strictly enforce CEA Safety Regulations. Maintain minimum clearance boundary of 2.8m from adjacent energized busbars."
+        },
+        {
+            "day": 2,
+            "title": "Day 2: Precision DGA Oil Sampling & Laboratory Chromatography",
+            "phase": "Chemical Verification & Dielectric Baseline",
+            "crew_required": "Certified Oil Chemistry Specialist & Mobile Diagnostic Unit (2 Chemists)",
+            "isolation_needed": False,
+            "permit_type": "PTW Class-B (Oil Valve Access)",
+            "duration_hours": 3.5,
+            "tasks": [
+                {"id": f"D2-T1", "text": "Extract 500 mL bottom-oil sample using hermetically sealed gas-tight glass syringe under positive head.", "priority": "CRITICAL", "completed": False},
+                {"id": f"D2-T2", "text": "Perform on-site gas chromatography measuring C2H2, C2H4, CH4, H2, CO, and CO2.", "priority": "CRITICAL", "completed": False},
+                {"id": f"D2-T3", "text": "Measure Dielectric Breakdown Voltage (BDV) per IEC 60156 across 2.5 mm spherical gap (6 consecutive sparks).", "priority": "HIGH", "completed": False},
+                {"id": f"D2-T4", "text": "Conduct Karl Fischer coulometric titration to verify moisture content in oil (ASTM D1533).", "priority": "HIGH", "completed": False}
+            ],
+            "tools": ["Transport X Gas Chromatograph", "100kV Automatic BDV Oil Tester", "Karl Fischer Coulometer", "Sealed Glass Syringes"],
+            "safety_protocol": "Ensure oil sampling valve is flushed with 2L waste oil prior to sample collection to avoid sediment contamination."
+        },
+        {
+            "day": 3,
+            "title": "Day 3: Sweep Frequency Response Analysis (SFRA) & Winding Resistance",
+            "phase": "Structural Core & Winding Integrity Testing",
+            "crew_required": "HV Electrical Testing Engineers (2 Specialists)",
+            "isolation_needed": True,
+            "permit_type": "PTW Class-A",
+            "duration_hours": 5.0,
+            "tasks": [
+                {"id": f"D3-T1", "text": "Perform Sweep Frequency Response Analysis (SFRA) 20 Hz to 2 MHz comparing with factory baseline traces.", "priority": "HIGH", "completed": False},
+                {"id": f"D3-T2", "text": "Measure DC winding resistance across all tapping positions (R-Y, Y-B, B-R) using 10A micro-ohmmeter.", "priority": "HIGH", "completed": False},
+                {"id": f"D3-T3", "text": "Measure Insulation Resistance (IR) and Polarization Index (PI) at 5 kV DC (1-min and 10-min readings).", "priority": "HIGH", "completed": False},
+                {"id": f"D3-T4", "text": "Check core-to-earth and frame-to-earth insulation resistance (>100 MΩ at 1 kV DC).", "priority": "MEDIUM", "completed": False}
+            ],
+            "tools": ["Omicron FRAnalyzer SFRA Kit", "10A Digital Micro-Ohmmeter", "Megger S1-568 5kV Tester"],
+            "safety_protocol": "Discharge inductive windings through calibrated discharge resistors before disconnecting test leads."
+        },
+        {
+            "day": 4,
+            "title": "Day 4: Bushing Tan-Delta (10kV) & On-Load Tap Changer (OLTC) Overhaul",
+            "phase": "Bushing Insulation & Mechanical Transition Overhaul",
+            "crew_required": "Substation Bushing & Mechanical Overhaul Technicians (3 Techs)",
+            "isolation_needed": True,
+            "permit_type": "PTW Class-A (Work at Height)",
+            "duration_hours": 6.0,
+            "tasks": [
+                {"id": f"D4-T1", "text": "Measure dielectric dissipation factor (tan δ) and capacitance of HV condenser bushings at 10 kV test voltage.", "priority": "HIGH", "completed": False},
+                {"id": f"D4-T2", "text": "Open OLTC inspection hatch; inspect diverter switch contacts for pitting, erosion, and carbon build-up.", "priority": "HIGH", "completed": False},
+                {"id": f"D4-T3", "text": "Test tap changer motorized drive mechanism timing and measure transition resistance.", "priority": "MEDIUM", "completed": False},
+                {"id": f"D4-T4", "text": "Inspect silica gel dehydrating breathers and replace saturated desiccant charge.", "priority": "ROUTINE", "completed": False}
+            ],
+            "tools": ["Doble M4100 10kV Power Factor Set", "OLTC Dynamic Resistance Analyzer", "Feeler Gauges", "Fresh Silica Gel"],
+            "safety_protocol": "Wear full-body safety harnesses while working on transformer tank top. Maintain 100% tie-off."
+        },
+        {
+            "day": 5,
+            "title": "Day 5: Radiator Bank Descaling & Cooling System Overhaul",
+            "phase": "Thermal Headroom Restoration",
+            "crew_required": "Mechanical & Thermal Maintenance Team (3 Technicians)",
+            "isolation_needed": False,
+            "permit_type": "PTW Class-C (Auxiliary Panel LOTO)",
+            "duration_hours": 4.0,
+            "tasks": [
+                {"id": f"D5-T1", "text": "High-pressure wash external radiator cooling fins to strip accumulated industrial dust and dirt.", "priority": "HIGH", "completed": False},
+                {"id": f"D5-T2", "text": "Test auto-start control sequencing and verify running current for ONAF cooling fan bank 1 and bank 2.", "priority": "HIGH", "completed": False},
+                {"id": f"D5-T3", "text": "Inspect forced-oil circulation pumps for abnormal bearing vibration, acoustic whine, or seal leakage.", "priority": "MEDIUM", "completed": False},
+                {"id": f"D5-T4", "text": "Calibrate Winding Temperature Indicator (WTI) and Oil Temperature Indicator (OTI) capillary sensors.", "priority": "MEDIUM", "completed": False}
+            ],
+            "tools": ["Industrial High-Pressure Washer", "Thermal Imaging Camera FLIR", "Digital Tachometer", "Vibration Pen"],
+            "safety_protocol": "Lock out fan control breaker switches before manually inspecting fan blades and rotating assemblies."
+        },
+        {
+            "day": 6,
+            "title": "Day 6: Mobile Vacuum Degassing & High-Throughput Oil Dehydration",
+            "phase": "Dielectric Fluid Regeneration",
+            "crew_required": "Mobile Transformer Oil Treatment Unit (Senior Operator + Assistant)",
+            "isolation_needed": True,
+            "permit_type": "PTW Class-A",
+            "duration_hours": 7.5,
+            "tasks": [
+                {"id": f"D6-T1", "text": "Connect 6,000 L/hr mobile oil purifier plant to bottom inlet and top outlet sampling valves.", "priority": "CRITICAL", "completed": False},
+                {"id": f"D6-T2", "text": "Circulate oil under vacuum (<1 mbar) and heating (60°C–65°C) to degas dissolved acetylene and hydrocarbons.", "priority": "CRITICAL", "completed": False},
+                {"id": f"D6-T3", "text": "Filter oil through 0.5-micron multi-stage microglass filters to extract suspended carbon particles.", "priority": "HIGH", "completed": False},
+                {"id": f"D6-T4", "text": "Perform post-treatment inline BDV test ensuring dielectric strength exceeds 65 kV.", "priority": "HIGH", "completed": False}
+            ],
+            "tools": ["Mobile 6000 L/hr Vacuum Oil Purifier Plant", "0.5-Micron Filter Elements", "Inline Moisture Sensor", "Oil Hose Rig"],
+            "safety_protocol": "Continuously monitor oil conservator level during circulation. Maintain continuous fire extinguisher standby."
+        },
+        {
+            "day": 7,
+            "title": "Day 7: Protection Relay Verification & Phased Grid Re-Energization",
+            "phase": "Pre-Commissioning Clearance & System Reintegration",
+            "crew_required": "Senior Commissioning Engineer & System Dispatchers (2 Engineers)",
+            "isolation_needed": True,
+            "permit_type": "Commissioning Clearance & Grid Consent",
+            "duration_hours": 4.5,
+            "tasks": [
+                {"id": f"D7-T1", "text": "Perform functional trip testing of Buchholz gas relay, sudden pressure relay, and pressure relief valve (PRV).", "priority": "CRITICAL", "completed": False},
+                {"id": f"D7-T2", "text": "Verify differential protection (87T) and overcurrent/earth fault (50/51) secondary injection pickup thresholds.", "priority": "CRITICAL", "completed": False},
+                {"id": f"D7-T3", "text": "Remove all temporary safety earthing clusters, surrender PTW, and secure operator clearance.", "priority": "CRITICAL", "completed": False},
+                {"id": f"D7-T4", "text": "Energize transformer under zero load for 2 hours; observe acoustic resonance, voltage balance, and no-load loss.", "priority": "HIGH", "completed": False},
+                {"id": f"D7-T5", "text": "Step feeder load to 25%, 50%, and 100% in 1-hour increments while monitoring top-oil temperature and SCADA telemetry.", "priority": "CRITICAL", "completed": False}
+            ],
+            "tools": ["Omicron CMC 356 Secondary Injection Test Set", "Phase Angle Meter", "SCADA Dispatch Console"],
+            "safety_protocol": "Ensure all personnel are evacuated outside substation safety fence prior to initial breaker close command."
+        }
+    ]
+
+    return {
+        "status": "ok",
+        "provider": "Deterministic SCADA Engineering Engine",
+        "asset_id": req.asset_id,
+        "substation": req.substation or f"{req.asset_id} Substation",
+        "grid_zone": req.grid_zone or "Zone-B",
+        "risk_tier": tier,
+        "urgency_tier": urgency,
+        "primary_mechanism": primary_mech,
+        "executive_summary": f"Asset {req.asset_id} exhibits an acute operational risk profile under {fault} classification with Health Index of {hi:.1f} and RUL of {rul:.0f} days. This 7-day engineering plan isolates the defect, reconditions dielectric fluid, overhauls mechanical tap contacts, and restores grid reliability under IEEE C57.104 protocols.",
+        "standards_compliance": [
+            "IEEE C57.104-2019 Table 1 Condition 3/4 Gas Limits",
+            "IEC 60599 Mineral Oil-Impregnated Electrical Equipment Diagnostics",
+            "IEEE C57.152-2013 Field Testing of Fluid-Filled Transformers",
+            "IS 1866 Code of Practice for Maintenance of Insulating Oil"
+        ],
+        "day_by_day_plan": days,
+        "projected_post_maintenance": {
+            "health_index_projected": max(15.0, round(hi * 0.48, 1)),
+            "rul_extension_days": int(max(45, 180 - rul * 0.5)),
+            "risk_mitigation_summary": f"Expected reduction of Health Index from {hi:.1f} to ~{max(15.0, round(hi * 0.48, 1)):.1f}, extending safe operational life by ~{int(max(45, 180 - rul * 0.5))} days and mitigating catastrophic blackout risk."
+        }
+    }
+
+
+@app.post("/api/maintenance/generate-7day-plan")
+async def generate_single_asset_7day_plan(req: SingleAsset7DayPlanRequest):
+    """
+    Generate a comprehensive IEEE C57 / IEC 60599 7-day engineering maintenance plan
+    and work order for a single transformer using live Groq LPU inference with deterministic fallback.
+    """
+    groq_key = os.getenv("GROQ_API_KEY", "")
+    hi = req.health_index or 50.0
+    rul = req.rul_days or 45.0
+    fault = req.fault_type or "D1"
+    sub = req.substation or f"{req.asset_id} Substation"
+    zone = req.grid_zone or "Zone-B"
+    load = f"{req.load_mw or 20} MW / {req.rated_mva or 25} MVA"
+    gas_desc = (
+        f"Acetylene (C2H2): {req.c2h2_ppm or 0:.1f} ppm (IEEE Condition Limit > 1 ppm), "
+        f"Methane (CH4): {req.ch4_ppm or 0:.1f} ppm, "
+        f"Ethylene (C2H4): {req.c2h4_ppm or 0:.1f} ppm, "
+        f"Hydrogen (H2): {req.h2_ppm or 0:.1f} ppm"
+    )
+
+    prompt = (
+        f"You are a principal power transformer reliability consultant and senior substation maintenance engineer. "
+        f"Generate a rigorous, highly actionable, IEEE C57.104 and IEC 60599 compliant 7-day maintenance plan for:\n"
+        f"- Asset ID: {req.asset_id}\n"
+        f"- Substation / Grid Zone: {sub} ({zone})\n"
+        f"- Health Index (HI): {hi:.1f} / 100 (0=pristine, 100=failed)\n"
+        f"- Remaining Useful Life (RUL): {rul:.1f} days\n"
+        f"- Model 2 DGA Fault Classification: {fault}\n"
+        f"- Duval Triangle Zone: {req.duval_zone or fault}\n"
+        f"- Electrical Loading: {load}\n"
+        f"- Ambient Temperature: {req.ambient_temp_c or 32:.1f}°C\n"
+        f"- Dissolved Gases: {gas_desc}\n\n"
+        "Return ONLY a JSON object with this exact structure:\n"
+        "{\n"
+        f'  "asset_id": "{req.asset_id}",\n'
+        f'  "substation": "{sub}",\n'
+        f'  "grid_zone": "{zone}",\n'
+        '  "risk_tier": "CRITICAL" | "HIGH" | "MEDIUM" | "LOW",\n'
+        '  "urgency_tier": "IMMEDIATE 24-48H DISPATCH" | "PRIORITY 72H DISPATCH" | "SCHEDULED 7-DAY WORK ORDER",\n'
+        '  "primary_mechanism": string (root-cause diagnosis conforming to IEEE/IEC),\n'
+        '  "executive_summary": string (2-3 sentences on engineering status and required intervention),\n'
+        '  "standards_compliance": list of string (e.g. ["IEEE C57.104 Table 1", "IEC 60599"]),\n'
+        '  "day_by_day_plan": [\n'
+        '    {\n'
+        '      "day": 1,\n'
+        '      "date": "Day 1 (Sep 20, 2026)",\n'
+        '      "title": string,\n'
+        '      "phase": string,\n'
+        '      "crew_required": string,\n'
+        '      "isolation_needed": boolean,\n'
+        '      "permit_type": string,\n'
+        '      "duration_hours": float,\n'
+        '      "tasks": [\n'
+        '        {"id": "D1-T1", "text": string, "priority": "CRITICAL"|"HIGH"|"MEDIUM"|"ROUTINE", "completed": false}\n'
+        '      ],\n'
+        '      "tools": list of string,\n'
+        '      "safety_protocol": string\n'
+        '    }\n'
+        '  ],\n'
+        '  "projected_post_maintenance": {\n'
+        '    "health_index_projected": float,\n'
+        '    "rul_extension_days": int,\n'
+        '    "risk_mitigation_summary": string\n'
+        '  }\n'
+        "}\n\n"
+        "Day 1 to Day 7 MUST all be fully present and detailed:\n"
+        "- Day 1: Emergency Diagnostic & Safety Isolation (PTW/LOTO)\n"
+        "- Day 2: DGA Oil Sampling & Laboratory Chromatography\n"
+        "- Day 3: Sweep Frequency Response Analysis (SFRA) & Winding Resistance\n"
+        "- Day 4: Bushing Tan-Delta (10kV) & Tap Changer (OLTC) Overhaul\n"
+        "- Day 5: Radiator Descaling & Cooling System Overhaul\n"
+        "- Day 6: Mobile Vacuum Degassing & Oil Filtration\n"
+        "- Day 7: Protection Relay Verification & Phased Grid Re-Energization"
+    )
+
+    if groq_key:
+        for model_name in ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]:
+            try:
+                async with httpx.AsyncClient(timeout=25.0) as client:
+                    res = await client.post(
+                        "https://api.groq.com/openai/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+                        json={
+                            "model": model_name,
+                            "response_format": {"type": "json_object"},
+                            "messages": [
+                                {"role": "system", "content": "You are a master electrical utility engineer and SCADA reliability advisor. Return valid JSON only."},
+                                {"role": "user", "content": prompt}
+                            ],
+                            "temperature": 0.2
+                        }
+                    )
+                    if res.status_code == 200:
+                        data = json.loads(res.json()["choices"][0]["message"]["content"])
+                        data["status"] = "ok"
+                        data["provider"] = f"Groq LPU · Live Intelligence ({model_name})"
+                        if "asset_id" not in data:
+                            data["asset_id"] = req.asset_id
+                        if "substation" not in data:
+                            data["substation"] = sub
+                        return data
+            except Exception as e:
+                print(f"[Groq 7-Day Plan] Model {model_name} failed: {e}")
+
+    # Deterministic fallback when Groq key is unavailable or errored
+    fallback = _build_deterministic_asset_7day_plan(req)
+    return fallback
 
 
 # ---------------------------------------------------------------------------

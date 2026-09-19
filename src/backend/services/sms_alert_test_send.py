@@ -41,9 +41,10 @@ async def main(raw_number: str) -> None:
         print(f"ERROR: {exc}")
         sys.exit(1)
 
-    message = (
-        "[VOLTRA TEST] This is a manually triggered test alert from the VOLTRA "
-        "fault alert system. No real fault has occurred."
+    custom_msg = " ".join(sys.argv[2:]).strip() if len(sys.argv) > 2 else ""
+    message = custom_msg or (
+        "[VOLTRA AI Alert] Hello Om Rashiya, VOLTRA Grid Intelligence SMS module is operational. "
+        "Live monitoring enabled for Anand District substation transformers. - Techtonics"
     )
 
     try:
@@ -63,6 +64,6 @@ async def main(raw_number: str) -> None:
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python sms_alert_test_send.py +91XXXXXXXXXX")
+        print("Usage: python sms_alert_test_send.py +91XXXXXXXXXX [optional custom message]")
         sys.exit(1)
     asyncio.run(main(sys.argv[1]))

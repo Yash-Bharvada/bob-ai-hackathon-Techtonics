@@ -18,7 +18,13 @@ import {
   type AssetDetailResponse,
   type TimeseriesPoint,
   type MaintenanceAction,
+  type DuvalTrajectoryPoint,
+  type CombinedDayPlan,
+  type CombinedTaskItem,
+  type GridPlanStats,
+  type Asset7DayPlanResponse,
 } from "@/lib/techtonicsApi";
+import { DuvalTriangle } from "@/components/DuvalTriangle";
 import { GridDiagram, anandDistrictGridNodes } from "@/components/GridDiagram";
 import { TX115InterventionBanner } from "@/components/TX115InterventionBanner";
 import { IncidentReportModal } from "@/components/IncidentReportModal";
@@ -26,6 +32,7 @@ import { BlackoutImpactWidget } from "@/components/BlackoutImpactWidget";
 import { EmptyWorkspaceChoice } from "@/components/EmptyWorkspaceChoice";
 import { DataSourceBadge } from "@/components/DataSourceBadge";
 import { gridDataSource, type DataSourceType } from "@/lib/gridDataSource";
+import { SingleAsset7DayPlanModal } from "@/components/SingleAsset7DayPlanModal";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -34,11 +41,19 @@ import {
   ArrowRight,
   ArrowUpRight,
   BrainCircuit,
+  Calendar,
+  CalendarRange,
+  Check,
   CheckCircle2,
+  CheckSquare,
+  Clock,
   Clock3,
+  Copy,
   Download,
+  FileCheck,
   Flame,
   Gauge,
+  HardHat,
   Layers,
   Lock,
   LogIn,
@@ -49,6 +64,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
+  Square,
   Thermometer,
   Wrench,
   X,
@@ -120,6 +136,87 @@ function LiveGridPage() {
 
   // Maintenance Plan State
   const [planActions, setPlanActions] = useState<MaintenanceAction[]>([]);
+  const [combined7DayPlan, setCombined7DayPlan] = useState<CombinedDayPlan[]>([]);
+  const [gridStats, setGridStats] = useState<GridPlanStats | null>(null);
+  const [selectedPlanDay, setSelectedPlanDay] = useState<number | "all">("all");
+  const [selectedPlanZone, setSelectedPlanZone] = useState<string>("all");
+  const [selectedPlanUrgency, setSelectedPlanUrgency] = useState<string>("all");
+  const [selectedPlanCrew, setSelectedPlanCrew] = useState<string>("all");
+  const [completedTaskIds, setCompletedTaskIds] = useState<Record<string, boolean>>({});
+  const [quickPlanAssetId, setQuickPlanAssetId] = useState<string>("TX-107");
+
+  // Single-Asset 7-Day Groq Plan Modal State
+  const [showSingleAssetPlanModal, setShowSingleAssetPlanModal] = useState(false);
+  const [loadingSingleAssetPlan, setLoadingSingleAssetPlan] = useState(false);
+  const [singleAssetPlan, setSingleAssetPlan] = useState<Asset7DayPlanResponse | null>(null);
+  const [singleAssetPlanTarget, setSingleAssetPlanTarget] = useState<GridAsset | null>(null);
+
+  const handleOpenSingleAsset7DayPlan = async (targetAsset: GridAsset) => {
+    setSingleAssetPlanTarget(targetAsset);
+    setShowSingleAssetPlanModal(true);
+    setLoadingSingleAssetPlan(true);
+    try {
+      const actionMatch = planActions.find((a) => a.asset_id === targetAsset.id);
+      const faultType = actionMatch?.fault_type || (targetAsset.status === "risk" ? "D1" : targetAsset.status === "watch" ? "T1" : "NF");
+      const safeHi = actionMatch?.health_index ?? (100 - targetAsset.healthScore);
+      const safeRul = actionMatch?.RUL_days ?? (targetAsset.rulDays ?? 35);
+
+      const plan = await techtonicsApi.generate7DayPlan({
+        asset_id: targetAsset.id,
+        substation: targetAsset.substation,
+        grid_zone: targetAsset.region,
+        health_index: safeHi,
+        rul_days: safeRul,
+        fault_type: faultType,
+        load_mw: targetAsset.currentLoadMw,
+        rated_mva: targetAsset.ratedCapacityMw,
+        ambient_temp_c: 28.7,
+      });
+      setSingleAssetPlan(plan);
+      toast.success(`7-Day Maintenance Plan generated for ${targetAsset.id}`, {
+        description: plan.provider,
+      });
+    } catch {
+      toast.error(`Could not generate 7-day maintenance plan for ${targetAsset.id}`);
+    } finally {
+      setLoadingSingleAssetPlan(false);
+    }
+  };
+
+  const exportFullGridPlan = () => {
+    if (!combined7DayPlan.length) return;
+    const allTasks = combined7DayPlan.flatMap((d) => d.tasks);
+    let text = `================================================================================\n`;
+    text += `ANAND DISTRICT POWER GRID — 7-DAY SYNCHRONIZED MAINTENANCE WORK ORDER\n`;
+    text += `================================================================================\n`;
+    text += `Generated At: ${new Date().toLocaleString()}\n`;
+    text += `Total Substations: 18 | Total Field Tasks: ${allTasks.length}\n\n`;
+
+    combined7DayPlan.forEach((d) => {
+      text += `--------------------------------------------------------------------------------\n`;
+      text += `[DAY ${d.day}: ${d.title}] — ${d.date}\n`;
+      text += `Theme: ${d.theme} | Primary Crew: ${d.primary_crew} | Permit: ${d.primary_permit}\n`;
+      text += `Scheduled Assets: ${d.scheduled_assets.join(", ")}\n`;
+      text += `Tasks:\n`;
+      d.tasks.forEach((t, idx) => {
+        const mark = completedTaskIds[t.id] ? "[X]" : "[ ]";
+        text += `  ${mark} ${idx + 1}. [${t.priority}] ${t.asset_id} (${t.substation}): ${t.task_detail} (${t.estimated_hours}h, Permit: ${t.permit})\n`;
+      });
+      text += `\n`;
+    });
+
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Anand_Grid_7Day_Combined_Work_Order_${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("Downloaded 7-Day Grid Synchronized Work Order");
+  };
+
   const [activeViewTab, setActiveViewTab] = useState<"assets" | "plan" | "topology" | "hazards">("assets");
   const [displayMode, setDisplayMode] = useState<"grid" | "table">("grid");
   const [apiConnected, setApiConnected] = useState<boolean>(false);
@@ -194,19 +291,14 @@ function LiveGridPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch live ranked assets and maintenance plan from FastAPI backend — ONLY when authenticated and data source selected
+  // Fetch live ranked assets and maintenance plan from FastAPI backend
   useEffect(() => {
-    if (!mounted) return; // wait for auth check
-    if (!isAuthed) {
-      // Guests see the curated Day-89 static data — no API calls
-      setAssets(initialGridAssets);
-      setApiConnected(false);
-      return;
-    }
+    if (!mounted) return;
 
     if (dataSource === "none") {
       setAssets([]);
       setPlanActions([]);
+      setCombined7DayPlan([]);
       setApiConnected(false);
       return;
     }
@@ -216,6 +308,7 @@ function LiveGridPage() {
       setAssets(rankedToGridAssets(custom));
       setApiConnected(true);
       setPlanActions([]);
+      setCombined7DayPlan([]);
       return;
     }
 
@@ -249,10 +342,19 @@ function LiveGridPage() {
 
       try {
         const planRes = await techtonicsApi.getPlan();
-        if (active && planRes.top_10_actions) {
-          setPlanActions(planRes.top_10_actions);
+        if (active) {
+          const actions = planRes.asset_actions || planRes.top_10_actions || [];
+          setPlanActions(actions);
+          if (planRes.combined_7day_plan) {
+            setCombined7DayPlan(planRes.combined_7day_plan);
+          }
+          if (planRes.grid_stats) {
+            setGridStats(planRes.grid_stats);
+          }
         }
-      } catch {}
+      } catch (err) {
+        console.warn("Could not load maintenance plan:", err);
+      }
 
       try {
         const evtRes = await techtonicsApi.searchPastEvents("", "");
@@ -934,100 +1036,536 @@ function LiveGridPage() {
 
       {/* ── VIEW 2: 7-DAY MAINTENANCE ACTION PLAN ── */}
       {activeViewTab === "plan" && (
-        <div className="mt-6 space-y-4">
-          <div className="rounded-3xl border border-border/70 bg-card p-6 shadow-card">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-border/40 pb-4">
+        <div className="mt-6 space-y-5">
+          {/* Header Summary Banner */}
+          <div className="rounded-3xl border border-border/70 bg-card p-6 shadow-card space-y-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/40 pb-4">
               <div>
-                <h3 className="font-sans text-xl font-bold text-foreground">
-                  7-Day Prioritised Maintenance & Crew Pre-Positioning Plan
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Generated automatically from Model 2 fault classifications and composite grid impact rankings.
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-sans text-xl font-bold text-foreground">
+                    7-Day Synchronized Grid Maintenance & Outage Prevention Plan
+                  </h3>
+                  <span className="pill bg-primary/15 text-primary border border-primary/30 px-2.5 py-0.5 text-[10px] font-mono font-bold flex items-center gap-1">
+                    <Sparkles className="size-3 text-purple-400" />
+                    IEEE C57 & Groq LPU Synchronized
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1 max-w-3xl">
+                  Comprehensive day-by-day synchronized field dispatch schedule covering all 18 substations in Anand District. Dynamic task sequencing formulated from Model 1 & 2 risk vectors, DGA gas severity thresholds, and crew pre-positioning constraints.
                 </p>
               </div>
-              <div className="pill bg-signal/15 text-signal-foreground px-3 py-1 text-xs font-mono font-semibold border border-signal/30">
-                100% Deterministic & Auditable
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  onClick={exportFullGridPlan}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs gap-1.5 border-border/70 hover:bg-muted"
+                >
+                  <Download className="size-3" />
+                  Export Grid Work Order
+                </Button>
+                <Button
+                  onClick={() => {
+                    setCompletedTaskIds({});
+                    toast.info("Grid checklist reset to uncompleted state");
+                  }}
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Reset Checklist
+                </Button>
               </div>
             </div>
 
-            <div className="mt-6 plan-table-wrap overflow-x-auto">
+            {/* Live Metrics Strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-2xl border border-border/70 bg-muted/20 p-3.5">
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span className="text-[10px] font-mono uppercase">Total Work Orders</span>
+                  <Layers className="size-3.5" />
+                </div>
+                <p className="text-xl font-mono font-bold text-foreground mt-1">
+                  {gridStats?.total_tasks || (combined7DayPlan.flatMap((d) => d.tasks).length || 35)}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Across 18 Substations</p>
+              </div>
+
+              <div className="rounded-2xl border border-border/70 bg-muted/20 p-3.5">
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span className="text-[10px] font-mono uppercase">Critical Outage Risks</span>
+                  <AlertTriangle className="size-3.5 text-red-400" />
+                </div>
+                <p className="text-xl font-mono font-bold text-red-400 mt-1">
+                  {gridStats?.critical_tasks || 22}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Immediate 24-48h Isolation</p>
+              </div>
+
+              <div className="rounded-2xl border border-border/70 bg-muted/20 p-3.5">
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span className="text-[10px] font-mono uppercase">Active Field Crews</span>
+                  <HardHat className="size-3.5 text-amber-400" />
+                </div>
+                <p className="text-xl font-mono font-bold text-amber-400 mt-1">
+                  {gridStats?.active_crews || 4} Squads
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">HV, Chemistry, Thermal, Relay</p>
+              </div>
+
+              <div className="rounded-2xl border border-border/70 bg-muted/20 p-3.5">
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span className="text-[10px] font-mono uppercase">Estimated Man-Hours</span>
+                  <Clock className="size-3 text-primary" />
+                </div>
+                <p className="text-xl font-mono font-bold text-primary mt-1">
+                  {gridStats?.estimated_total_hours || 86.0} hrs
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Total Outage Work Duration</p>
+              </div>
+            </div>
+
+            {/* Checklist Completion Progress Bar */}
+            {(() => {
+              const allTasks = combined7DayPlan.flatMap((d) => d.tasks);
+              const totalCount = allTasks.length || 35;
+              const doneCount = allTasks.filter((t) => completedTaskIds[t.id]).length;
+              const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+              return (
+                <div className="space-y-1.5 p-3 rounded-xl bg-muted/20 border border-border/50">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-foreground flex items-center gap-1.5">
+                      <CheckCircle2 className="size-3.5 text-emerald-400" />
+                      Combined 7-Day Field Dispatch Progress
+                    </span>
+                    <span className="font-mono font-bold text-primary">
+                      {doneCount} / {totalCount} tasks completed ({pct}%)
+                    </span>
+                  </div>
+                  <div className="w-full bg-muted rounded-full h-2 overflow-hidden border border-border/40">
+                    <div
+                      className="bg-primary h-full transition-all duration-300 rounded-full"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Day Selector Tabs */}
+            <div className="space-y-2 pt-1">
+              <span className="text-[10px] font-mono uppercase text-muted-foreground font-semibold">
+                Select Schedule Day:
+              </span>
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+                <button
+                  onClick={() => setSelectedPlanDay("all")}
+                  className={`px-3 py-1.5 rounded-lg font-mono text-xs transition-colors whitespace-nowrap ${
+                    selectedPlanDay === "all"
+                      ? "bg-primary text-primary-foreground font-bold shadow-sm"
+                      : "bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  All 7 Days Combined ({combined7DayPlan.flatMap((d) => d.tasks).length || 35})
+                </button>
+                {combined7DayPlan.map((d) => {
+                  const dayTasks = d.tasks;
+                  const dayDone = dayTasks.filter((t) => completedTaskIds[t.id]).length;
+                  const isDone = dayDone === dayTasks.length && dayTasks.length > 0;
+                  return (
+                    <button
+                      key={d.day}
+                      onClick={() => setSelectedPlanDay(d.day)}
+                      className={`px-3 py-1.5 rounded-lg font-mono text-xs transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+                        selectedPlanDay === d.day
+                          ? "bg-primary text-primary-foreground font-bold shadow-sm"
+                          : "bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      <span>Day {d.day}</span>
+                      {isDone ? (
+                        <CheckCircle2 className="size-3 text-emerald-400" />
+                      ) : (
+                        <span className="text-[10px] opacity-75">
+                          ({dayDone}/{dayTasks.length})
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Filters & Quick Asset AI Plan Launcher */}
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 pt-2 border-t border-border/40">
+              {/* Filters */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] font-mono uppercase text-muted-foreground">Zone:</span>
+                  <select
+                    value={selectedPlanZone}
+                    onChange={(e) => setSelectedPlanZone(e.target.value)}
+                    className="h-7 rounded-md border border-border bg-background px-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="all">All Zones</option>
+                    <option value="Zone-A">Zone-A (North)</option>
+                    <option value="Zone-B">Zone-B (Industrial)</option>
+                    <option value="Zone-C">Zone-C (East)</option>
+                    <option value="Zone-D">Zone-D (Rural/Agri)</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] font-mono uppercase text-muted-foreground">Urgency:</span>
+                  <select
+                    value={selectedPlanUrgency}
+                    onChange={(e) => setSelectedPlanUrgency(e.target.value)}
+                    className="h-7 rounded-md border border-border bg-background px-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="all">All Priorities</option>
+                    <option value="CRITICAL">Critical Only</option>
+                    <option value="HIGH">High & Critical</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="ROUTINE">Routine</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Quick AI 7-Day Plan Generator for ANY Transformer */}
+              <div className="flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 rounded-xl p-1.5 px-2.5">
+                <span className="text-[11px] font-mono font-semibold text-purple-600 dark:text-purple-300 flex items-center gap-1">
+                  <Sparkles className="size-3 text-purple-400" />
+                  Individual Plan:
+                </span>
+                <select
+                  value={quickPlanAssetId}
+                  onChange={(e) => setQuickPlanAssetId(e.target.value)}
+                  className="h-7 rounded-md border border-purple-500/40 bg-background px-2 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-purple-500"
+                >
+                  {assets.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.id} — {a.substation} ({a.voltageKv}kV)
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  onClick={() => {
+                    const target = assets.find((a) => a.id === quickPlanAssetId) || assets[0];
+                    if (target) {
+                      handleOpenSingleAsset7DayPlan(target);
+                    }
+                  }}
+                  size="sm"
+                  className="h-7 text-xs bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg px-2.5 gap-1"
+                >
+                  <CalendarRange className="size-3" />
+                  Generate AI Plan
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* 7-Day Checklists Rendered per Day */}
+          {(() => {
+            const daysToRender =
+              selectedPlanDay === "all"
+                ? combined7DayPlan
+                : combined7DayPlan.filter((d) => d.day === selectedPlanDay);
+
+            if (daysToRender.length === 0 && combined7DayPlan.length === 0) {
+              return (
+                <div className="rounded-3xl border border-border/70 bg-card p-12 text-center text-muted-foreground">
+                  <Loader2 className="size-6 animate-spin mx-auto mb-2 text-primary" />
+                  <p className="font-semibold text-foreground">Loading 7-Day Synchronized Plan from FastAPI backend...</p>
+                  <p className="text-xs text-muted-foreground mt-1">Connecting to live asset telemetry and IEEE C57 schedule builder.</p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="space-y-5">
+                {daysToRender.map((dayPlan) => {
+                  const filteredTasks = dayPlan.tasks.filter((t) => {
+                    if (selectedPlanZone !== "all" && t.grid_zone !== selectedPlanZone) return false;
+                    if (selectedPlanUrgency === "CRITICAL" && t.priority !== "CRITICAL") return false;
+                    if (selectedPlanUrgency === "HIGH" && t.priority !== "CRITICAL" && t.priority !== "HIGH") return false;
+                    if (selectedPlanUrgency === "MEDIUM" && t.priority !== "MEDIUM") return false;
+                    if (selectedPlanUrgency === "ROUTINE" && t.priority !== "ROUTINE") return false;
+                    return true;
+                  });
+
+                  const dayCompletedCount = dayPlan.tasks.filter((t) => completedTaskIds[t.id]).length;
+
+                  return (
+                    <div
+                      key={dayPlan.day}
+                      className="rounded-3xl border border-border/70 bg-card overflow-hidden shadow-card space-y-0"
+                    >
+                      {/* Day Header Banner */}
+                      <div className="bg-muted/30 border-b border-border/60 p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="pill bg-primary/20 text-primary border border-primary/40 font-mono text-xs font-bold px-2.5 py-0.5">
+                              Day {dayPlan.day}
+                            </span>
+                            <h4 className="font-sans text-base font-bold text-foreground">
+                              {dayPlan.title}
+                            </h4>
+                            <span className="text-xs text-muted-foreground font-mono">
+                              • {dayPlan.date}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Theme: <strong className="text-foreground/90">{dayPlan.theme}</strong>
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="pill bg-surface border border-border text-muted-foreground px-2.5 py-0.5 text-xs font-mono flex items-center gap-1">
+                            <Clock className="size-3 text-primary" />
+                            {dayPlan.total_estimated_hours} Hours Total
+                          </span>
+                          <span className="pill bg-primary/15 text-primary border border-primary/30 px-2.5 py-0.5 text-xs font-mono font-semibold">
+                            {dayCompletedCount} / {dayPlan.tasks.length} Completed
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Day Operational Brief Strip */}
+                      <div className="px-5 py-2.5 bg-muted/15 border-b border-border/40 flex flex-wrap items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-2">
+                          <HardHat className="size-3.5 text-amber-400" />
+                          <span className="text-muted-foreground">Assigned Crew:</span>
+                          <strong className="text-foreground">{dayPlan.primary_crew}</strong>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <FileCheck className="size-3.5 text-blue-400" />
+                          <span className="text-muted-foreground">Primary Permit:</span>
+                          <strong className="font-mono text-foreground">{dayPlan.primary_permit}</strong>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-muted-foreground">Scheduled Assets:</span>
+                          {dayPlan.scheduled_assets.map((aid) => (
+                            <button
+                              key={aid}
+                              onClick={() => {
+                                const found = assets.find((a) => a.id === aid);
+                                if (found) handleOpenSingleAsset7DayPlan(found);
+                              }}
+                              className="pill bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 text-[10px] font-mono font-bold cursor-pointer transition-colors"
+                              title={`Click to generate individual 7-day plan for ${aid}`}
+                            >
+                              {aid} ↗
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Tasks Checklist Table */}
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="border-b border-border/50 text-[10px] uppercase font-mono tracking-wider text-muted-foreground bg-muted/10">
+                              <th className="py-2.5 px-4 w-10">Done</th>
+                              <th className="py-2.5 px-3 w-24">Asset</th>
+                              <th className="py-2.5 px-3 w-36">Substation</th>
+                              <th className="py-2.5 px-3 w-20">Priority</th>
+                              <th className="py-2.5 px-4">Prescribed Field Checklist Task</th>
+                              <th className="py-2.5 px-3 w-28">Permit</th>
+                              <th className="py-2.5 px-3 w-16 text-right">Hours</th>
+                              <th className="py-2.5 px-4 w-32 text-right">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border/40 font-sans">
+                            {filteredTasks.length > 0 ? (
+                              filteredTasks.map((task) => {
+                                const isChecked = Boolean(completedTaskIds[task.id]);
+                                return (
+                                  <tr
+                                    key={task.id}
+                                    onClick={() => {
+                                      setCompletedTaskIds((prev) => ({
+                                        ...prev,
+                                        [task.id]: !prev[task.id],
+                                      }));
+                                    }}
+                                    className={`cursor-pointer transition-colors ${
+                                      isChecked
+                                        ? "bg-primary/5 text-muted-foreground"
+                                        : task.priority === "CRITICAL"
+                                        ? "hover:bg-red-500/5 bg-red-500/[0.02]"
+                                        : "hover:bg-muted/40"
+                                    }`}
+                                  >
+                                    <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setCompletedTaskIds((prev) => ({
+                                            ...prev,
+                                            [task.id]: !prev[task.id],
+                                          }));
+                                        }}
+                                        className="focus:outline-none"
+                                      >
+                                        {isChecked ? (
+                                          <CheckSquare className="size-4 text-emerald-400" />
+                                        ) : (
+                                          <Square className="size-4 text-muted-foreground hover:text-foreground" />
+                                        )}
+                                      </button>
+                                    </td>
+                                    <td className="py-3 px-3 font-mono font-bold">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const found = assets.find((a) => a.id === task.asset_id);
+                                          if (found) handleOpenSingleAsset7DayPlan(found);
+                                        }}
+                                        className="text-primary hover:underline flex items-center gap-1"
+                                      >
+                                        {task.asset_id}
+                                      </button>
+                                    </td>
+                                    <td className="py-3 px-3 text-muted-foreground">
+                                      <span className="truncate block max-w-[140px]" title={task.substation}>
+                                        {task.substation}
+                                      </span>
+                                      <span className="font-mono text-[10px] text-muted-foreground/70">
+                                        {task.grid_zone}
+                                      </span>
+                                    </td>
+                                    <td className="py-3 px-3">
+                                      <span
+                                        className={`pill px-2 py-0.5 text-[9px] font-mono font-bold ${
+                                          task.priority === "CRITICAL"
+                                            ? "bg-red-500/20 text-red-400 border border-red-500/40"
+                                            : task.priority === "HIGH"
+                                            ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
+                                            : task.priority === "MEDIUM"
+                                            ? "bg-blue-500/20 text-blue-400 border border-blue-500/40"
+                                            : "bg-surface border border-border text-muted-foreground"
+                                        }`}
+                                      >
+                                        {task.priority}
+                                      </span>
+                                    </td>
+                                    <td className="py-3 px-4">
+                                      <div className={`font-medium ${isChecked ? "line-through opacity-70" : "text-foreground"}`}>
+                                        {task.task_title}
+                                      </div>
+                                      <div className={`text-[11px] text-muted-foreground mt-0.5 ${isChecked ? "line-through opacity-60" : ""}`}>
+                                        {task.task_detail}
+                                      </div>
+                                    </td>
+                                    <td className="py-3 px-3 font-mono text-[11px] text-muted-foreground">
+                                      <span className="pill bg-surface border border-border px-2 py-0.5 text-[10px]">
+                                        {task.permit}
+                                      </span>
+                                    </td>
+                                    <td className="py-3 px-3 font-mono text-right text-muted-foreground">
+                                      {task.estimated_hours}h
+                                    </td>
+                                    <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                                      <Button
+                                        onClick={() => {
+                                          const found = assets.find((a) => a.id === task.asset_id);
+                                          if (found) handleOpenSingleAsset7DayPlan(found);
+                                        }}
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-[10px] gap-1 font-mono border-border/70 hover:bg-muted"
+                                      >
+                                        <CalendarRange className="size-2.5 text-purple-400" />
+                                        AI Plan
+                                      </Button>
+                                    </td>
+                                  </tr>
+                                );
+                              })
+                            ) : (
+                              <tr>
+                                <td colSpan={8} className="py-6 text-center text-muted-foreground">
+                                  No tasks match the active filters for Day {dayPlan.day}.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
+          {/* Section: Priority Asset Action Table (Auditable Backing) */}
+          <div className="rounded-3xl border border-border/70 bg-card p-6 shadow-card space-y-4">
+            <div className="flex items-center justify-between border-b border-border/40 pb-3">
+              <div>
+                <h4 className="font-sans text-base font-bold text-foreground">
+                  Auditable Model 2 Priority Matrix & Prescribed Actions
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  Baseline rankings scored from Model 1 Health Index, RUL, and DGA fault classifications.
+                </p>
+              </div>
+              <span className="pill bg-signal/15 text-signal-foreground px-2.5 py-0.5 text-xs font-mono font-semibold border border-signal/30">
+                Audited & Deterministic
+              </span>
+            </div>
+
+            <div className="plan-table-wrap overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-border/60 text-[10px] uppercase font-mono tracking-wider text-muted-foreground">
                     <th className="py-3 px-3">Rank</th>
                     <th className="py-3 px-3">Asset</th>
-                    <th className="py-3 px-3">Zone / Substation</th>
+                    <th className="py-3 px-3">Substation / Zone</th>
                     <th className="py-3 px-3">Fault</th>
                     <th className="py-3 px-3">Action Code</th>
                     <th className="py-3 px-3">Prescribed Action</th>
-                    <th className="py-3 px-3">Urgency Window</th>
-                    <th className="py-3 px-3">Crew Assignment</th>
-                    <th className="py-3 px-3">Conflict</th>
+                    <th className="py-3 px-3">Crew</th>
+                    <th className="py-3 px-3 text-right">Individual Plan</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40 font-sans">
-                  {planActions.length > 0 ? (
-                    planActions.map((action) => (
-                    <tr
-                      key={action.asset_id}
-                      className={`hover:bg-surface/50 transition-colors ${
-                        action.rank === 1 ? "bg-danger/5 font-medium" : ""
-                      }`}
-                    >
-                      <td className="py-3 px-3 font-mono font-bold">#{action.rank}</td>
-                      <td className="py-3 px-3 font-mono font-bold text-foreground">
-                        {action.asset_id}
+                  {planActions.slice(0, 10).map((act) => (
+                    <tr key={act.asset_id} className="hover:bg-muted/30">
+                      <td className="py-2.5 px-3 font-mono font-bold">#{act.rank}</td>
+                      <td className="py-2.5 px-3 font-mono font-bold text-foreground">{act.asset_id}</td>
+                      <td className="py-2.5 px-3 text-muted-foreground">
+                        {act.substation_name || act.grid_zone}
                       </td>
-                      <td className="py-3 px-3 text-muted-foreground">
-                        {action.substation_name} <span className="font-mono text-[10px]">({action.grid_zone})</span>
-                      </td>
-                      <td className="py-3 px-3">
+                      <td className="py-2.5 px-3">
                         <span className="pill bg-surface border border-border px-2 py-0.5 font-mono text-[10px] font-bold">
-                          {action.fault_type}
+                          {act.fault_type}
                         </span>
                       </td>
-                      <td className="py-3 px-3 font-mono font-bold text-signal">
-                        {action.action_code}
+                      <td className="py-2.5 px-3 font-mono font-bold text-signal">{act.action_code}</td>
+                      <td className="py-2.5 px-3 text-foreground/90 max-w-xs">
+                        <div className="font-medium truncate">{act.short_action}</div>
                       </td>
-                      <td className="py-3 px-3 text-foreground/90 max-w-xs">
-                        <div className="font-medium">{action.short_action}</div>
-                        <div className="text-[11px] text-muted-foreground mt-0.5 truncate">{action.detail}</div>
-                      </td>
-                      <td className="py-3 px-3">
-                        <span
-                          className={`pill px-2.5 py-0.5 text-[10px] font-semibold ${
-                            action.urgency_window.includes("24 hours")
-                              ? "bg-danger text-white"
-                              : action.urgency_window.includes("48 hours")
-                              ? "bg-warning text-foreground"
-                              : "bg-surface border border-border text-muted-foreground"
-                          }`}
+                      <td className="py-2.5 px-3 font-mono text-[11px] text-muted-foreground">{act.crew_type || act.crew_assignment}</td>
+                      <td className="py-2.5 px-3 text-right">
+                        <Button
+                          onClick={() => {
+                            const found = assets.find((a) => a.id === act.asset_id);
+                            if (found) handleOpenSingleAsset7DayPlan(found);
+                          }}
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-[10px] gap-1 font-mono border-border/70 hover:bg-muted"
                         >
-                          {action.urgency_window}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 font-mono text-[11px] text-foreground/80">
-                        {action.crew_assignment}
-                      </td>
-                      <td className="py-3 px-3">
-                        {action.crew_conflict ? (
-                          <span className="pill bg-danger/10 text-danger border border-danger/30 px-2 py-0.5 text-[10px] font-semibold inline-flex items-center gap-1">
-                            <AlertTriangle className="size-3" /> Crew Conflict
-                          </span>
-                        ) : (
-                          <span className="text-signal text-[11px] font-semibold">Available</span>
-                        )}
+                          <CalendarRange className="size-2.5 text-purple-400" />
+                          Plan
+                        </Button>
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={9} className="py-8 text-center text-muted-foreground">
-                      <Loader2 className="size-5 animate-spin mx-auto mb-2 text-primary" />
-                      Loading Day-89 Techtonics Maintenance Plan from FastAPI backend...
-                    </td>
-                  </tr>
-                )}
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -1310,20 +1848,8 @@ function LiveGridPage() {
           <AssetInspectorModal
             asset={inspectorAsset}
             onClose={() => setInspectorAsset(null)}
-            onReroute={() => {
-              toast.success(`Dispatched load curtailment directive for ${inspectorAsset.id}`, {
-                description: "Substation SCADA signaled to reduce active load and monitor thermal gradient.",
-              });
-              setInspectorAsset((curr) =>
-                curr
-                  ? {
-                      ...curr,
-                      currentLoadMw: Math.max(10, curr.currentLoadMw - 5),
-                      coreTempC: Number((curr.coreTempC - 3.0).toFixed(1)),
-                      healthScore: Math.min(95, curr.healthScore + 10),
-                    }
-                  : null
-              );
+            onOpen7DayPlan={() => {
+              handleOpenSingleAsset7DayPlan(inspectorAsset);
             }}
             onReportHazard={() => {
               setIncidentDefaultZone(inspectorAsset.substation || inspectorAsset.region || "");
@@ -1332,6 +1858,24 @@ function LiveGridPage() {
             }}
           />
         </ModalErrorBoundary>
+      )}
+
+      {/* Single-Asset 7-Day Groq Maintenance Plan Modal */}
+      {showSingleAssetPlanModal && singleAssetPlanTarget && (
+        <SingleAsset7DayPlanModal
+          asset={singleAssetPlanTarget}
+          plan={singleAssetPlan}
+          loading={loadingSingleAssetPlan}
+          onClose={() => {
+            setShowSingleAssetPlanModal(false);
+            setSingleAssetPlanTarget(null);
+          }}
+          onRegenerate={() => {
+            if (singleAssetPlanTarget) {
+              handleOpenSingleAsset7DayPlan(singleAssetPlanTarget);
+            }
+          }}
+        />
       )}
 
       {/* Community Incident Reporting Modal */}
@@ -1464,20 +2008,21 @@ class ModalErrorBoundary extends Component<ModalErrorBoundaryProps, ModalErrorBo
 function AssetInspectorModal({
   asset,
   onClose,
-  onReroute,
+  onOpen7DayPlan,
   onReportHazard,
 }: {
   asset: GridAsset;
   onClose: () => void;
-  onReroute: () => void;
+  onOpen7DayPlan: () => void;
   onReportHazard: () => void;
 }) {
   const [detail, setDetail] = useState<AssetDetailResponse | null>(null);
   const [timeseries, setTimeseries] = useState<TimeseriesPoint[]>([]);
+  const [duvalTrajectory, setDuvalTrajectory] = useState<DuvalTrajectoryPoint[]>([]);
   const [loadingDetail, setLoadingDetail] = useState(true);
   const [loadingTimeseries, setLoadingTimeseries] = useState(true);
   const [apiError, setApiError] = useState(false);
-  const [chartTab, setChartTab] = useState<"trajectory" | "temperature" | "gases">("trajectory");
+  const [chartTab, setChartTab] = useState<"trajectory" | "temperature" | "gases" | "duval">("trajectory");
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [groqReport, setGroqReport] = useState<any | null>(null);
   const [loadingGroqReport, setLoadingGroqReport] = useState(false);
@@ -1493,6 +2038,7 @@ function AssetInspectorModal({
     setLoadingTimeseries(true);
     setDetail(null);
     setTimeseries([]);
+    setDuvalTrajectory([]);
     setApiError(false);
 
     techtonicsApi
@@ -1512,6 +2058,15 @@ function AssetInspectorModal({
       .finally(() => {
         if (active) setLoadingTimeseries(false);
       });
+
+    techtonicsApi
+      .getDuvalTrajectory(asset.id)
+      .then((res) => {
+        if (active && Array.isArray(res?.trajectory)) {
+          setDuvalTrajectory(res.trajectory);
+        }
+      })
+      .catch(() => {});
 
     return () => { active = false; };
   }, [asset.id]);
@@ -1836,13 +2391,19 @@ function AssetInspectorModal({
                 <span className="text-[11px] font-mono text-muted-foreground">Fetching 90-day time-series telemetry from backend...</span>
               </div>
             </div>
-          ) : chartData.length > 0 ? (
+          ) : (chartData.length > 0 || chartTab === "duval") ? (
             <div className="border-b border-border/40 px-5 py-4">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <div className="flex items-center gap-2">
                   <Activity className="size-3.5 text-primary" />
                   <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
-                    {chartTab === "trajectory" ? "RUL Decay & Load Stress (90-Day)" : chartTab === "temperature" ? "Core & Oil Temperature History" : "Dissolved Fault Gas Evolution (C₂H₂ · CH₄ · H₂)"}
+                    {chartTab === "trajectory"
+                      ? "RUL Decay & Load Stress (90-Day)"
+                      : chartTab === "temperature"
+                      ? "Core & Oil Temperature History"
+                      : chartTab === "gases"
+                      ? "Dissolved Fault Gas Evolution (C₂H₂ · CH₄ · H₂)"
+                      : "Duval Triangle 1 Diagnostic Geometry (IEC 60599)"}
                   </h4>
                 </div>
 
@@ -1878,6 +2439,16 @@ function AssetInspectorModal({
                   >
                     Fault Gases (ppm)
                   </button>
+                  <button
+                    onClick={() => setChartTab("duval")}
+                    className={`px-2.5 py-1 rounded transition-colors ${
+                      chartTab === "duval"
+                        ? "bg-card text-foreground font-semibold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Duval Triangle
+                  </button>
                 </div>
               </div>
 
@@ -1902,126 +2473,150 @@ function AssetInspectorModal({
                     <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-yellow-500" />Hydrogen H₂ (ppm)</span>
                   </>
                 )}
+                {chartTab === "duval" && (
+                  <>
+                    <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-emerald-500" />% CH₄ (Methane)</span>
+                    <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-red-500" />% C₂H₄ (Ethylene)</span>
+                    <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-sky-500" />% C₂H₂ (Acetylene)</span>
+                    <span className="text-muted-foreground/70">· 90-Day Migration Trail (Day 0 → Day 89)</span>
+                  </>
+                )}
               </div>
 
-              <div className="h-56 w-full min-h-[220px]">
-                <ResponsiveContainer width="100%" height={220}>
-                  <AreaChart key={`${chartTab}-${asset.id}-${chartData.length}`} data={chartData} margin={{ top: 12, right: 15, left: -5, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="rulGradModal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#ef4444" stopOpacity={0.5} />
-                        <stop offset="100%" stopColor="#ef4444" stopOpacity={0.08} />
-                      </linearGradient>
-                      <linearGradient id="loadGradModal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.45} />
-                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.05} />
-                      </linearGradient>
-                      <linearGradient id="tempGradModal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#f97316" stopOpacity={0.5} />
-                        <stop offset="100%" stopColor="#f97316" stopOpacity={0.08} />
-                      </linearGradient>
-                      <linearGradient id="c2h2GradModal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#a855f7" stopOpacity={0.5} />
-                        <stop offset="100%" stopColor="#a855f7" stopOpacity={0.08} />
-                      </linearGradient>
-                      <linearGradient id="ch4GradModal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.5} />
-                        <stop offset="100%" stopColor="#06b6d4" stopOpacity={0.08} />
-                      </linearGradient>
-                      <linearGradient id="h2GradModal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#eab308" stopOpacity={0.5} />
-                        <stop offset="100%" stopColor="#eab308" stopOpacity={0.08} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid stroke="#64748b" strokeOpacity={0.25} vertical={false} strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="time"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 9, fill: "#94a3b8" }}
-                      interval={Math.max(1, Math.floor(chartData.length / 9))}
-                    />
-                    <YAxis
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 9, fill: "#94a3b8" }}
-                      width={42}
-                      domain={chartTab === "temperature" ? ['dataMin - 5', 'dataMax + 5'] : chartTab === "trajectory" ? [0, 200] : [0, 'auto']}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#0f172a",
-                        borderColor: "#334155",
-                        color: "#f8fafc",
-                        borderRadius: "0.5rem",
-                        fontSize: "0.75rem",
-                        boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
-                      }}
-                    />
+              {chartTab === "duval" ? (
+                <div className="flex flex-col items-center justify-center p-1 w-full">
+                  <DuvalTriangle
+                    ch4Ppm={detail?.sensor_readings?.Methane ?? 30}
+                    c2h4Ppm={detail?.sensor_readings?.Ethylene ?? 5}
+                    c2h2Ppm={detail?.sensor_readings?.Acethylene ?? 0.5}
+                    modelPredictedFault={detail?.fault_type || asset.faultType}
+                    duvalAnalysis={detail?.duval_analysis}
+                    trajectory={duvalTrajectory}
+                    assetId={asset.id}
+                    size={460}
+                    showTitle={false}
+                  />
+                </div>
+              ) : (
+                <div className="h-56 w-full min-h-[220px]">
+                  <ResponsiveContainer width="100%" height={220}>
+                    <AreaChart key={`${chartTab}-${asset.id}-${chartData.length}`} data={chartData} margin={{ top: 12, right: 15, left: -5, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="rulGradModal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#ef4444" stopOpacity={0.5} />
+                          <stop offset="100%" stopColor="#ef4444" stopOpacity={0.08} />
+                        </linearGradient>
+                        <linearGradient id="loadGradModal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.45} />
+                          <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.05} />
+                        </linearGradient>
+                        <linearGradient id="tempGradModal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#f97316" stopOpacity={0.5} />
+                          <stop offset="100%" stopColor="#f97316" stopOpacity={0.08} />
+                        </linearGradient>
+                        <linearGradient id="c2h2GradModal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#a855f7" stopOpacity={0.5} />
+                          <stop offset="100%" stopColor="#a855f7" stopOpacity={0.08} />
+                        </linearGradient>
+                        <linearGradient id="ch4GradModal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.5} />
+                          <stop offset="100%" stopColor="#06b6d4" stopOpacity={0.08} />
+                        </linearGradient>
+                        <linearGradient id="h2GradModal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#eab308" stopOpacity={0.5} />
+                          <stop offset="100%" stopColor="#eab308" stopOpacity={0.08} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid stroke="#64748b" strokeOpacity={0.25} vertical={false} strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="time"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 9, fill: "#94a3b8" }}
+                        interval={Math.max(1, Math.floor(chartData.length / 9))}
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 9, fill: "#94a3b8" }}
+                        width={42}
+                        domain={chartTab === "temperature" ? ['dataMin - 5', 'dataMax + 5'] : chartTab === "trajectory" ? [0, 200] : [0, 'auto']}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#0f172a",
+                          borderColor: "#334155",
+                          color: "#f8fafc",
+                          borderRadius: "0.5rem",
+                          fontSize: "0.75rem",
+                          boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
+                        }}
+                      />
 
-                    <Area
-                      hide={chartTab !== "trajectory"}
-                      type="monotone"
-                      dataKey="rulDays"
-                      name="RUL Days"
-                      stroke="#ef4444"
-                      strokeWidth={2.5}
-                      fill="url(#rulGradModal)"
-                      connectNulls
-                    />
-                    <Area
-                      hide={chartTab !== "trajectory"}
-                      type="monotone"
-                      dataKey="loadPct"
-                      name="Load %"
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      fill="url(#loadGradModal)"
-                      connectNulls
-                    />
-                    <Area
-                      hide={chartTab !== "temperature"}
-                      type="monotone"
-                      dataKey="tempC"
-                      name="Core Temp (°C)"
-                      stroke="#f97316"
-                      strokeWidth={2.5}
-                      fill="url(#tempGradModal)"
-                      connectNulls
-                    />
-                    <Area
-                      hide={chartTab !== "gases"}
-                      type="monotone"
-                      dataKey="c2h2"
-                      name="Acetylene C₂H₂ (ppm)"
-                      stroke="#a855f7"
-                      strokeWidth={2}
-                      fill="url(#c2h2GradModal)"
-                      connectNulls
-                    />
-                    <Area
-                      hide={chartTab !== "gases"}
-                      type="monotone"
-                      dataKey="ch4"
-                      name="Methane CH₄ (ppm)"
-                      stroke="#06b6d4"
-                      strokeWidth={2}
-                      fill="url(#ch4GradModal)"
-                      connectNulls
-                    />
-                    <Area
-                      hide={chartTab !== "gases"}
-                      type="monotone"
-                      dataKey="h2"
-                      name="Hydrogen H₂ (ppm)"
-                      stroke="#eab308"
-                      strokeWidth={2}
-                      fill="url(#h2GradModal)"
-                      connectNulls
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+                      <Area
+                        hide={chartTab !== "trajectory"}
+                        type="monotone"
+                        dataKey="rulDays"
+                        name="RUL Days"
+                        stroke="#ef4444"
+                        strokeWidth={2.5}
+                        fill="url(#rulGradModal)"
+                        connectNulls
+                      />
+                      <Area
+                        hide={chartTab !== "trajectory"}
+                        type="monotone"
+                        dataKey="loadPct"
+                        name="Load %"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        fill="url(#loadGradModal)"
+                        connectNulls
+                      />
+                      <Area
+                        hide={chartTab !== "temperature"}
+                        type="monotone"
+                        dataKey="tempC"
+                        name="Core Temp (°C)"
+                        stroke="#f97316"
+                        strokeWidth={2.5}
+                        fill="url(#tempGradModal)"
+                        connectNulls
+                      />
+                      <Area
+                        hide={chartTab !== "gases"}
+                        type="monotone"
+                        dataKey="c2h2"
+                        name="Acetylene C₂H₂ (ppm)"
+                        stroke="#a855f7"
+                        strokeWidth={2}
+                        fill="url(#c2h2GradModal)"
+                        connectNulls
+                      />
+                      <Area
+                        hide={chartTab !== "gases"}
+                        type="monotone"
+                        dataKey="ch4"
+                        name="Methane CH₄ (ppm)"
+                        stroke="#06b6d4"
+                        strokeWidth={2}
+                        fill="url(#ch4GradModal)"
+                        connectNulls
+                      />
+                      <Area
+                        hide={chartTab !== "gases"}
+                        type="monotone"
+                        dataKey="h2"
+                        name="Hydrogen H₂ (ppm)"
+                        stroke="#eab308"
+                        strokeWidth={2}
+                        fill="url(#h2GradModal)"
+                        connectNulls
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </div>
           ) : null}
 
@@ -2033,8 +2628,12 @@ function AssetInspectorModal({
           {/* ── Operator Actions ── */}
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Button onClick={onReroute} className="h-8 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90">
-                <RefreshCw className="size-3 mr-1.5" /> Reroute Load (-8 MVA)
+              <Button
+                onClick={onOpen7DayPlan}
+                className="h-8 rounded-lg bg-primary px-3 text-xs font-semibold text-primary-foreground hover:bg-primary/90 shadow-sm flex items-center gap-1.5"
+              >
+                <CalendarRange className="size-3.5" />
+                Generate 7-Day Maintenance Plan
               </Button>
               <Button
                 onClick={async () => {
