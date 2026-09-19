@@ -1,32 +1,20 @@
 /**
  * TransformerMap.tsx
  * ==================
- * Renders an interactive MapLibre GL JS map of all 18 Anand District transformers.
- *
- * maplibre-gl is loaded via dynamic import inside useEffect so it NEVER runs
- * during SSR (TanStack Start renders on the server; maplibre-gl references
- * window/navigator/WebGL which do not exist in Node.js).
- *
- * - HTML markers with custom SVG pins + text labels (< 100 locations)
- * - Popup on click built with textContent only (never innerHTML for dynamic data)
- * - Fits map bounds to all valid pins on load
- * - Connection-status indicator (tile server reachability)
- * - Loading / error states
- * - Pins rebuild when liveUpdates or selectedId changes
- * - Unknown live update ids are ignored
- * - Invariant: pin count === valid location count
+ * Browser-only at runtime — maplibre-gl is declared as an SSR external in
+ * vite.config.ts so Node never evaluates it. The component itself only mounts
+ * inside a useEffect (browser only), so all window/WebGL usage is safe.
  */
 
 import { useEffect, useRef, useState, useCallback, type CSSProperties } from "react";
+import * as maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import {
   MAP_STYLE_URL,
   TRANSFORMER_LOCATIONS_FULL,
   type TransformerLocation,
 } from "@/lib/transformerLocations";
 import { validateLocation, type RawLocationRecord } from "@/lib/locationValidator";
-
-// Type-only import so TypeScript knows the maplibre-gl shape without importing at module level
-import type * as MaplibreGlType from "maplibre-gl";
 
 /** Props accepted by TransformerMap */
 export interface TransformerMapProps {
@@ -103,18 +91,12 @@ export function TransformerMap({
   className,
 }: TransformerMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  // Store the map instance as `any` to avoid module-level maplibre-gl type dependency
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mapRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const markersRef = useRef<Map<string, any>>(new Map());
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const popupRef = useRef<any>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
+  const popupRef = useRef<maplibregl.Popup | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [tileStatus, setTileStatus] = useState<ConnectionStatus>("loading");
-  // Keep a ref to maplibre module after dynamic load
-  const mglRef = useRef<typeof MaplibreGlType | null>(null);
 
   // Merge live updates into the static locations
   const mergedLocations = useCallback((): TransformerLocation[] => {
@@ -132,80 +114,50 @@ export function TransformerMap({
     }
   }
 
-  // ── Initialise map (dynamic import — client-only) ────────────────────────────
+  // ── Initialise map ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    let cancelled = false;
+    const map = new maplibregl.Map({
+      container: containerRef.current,
+      style: MAP_STYLE_URL,
+      center: [72.935, 22.495] as [number, number],
+      zoom: 11,
+      attributionControl: { compact: false },
+    });
 
-    (async () => {
-      try {
-        // Dynamic import keeps maplibre-gl out of the SSR bundle entirely
-        const mgl = await import("maplibre-gl");
-        // Inject maplibre-gl CSS dynamically (avoids SSR crash from top-level CSS import)
-        if (!document.querySelector("link[data-maplibre]")) {
-          const link = document.createElement("link");
-          link.rel = "stylesheet";
-          link.setAttribute("data-maplibre", "1");
-          link.href = "https://unpkg.com/maplibre-gl@6/dist/maplibre-gl.css";
-          document.head.appendChild(link);
-        }
+    mapRef.current = map;
 
-        if (cancelled || !containerRef.current) return;
-        mglRef.current = mgl;
+    map.on("load", () => {
+      setMapReady(true);
+      setTileStatus("connected");
+    });
 
-        const map = new mgl.Map({
-          container: containerRef.current,
-          style: MAP_STYLE_URL,
-          center: [72.935, 22.495] as [number, number],
-          zoom: 11,
-          attributionControl: { compact: false },
-        });
-
-        mapRef.current = map;
-
-        map.on("load", () => {
-          if (cancelled) return;
-          setMapReady(true);
-          setTileStatus("connected");
-        });
-
-        map.on("error", (e: MaplibreGlType.ErrorEvent) => {
-          if (cancelled) return;
-          const msg: string =
-            (e as unknown as { error?: { message?: string } })?.error?.message ?? "Map tile error";
-          const isTileError =
-            msg.toLowerCase().includes("fetch") || msg.toLowerCase().includes("network");
-          if (isTileError) {
-            setTileStatus("disconnected");
-          } else {
-            setLoadError(msg);
-          }
-        });
-
-        map.addControl(new mgl.NavigationControl(), "top-right");
-        map.addControl(new mgl.ScaleControl({ unit: "metric" }), "bottom-left");
-      } catch (err) {
-        if (!cancelled) {
-          setLoadError(err instanceof Error ? err.message : "Failed to load map library");
-        }
+    map.on("error", (e: maplibregl.ErrorEvent) => {
+      const msg: string =
+        (e as unknown as { error?: { message?: string } })?.error?.message ?? "Map tile error";
+      const isTileError =
+        msg.toLowerCase().includes("fetch") || msg.toLowerCase().includes("network");
+      if (isTileError) {
+        setTileStatus("disconnected");
+      } else {
+        setLoadError(msg);
       }
-    })();
+    });
+
+    map.addControl(new maplibregl.NavigationControl(), "top-right");
+    map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
 
     return () => {
-      cancelled = true;
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
+      map.remove();
+      mapRef.current = null;
     };
-  }, []); // intentional empty deps — runs once on mount
+  }, []); // runs once on mount
 
-  // ── Place / update markers whenever map is ready or liveUpdates changes ─────
+  // ── Place / update markers whenever map is ready or liveUpdates/selectedId changes ─
   useEffect(() => {
     const map = mapRef.current;
-    const mgl = mglRef.current;
-    if (!map || !mgl || !mapReady) return;
+    if (!map || !mapReady) return;
 
     const locations = mergedLocations();
 
@@ -234,9 +186,9 @@ export function TransformerMap({
 
       if (existing) {
         const el = existing.getElement();
-        el.innerHTML = svgString; // safe: built entirely from validated static data
+        el.innerHTML = svgString; // safe: built from validated static data
         el.onclick = () => {
-          showPopup(map, mgl, loc);
+          showPopup(map, loc);
           onPinClick?.(loc.id);
         };
         return;
@@ -251,17 +203,17 @@ export function TransformerMap({
       el.setAttribute("role", "button");
       el.setAttribute("tabindex", "0");
       el.onclick = () => {
-        showPopup(map, mgl, loc);
+        showPopup(map, loc);
         onPinClick?.(loc.id);
       };
       el.onkeydown = (e) => {
         if (e.key === "Enter" || e.key === " ") {
-          showPopup(map, mgl, loc);
+          showPopup(map, loc);
           onPinClick?.(loc.id);
         }
       };
 
-      const marker = new mgl.Marker({ element: el, anchor: "bottom" })
+      const marker = new maplibregl.Marker({ element: el, anchor: "bottom" })
         .setLngLat([loc.lng, loc.lat])
         .addTo(map);
 
@@ -270,7 +222,7 @@ export function TransformerMap({
 
     // Fit bounds to all valid pins on first load
     if (markersRef.current.size > 0 && !selectedId) {
-      const bounds = new mgl.LngLatBounds();
+      const bounds = new maplibregl.LngLatBounds();
       validLocations.forEach((loc) => bounds.extend([loc.lng, loc.lat]));
       map.fitBounds(bounds, { padding: 60, duration: 800, maxZoom: 14 });
     }
@@ -280,20 +232,15 @@ export function TransformerMap({
   // ── Fly to selected pin when selectedId changes ──────────────────────────────
   useEffect(() => {
     const map = mapRef.current;
-    const mgl = mglRef.current;
-    if (!map || !mgl || !mapReady || !selectedId) return;
+    if (!map || !mapReady || !selectedId) return;
     const loc = TRANSFORMER_LOCATIONS_FULL.find((l) => l.id === selectedId);
     if (!loc) return;
     map.flyTo({ center: [loc.lng, loc.lat], zoom: 14, duration: 700 });
-    showPopup(map, mgl, loc);
+    showPopup(map, loc);
   }, [selectedId, mapReady]);
 
   // ── Show popup ───────────────────────────────────────────────────────────────
-  function showPopup(
-    map: MaplibreGlType.Map,
-    mgl: typeof MaplibreGlType,
-    loc: TransformerLocation,
-  ) {
+  function showPopup(map: maplibregl.Map, loc: TransformerLocation) {
     popupRef.current?.remove();
 
     // Build popup DOM using textContent — never innerHTML for dynamic data
@@ -331,7 +278,7 @@ export function TransformerMap({
       container.appendChild(row);
     });
 
-    const popup = new mgl.Popup({ offset: 10, closeButton: true, maxWidth: "260px" })
+    const popup = new maplibregl.Popup({ offset: 10, closeButton: true, maxWidth: "260px" })
       .setLngLat([loc.lng, loc.lat])
       .setDOMContent(container)
       .addTo(map);
