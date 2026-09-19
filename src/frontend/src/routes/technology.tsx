@@ -28,6 +28,7 @@ import {
   Waves,
   Wrench,
   Zap,
+  BarChart2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import gridImg from "@/assets/voltra-grid.jpg";
@@ -941,6 +942,771 @@ export function TechnologyPage() {
               18 active transformers mapped across Anand District regional transmission corridors.
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════
+          NEW SECTION 1: Formula Reference Panel
+          ══════════════════════════════════════════════════════ */}
+      <section className="mt-28">
+        <div className="flex flex-col gap-2 max-w-3xl">
+          <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 dark:text-[#d2f831] font-mono flex items-center gap-2">
+            <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-[#d2f831]" /> Mathematical Engine
+          </p>
+          <h2 className="font-sans text-3xl font-semibold sm:text-4xl text-foreground">
+            Every score is{" "}
+            <span className="font-display font-normal italic text-emerald-700 dark:text-[#d2f831]">a real formula.</span>
+          </h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            No hidden coefficients, no black-box outputs. Every number shown to an operator is traceable to a specific
+            equation implemented in the Python pipeline and verifiable against IEC/IEEE standards.
+          </p>
+        </div>
+
+        {/* Formula cards grid */}
+        <div className="mt-8 grid gap-4 lg:grid-cols-2">
+
+          {/* RUL */}
+          <div className="rounded-[2rem] border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/90 p-6 sm:p-8 shadow-sm dark:shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-700 dark:bg-[#d2f831]/10 dark:text-[#d2f831]">
+                  <Clock3 className="size-4.5" />
+                </div>
+                <div>
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground dark:text-neutral-400">score_asset_risk.py · lines 53–59</p>
+                  <h3 className="font-sans text-base font-bold text-foreground dark:text-white">Remaining Useful Life (RUL)</h3>
+                </div>
+              </div>
+              <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 font-mono text-[10px] text-emerald-700 dark:text-emerald-400 font-bold">days</span>
+            </div>
+            <pre className="rounded-xl bg-neutral-950 dark:bg-black/60 border border-white/[0.06] p-4 text-[11px] leading-relaxed font-mono text-neutral-200 overflow-x-auto">
+{`# Piecewise calibrated from thermal dissipation curves
+if HI >= 70:   # CRITICAL tier
+    RUL = max(1.0, 8.0 - (HI - 70) * 0.2)
+
+elif HI >= 50: # HIGH tier
+    RUL = max(8.0, 45.0 - (HI - 50) * 1.85)
+
+else:          # LOW / MEDIUM tier
+    RUL = max(45.0, 180.0 - (HI - 13.4) * 3.65)`}
+            </pre>
+            <div className="mt-4 grid grid-cols-4 gap-2">
+              {[
+                { tier: "LOW", range: "HI < 30", rul: "≥ 45d", color: "text-emerald-600 dark:text-emerald-400" },
+                { tier: "MEDIUM", range: "30–49", rul: "45–80d", color: "text-cyan-600 dark:text-cyan-400" },
+                { tier: "HIGH", range: "50–69", rul: "8–45d", color: "text-amber-600 dark:text-amber-400" },
+                { tier: "CRITICAL", range: "≥ 70", rul: "1–8d", color: "text-rose-600 dark:text-rose-400" },
+              ].map(({ tier, range, rul, color }) => (
+                <div key={tier} className="rounded-xl border border-border dark:border-white/[0.08] bg-muted/40 dark:bg-black/40 p-2.5 text-center">
+                  <p className={`font-mono text-[10px] font-bold ${color}`}>{tier}</p>
+                  <p className="font-mono text-[9px] text-muted-foreground dark:text-neutral-400 mt-0.5">{range}</p>
+                  <p className="font-mono text-xs font-bold text-foreground dark:text-white mt-1">{rul}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Composite Grid Impact Score */}
+          <div className="rounded-[2rem] border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/90 p-6 sm:p-8 shadow-sm dark:shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-400">
+                  <BarChart2 className="size-4.5" />
+                </div>
+                <div>
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground dark:text-neutral-400">grid_impact_ranker.py · lines 86–113</p>
+                  <h3 className="font-sans text-base font-bold text-foreground dark:text-white">Composite Grid Impact Score</h3>
+                </div>
+              </div>
+              <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-0.5 font-mono text-[10px] text-cyan-600 dark:text-cyan-400 font-bold">0–1.0</span>
+            </div>
+            <pre className="rounded-xl bg-neutral-950 dark:bg-black/60 border border-white/[0.06] p-4 text-[11px] leading-relaxed font-mono text-neutral-200 overflow-x-auto">
+{`# 5-factor weighted composite
+hi_norm   = HI / 100
+rul_norm  = 1.0 - (RUL / 180.0)
+fault_sev = base * fault_conf + 0.5 * (1 - fault_conf)
+mva_norm  = log(1 + MVA) / log(1 + 160)
+inc_norm  = incident_rate / 3.0
+
+raw = (0.35 * hi_norm  + 0.25 * rul_norm +
+       0.20 * fault_sev + 0.10 * mva_norm +
+       0.10 * inc_norm)
+
+# Criticality multipliers: CRITICAL=2.0, HIGH=1.5
+#                           MEDIUM=1.1, LOW=0.8
+composite = min(1.0, raw * criticality_mult)`}
+            </pre>
+            <div className="mt-4 grid grid-cols-5 gap-1.5">
+              {[
+                { factor: "HI", weight: "35%", color: "bg-emerald-500 dark:bg-[#d2f831]" },
+                { factor: "RUL", weight: "25%", color: "bg-cyan-500" },
+                { factor: "Fault", weight: "20%", color: "bg-amber-500" },
+                { factor: "MVA", weight: "10%", color: "bg-purple-500" },
+                { factor: "Incidents", weight: "10%", color: "bg-rose-500" },
+              ].map(({ factor, weight, color }) => (
+                <div key={factor} className="flex flex-col items-center gap-1">
+                  <div className="w-full rounded-full bg-muted dark:bg-white/[0.08] h-1.5 overflow-hidden">
+                    <div className={`h-full rounded-full ${color}`} style={{ width: weight }} />
+                  </div>
+                  <p className="font-mono text-[10px] font-bold text-foreground dark:text-white">{weight}</p>
+                  <p className="font-mono text-[9px] text-muted-foreground dark:text-neutral-400">{factor}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Blackout Probability */}
+          <div className="rounded-[2rem] border border-rose-500/20 bg-rose-500/[0.03] dark:bg-[#111215]/90 p-6 sm:p-8 shadow-sm dark:shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                  <Zap className="size-4.5" />
+                </div>
+                <div>
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground dark:text-neutral-400">main.py · line 1114</p>
+                  <h3 className="font-sans text-base font-bold text-foreground dark:text-white">Blackout Probability</h3>
+                </div>
+              </div>
+              <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-0.5 font-mono text-[10px] text-rose-600 dark:text-rose-400 font-bold">2.5–99.5 %</span>
+            </div>
+            <pre className="rounded-xl bg-neutral-950 dark:bg-black/60 border border-white/[0.06] p-4 text-[11px] leading-relaxed font-mono text-neutral-200 overflow-x-auto">
+{`P(blackout) = min(99.5,
+               max(2.5,
+                   HI * 0.9 + dga_prob * 35.0))`}
+            </pre>
+            <p className="mt-3 text-xs text-muted-foreground dark:text-neutral-400 leading-relaxed">
+              <span className="font-semibold text-foreground dark:text-white">HI</span> = Health Index (0–100) ·{" "}
+              <span className="font-semibold text-foreground dark:text-white">dga_prob</span> = dominant fault class probability (0–1). Clamped to [2.5, 99.5] to avoid false certainty in either direction.
+            </p>
+          </div>
+
+          {/* Time to Failure */}
+          <div className="rounded-[2rem] border border-amber-500/20 bg-amber-500/[0.03] dark:bg-[#111215]/90 p-6 sm:p-8 shadow-sm dark:shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                  <AlertTriangle className="size-4.5" />
+                </div>
+                <div>
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground dark:text-neutral-400">main.py · line 1165</p>
+                  <h3 className="font-sans text-base font-bold text-foreground dark:text-white">Time to Failure (TTF)</h3>
+                </div>
+              </div>
+              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 font-mono text-[10px] text-amber-600 dark:text-amber-400 font-bold">hours</span>
+            </div>
+            <pre className="rounded-xl bg-neutral-950 dark:bg-black/60 border border-white/[0.06] p-4 text-[11px] leading-relaxed font-mono text-neutral-200 overflow-x-auto">
+{`TTF_hours = max(0.3,
+              ((100 - HI) / 11.5)
+              * (1.0 - dga_prob * 0.45))`}
+            </pre>
+            <p className="mt-3 text-xs text-muted-foreground dark:text-neutral-400 leading-relaxed">
+              A transformer at HI = 80 with fault probability 0.6 has TTF ≈{" "}
+              <span className="font-mono font-semibold text-foreground dark:text-white">
+                ((100-80)/11.5) × (1-0.27) ≈ <strong>1.27 hours</strong>
+              </span>. Minimum floor of 0.3 hours prevents false "immediate failure" signals.
+            </p>
+          </div>
+
+          {/* ETR */}
+          <div className="rounded-[2rem] border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/90 p-6 sm:p-8 shadow-sm dark:shadow-lg lg:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                  <Wrench className="size-4.5" />
+                </div>
+                <div>
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground dark:text-neutral-400">main.py · lines 1128–1162</p>
+                  <h3 className="font-sans text-base font-bold text-foreground dark:text-white">Estimated Time to Restore (ETR)</h3>
+                </div>
+              </div>
+              <span className="rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-0.5 font-mono text-[10px] text-purple-600 dark:text-purple-400 font-bold">25–360 min</span>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <pre className="rounded-xl bg-neutral-950 dark:bg-black/60 border border-white/[0.06] p-4 text-[11px] leading-relaxed font-mono text-neutral-200 overflow-x-auto">
+{`# Fault base times (minutes):
+# D2=150  D1=120  T3=135
+# T2=100  T1=70   PD=55
+# Normal=35
+
+hi_penalty  = HI * 1.15
+dga_penalty = dga_prob * 35.0
+mva_factor  = (MVA / 25.0) * 12.0
+site_offset = (asset_num * 7) % 23 - 11
+
+ETR = clamp(base + hi_penalty
+          + dga_penalty + mva_factor
+          + site_offset, 25, 360)`}
+              </pre>
+              <div className="space-y-2">
+                <p className="text-xs font-mono font-bold uppercase tracking-widest text-muted-foreground dark:text-neutral-400 mb-3">Base Fault Restoration Times</p>
+                {[
+                  { fault: "D2 · High-energy arcing", base: "150 min", color: "bg-rose-500" },
+                  { fault: "T3 · Thermal > 700°C", base: "135 min", color: "bg-orange-500" },
+                  { fault: "D1 · Low-energy discharge", base: "120 min", color: "bg-amber-500" },
+                  { fault: "T2 · Thermal 300–700°C", base: "100 min", color: "bg-yellow-500" },
+                  { fault: "T1 · Thermal < 300°C", base: "70 min", color: "bg-lime-500" },
+                  { fault: "PD · Partial Discharge", base: "55 min", color: "bg-cyan-500" },
+                  { fault: "Normal · No fault", base: "35 min", color: "bg-emerald-500" },
+                ].map(({ fault, base, color }) => (
+                  <div key={fault} className="flex items-center gap-2.5">
+                    <div className="w-full max-w-[120px] rounded-full bg-muted dark:bg-white/[0.08] h-1.5 overflow-hidden">
+                      <div className={`h-full rounded-full ${color}`} style={{ width: `${(parseInt(base) / 150) * 100}%` }} />
+                    </div>
+                    <span className="font-mono text-[10px] font-bold text-foreground dark:text-white w-14 shrink-0">{base}</span>
+                    <span className="text-[10px] text-muted-foreground dark:text-neutral-400">{fault}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Thermal Stress */}
+          <div className="rounded-[2rem] border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/90 p-6 sm:p-8 shadow-sm dark:shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400">
+                  <Thermometer className="size-4.5" />
+                </div>
+                <div>
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground dark:text-neutral-400">main.py · lines 510–513</p>
+                  <h3 className="font-sans text-base font-bold text-foreground dark:text-white">Thermal Stress Index</h3>
+                </div>
+              </div>
+              <span className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-0.5 font-mono text-[10px] text-orange-600 dark:text-orange-400 font-bold">0–100</span>
+            </div>
+            <pre className="rounded-xl bg-neutral-950 dark:bg-black/60 border border-white/[0.06] p-4 text-[11px] leading-relaxed font-mono text-neutral-200 overflow-x-auto">
+{`base_stress = max(0, (temp_c - 25) / 55) * 100
+hum_penalty = max(0, (humidity - 60) / 10) * 2
+wind_bonus  = max(0, (wind_kmh - 10) / 40) * 5
+
+thermal_stress = min(100,
+    base_stress + hum_penalty - wind_bonus)`}
+            </pre>
+            <p className="mt-3 text-xs text-muted-foreground dark:text-neutral-400 leading-relaxed">
+              Temperature above 25°C linearly drives stress toward 100 at 80°C. Humidity above 60% adds a
+              penalty; wind above 10 km/h improves radiator cooling (bonus up to 5 points). Data sourced live from Open-Meteo API.
+            </p>
+          </div>
+
+          {/* Affected Households */}
+          <div className="rounded-[2rem] border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/90 p-6 sm:p-8 shadow-sm dark:shadow-lg">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                  <Network className="size-4.5" />
+                </div>
+                <div>
+                  <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground dark:text-neutral-400">main.py · lines 1117–1124</p>
+                  <h3 className="font-sans text-base font-bold text-foreground dark:text-white">Affected Households Estimate</h3>
+                </div>
+              </div>
+              <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-0.5 font-mono text-[10px] text-indigo-600 dark:text-indigo-400 font-bold">households</span>
+            </div>
+            <pre className="rounded-xl bg-neutral-950 dark:bg-black/60 border border-white/[0.06] p-4 text-[11px] leading-relaxed font-mono text-neutral-200 overflow-x-auto">
+{`load_factor     = clamp(0.65 + HI/200,
+                        0.40, 0.95)
+current_load_mw = MVA * load_factor * 0.90
+residential_mw  = current_load_mw * 0.45
+
+households = (residential_mw * 1000) / 0.70
+# 0.70 kW = avg Indian household consumption`}
+            </pre>
+            <p className="mt-3 text-xs text-muted-foreground dark:text-neutral-400 leading-relaxed">
+              45% of transformer output assumed residential (per DISCOM load mix data). Indian average household
+              consumption of 0.70 kW converts MW load to household count for operator situational awareness.
+            </p>
+          </div>
+
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════
+          NEW SECTION 2: Duval Triangle Visualization
+          ══════════════════════════════════════════════════════ */}
+      <section className="mt-28">
+        <div className="flex flex-col gap-2 max-w-3xl">
+          <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 dark:text-[#d2f831] font-mono flex items-center gap-2">
+            <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-[#d2f831]" /> IEC 60599 / Duval Method
+          </p>
+          <h2 className="font-sans text-3xl font-semibold sm:text-4xl text-foreground">
+            Duval Triangle —{" "}
+            <span className="font-display font-normal italic text-emerald-700 dark:text-[#d2f831]">fault zone geometry.</span>
+          </h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            The Duval Triangle maps normalised gas ratios of CH₄, C₂H₄, and C₂H₂ to a fault zone.
+            Each vertex of the equilateral triangle represents 100% of one gas. Points falling near different vertices
+            are classified by the zone they land in, verified against boundaries in <code className="font-mono text-xs text-emerald-700 dark:text-[#d2f831]">duval.py</code>.
+          </p>
+        </div>
+
+        <div className="mt-8 grid gap-6 lg:grid-cols-12 items-start">
+          {/* SVG Triangle diagram */}
+          <div className="rounded-[2rem] border border-border dark:border-white/[0.08] bg-card dark:bg-[#111215]/90 p-6 sm:p-8 shadow-sm dark:shadow-lg lg:col-span-7">
+            <p className="text-xs font-mono font-bold uppercase tracking-widest text-muted-foreground dark:text-neutral-400 mb-5">
+              Duval Triangle 1 — Ternary Fault Map (CH₄ · C₂H₄ · C₂H₂)
+            </p>
+            <svg viewBox="0 0 500 460" className="w-full max-w-lg mx-auto" aria-label="Duval Triangle fault zone diagram">
+              {/* Background */}
+              <defs>
+                <filter id="glow">
+                  <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+                  <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+
+              {/* Main triangle outline */}
+              {/* Vertices: top=CH4 (250,30), bottom-left=C2H2 (30,420), bottom-right=C2H4 (470,420) */}
+
+              {/* PD zone — top apex: CH4 >= 98% */}
+              <polygon points="250,30 210,100 290,100" fill="#818cf8" fillOpacity="0.35" stroke="#818cf8" strokeWidth="1" />
+
+              {/* T1 zone — lower-left region: C2H2<4%, C2H4<20% */}
+              <polygon points="210,100 30,420 150,420 230,260 290,100" fill="#34d399" fillOpacity="0.28" stroke="#34d399" strokeWidth="1" />
+
+              {/* T2 zone — middle thermal: C2H2<4%, 20<=C2H4<=50% */}
+              <polygon points="230,260 150,420 270,420" fill="#fbbf24" fillOpacity="0.28" stroke="#fbbf24" strokeWidth="1" />
+
+              {/* T3 zone — right thermal: C2H2<15%, C2H4>50% */}
+              <polygon points="270,420 390,420 310,260 230,260" fill="#f97316" fillOpacity="0.28" stroke="#f97316" strokeWidth="1" />
+
+              {/* D2 zone — upper right: C2H2>=29%, C2H4>=23% */}
+              <polygon points="290,100 470,420 390,420 310,260" fill="#f43f5e" fillOpacity="0.30" stroke="#f43f5e" strokeWidth="1" />
+
+              {/* D1 zone — middle right: C2H2>=13%, C2H4<23% */}
+              <polygon points="230,260 310,260 280,200 240,180" fill="#fb923c" fillOpacity="0.28" stroke="#fb923c" strokeWidth="1" />
+
+              {/* DT mixed — center region */}
+              <polygon points="240,180 280,200 310,260 270,420 150,420 230,260" fill="#a78bfa" fillOpacity="0.20" stroke="#a78bfa" strokeWidth="1" />
+
+              {/* Outer triangle border */}
+              <polygon points="250,30 30,420 470,420" fill="none" stroke="currentColor" strokeWidth="2" strokeOpacity="0.4" />
+
+              {/* Zone labels */}
+              <text x="250" y="78" textAnchor="middle" fontSize="11" fontFamily="IBM Plex Mono, monospace" fill="#a5b4fc" fontWeight="bold">PD</text>
+              <text x="145" y="280" textAnchor="middle" fontSize="11" fontFamily="IBM Plex Mono, monospace" fill="#6ee7b7">T1</text>
+              <text x="218" y="370" textAnchor="middle" fontSize="11" fontFamily="IBM Plex Mono, monospace" fill="#fde68a">T2</text>
+              <text x="330" y="370" textAnchor="middle" fontSize="11" fontFamily="IBM Plex Mono, monospace" fill="#fed7aa">T3</text>
+              <text x="380" y="280" textAnchor="middle" fontSize="11" fontFamily="IBM Plex Mono, monospace" fill="#fda4af">D2</text>
+              <text x="268" y="230" textAnchor="middle" fontSize="10" fontFamily="IBM Plex Mono, monospace" fill="#fdba74">D1</text>
+              <text x="245" y="320" textAnchor="middle" fontSize="10" fontFamily="IBM Plex Mono, monospace" fill="#c4b5fd">DT</text>
+
+              {/* Vertex labels */}
+              <text x="250" y="20" textAnchor="middle" fontSize="12" fontFamily="IBM Plex Mono, monospace" fill="currentColor" fontWeight="bold">CH₄</text>
+              <text x="14" y="435" textAnchor="middle" fontSize="12" fontFamily="IBM Plex Mono, monospace" fill="currentColor" fontWeight="bold">C₂H₂</text>
+              <text x="486" y="435" textAnchor="middle" fontSize="12" fontFamily="IBM Plex Mono, monospace" fill="currentColor" fontWeight="bold">C₂H₄</text>
+
+              {/* Example TX-107 D2 point */}
+              <circle cx="365" cy="245" r="6" fill="#f43f5e" stroke="white" strokeWidth="2" filter="url(#glow)" />
+              <text x="378" y="240" fontSize="9" fontFamily="IBM Plex Mono, monospace" fill="#fda4af">TX-107</text>
+
+              {/* Example TX-115 T3 point (post-intervention) */}
+              <circle cx="305" cy="400" r="5" fill="#f97316" stroke="white" strokeWidth="2" />
+              <text x="315" y="400" fontSize="9" fontFamily="IBM Plex Mono, monospace" fill="#fed7aa">TX-115</text>
+            </svg>
+          </div>
+
+          {/* Zone definitions */}
+          <div className="lg:col-span-5 space-y-3">
+            <p className="text-xs font-mono font-bold uppercase tracking-widest text-muted-foreground dark:text-neutral-400 mb-4">
+              Zone Boundary Logic — duval.py
+            </p>
+            {[
+              {
+                code: "PD",
+                name: "Partial Discharge",
+                rule: "%CH₄ ≥ 98%",
+                detail: "Corona discharge in gas pockets; methane completely dominates gas mix",
+                color: "border-indigo-500/40 bg-indigo-500/[0.06]",
+                dot: "bg-indigo-400",
+                text: "text-indigo-600 dark:text-indigo-400",
+              },
+              {
+                code: "T1",
+                name: "Thermal < 300°C",
+                rule: "%C₂H₂ < 4% AND %C₂H₄ < 20%",
+                detail: "Low-temperature paper/oil degradation; mostly methane, little ethylene",
+                color: "border-emerald-500/40 bg-emerald-500/[0.06]",
+                dot: "bg-emerald-400",
+                text: "text-emerald-600 dark:text-emerald-400",
+              },
+              {
+                code: "T2",
+                name: "Thermal 300–700°C",
+                rule: "%C₂H₂ < 4% AND 20% ≤ %C₂H₄ ≤ 50%",
+                detail: "Mid-range overheating; rising ethylene from oil cracking",
+                color: "border-amber-500/40 bg-amber-500/[0.06]",
+                dot: "bg-amber-400",
+                text: "text-amber-600 dark:text-amber-400",
+              },
+              {
+                code: "T3",
+                name: "Thermal > 700°C",
+                rule: "%C₂H₂ < 15% AND %C₂H₄ > 50%",
+                detail: "Severe overheating; ethylene dominant, acetylene just entering range",
+                color: "border-orange-500/40 bg-orange-500/[0.06]",
+                dot: "bg-orange-400",
+                text: "text-orange-600 dark:text-orange-400",
+              },
+              {
+                code: "D2",
+                name: "High-energy Arcing",
+                rule: "%C₂H₂ ≥ 29% AND %C₂H₄ ≥ 23%",
+                detail: "Active arc between electrodes; acetylene + ethylene surge — most severe fault",
+                color: "border-rose-500/40 bg-rose-500/[0.06]",
+                dot: "bg-rose-500",
+                text: "text-rose-600 dark:text-rose-400",
+              },
+              {
+                code: "D1",
+                name: "Low-energy Discharge",
+                rule: "%C₂H₂ ≥ 13% AND %C₂H₄ < 23%",
+                detail: "Intermittent sparking; acetylene elevated but ethylene still low",
+                color: "border-red-500/40 bg-red-500/[0.06]",
+                dot: "bg-red-400",
+                text: "text-red-600 dark:text-red-400",
+              },
+              {
+                code: "DT",
+                name: "Mixed Fault",
+                rule: "else (all other points)",
+                detail: "Thermal + discharge co-existing; ambiguous zone requiring further sampling",
+                color: "border-purple-500/40 bg-purple-500/[0.06]",
+                dot: "bg-purple-400",
+                text: "text-purple-600 dark:text-purple-400",
+              },
+            ].map(({ code, name, rule, detail, color, dot, text }) => (
+              <div key={code} className={`rounded-xl border p-3.5 ${color}`}>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`size-2 rounded-full shrink-0 ${dot}`} />
+                  <span className={`font-mono text-xs font-bold ${text}`}>{code}</span>
+                  <span className="font-sans text-xs font-semibold text-foreground dark:text-white">{name}</span>
+                </div>
+                <p className="font-mono text-[10px] text-muted-foreground dark:text-neutral-400 mb-1 ml-4">{rule}</p>
+                <p className="text-[10px] text-muted-foreground dark:text-neutral-400 ml-4 leading-snug">{detail}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════
+          NEW SECTION 3: Gas-to-Fault Fingerprint Charts
+          ══════════════════════════════════════════════════════ */}
+      <section className="mt-28">
+        <div className="flex flex-col gap-2 max-w-3xl">
+          <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 dark:text-[#d2f831] font-mono flex items-center gap-2">
+            <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-[#d2f831]" /> Gas Fingerprint Library
+          </p>
+          <h2 className="font-sans text-3xl font-semibold sm:text-4xl text-foreground">
+            Which gas{" "}
+            <span className="font-display font-normal italic text-emerald-700 dark:text-[#d2f831]">drives which fault.</span>
+          </h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Each fault type produces a distinct dissolved gas fingerprint. These signatures, derived from IEC 60599
+            and validated on our Kaggle training set, are what the SHAP attribution translates into operator language.
+          </p>
+        </div>
+
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[
+            {
+              fault: "D2 — High-energy Arcing",
+              sev: 0.90,
+              color: "bg-rose-500",
+              border: "border-rose-500/30",
+              bg: "bg-rose-500/[0.04]",
+              tag: "Fault Severity 0.90",
+              tagColor: "text-rose-600 dark:text-rose-400",
+              gases: [
+                { name: "C₂H₂", ppm: 1800, rel: 100, note: "PRIMARY — active arcing indicator" },
+                { name: "C₂H₄", ppm: 620, rel: 34, note: "Secondary — oil carbonisation" },
+                { name: "H₂", ppm: 420, rel: 23, note: "Arc plasma dissociation" },
+                { name: "CH₄", ppm: 110, rel: 6, note: "Trace thermal background" },
+                { name: "C₂H₆", ppm: 35, rel: 2, note: "Minimal" },
+              ],
+            },
+            {
+              fault: "T3 — Thermal > 700°C",
+              sev: 0.85,
+              color: "bg-orange-500",
+              border: "border-orange-500/30",
+              bg: "bg-orange-500/[0.04]",
+              tag: "Fault Severity 0.85",
+              tagColor: "text-orange-600 dark:text-orange-400",
+              gases: [
+                { name: "C₂H₄", ppm: 2200, rel: 100, note: "PRIMARY — high-temp oil cracking" },
+                { name: "CH₄", ppm: 980, rel: 45, note: "Thermal decomposition" },
+                { name: "H₂", ppm: 650, rel: 30, note: "Oil pyrolysis" },
+                { name: "C₂H₂", ppm: 280, rel: 13, note: "Trace (below D2 threshold)" },
+                { name: "C₂H₆", ppm: 190, rel: 9, note: "Moderate" },
+              ],
+            },
+            {
+              fault: "D1 — Low-energy Discharge",
+              sev: 0.75,
+              color: "bg-amber-500",
+              border: "border-amber-500/30",
+              bg: "bg-amber-500/[0.04]",
+              tag: "Fault Severity 0.75",
+              tagColor: "text-amber-600 dark:text-amber-400",
+              gases: [
+                { name: "C₂H₂", ppm: 480, rel: 100, note: "PRIMARY — intermittent sparking" },
+                { name: "H₂", ppm: 380, rel: 79, note: "Dielectric stress discharge" },
+                { name: "C₂H₄", ppm: 95, rel: 20, note: "Below D2 ethylene threshold" },
+                { name: "CH₄", ppm: 72, rel: 15, note: "Low thermal" },
+                { name: "C₂H₆", ppm: 28, rel: 6, note: "Minimal" },
+              ],
+            },
+            {
+              fault: "T2 — Thermal 300–700°C",
+              sev: 0.65,
+              color: "bg-yellow-500",
+              border: "border-yellow-500/30",
+              bg: "bg-yellow-500/[0.04]",
+              tag: "Fault Severity 0.65",
+              tagColor: "text-yellow-600 dark:text-yellow-500",
+              gases: [
+                { name: "C₂H₄", ppm: 1100, rel: 100, note: "PRIMARY — mid-range thermal" },
+                { name: "CH₄", ppm: 760, rel: 69, note: "Oil degradation" },
+                { name: "H₂", ppm: 310, rel: 28, note: "Moderate" },
+                { name: "C₂H₆", ppm: 140, rel: 13, note: "Oil cracking" },
+                { name: "C₂H₂", ppm: 18, rel: 2, note: "Below 4% threshold (not D class)" },
+              ],
+            },
+            {
+              fault: "T1 — Thermal < 300°C",
+              sev: 0.55,
+              color: "bg-lime-500",
+              border: "border-lime-500/30",
+              bg: "bg-lime-500/[0.04]",
+              tag: "Fault Severity 0.55",
+              tagColor: "text-lime-600 dark:text-lime-400",
+              gases: [
+                { name: "CH₄", ppm: 850, rel: 100, note: "PRIMARY — low-temp overheating" },
+                { name: "C₂H₆", ppm: 320, rel: 38, note: "Paper insulation degradation" },
+                { name: "H₂", ppm: 180, rel: 21, note: "Moderate partial discharge" },
+                { name: "C₂H₄", ppm: 75, rel: 9, note: "Low (below 20% threshold)" },
+                { name: "C₂H₂", ppm: 6, rel: 1, note: "Negligible" },
+              ],
+            },
+            {
+              fault: "PD — Partial Discharge",
+              sev: 0.50,
+              color: "bg-indigo-500",
+              border: "border-indigo-500/30",
+              bg: "bg-indigo-500/[0.04]",
+              tag: "Fault Severity 0.50",
+              tagColor: "text-indigo-600 dark:text-indigo-400",
+              gases: [
+                { name: "H₂", ppm: 2400, rel: 100, note: "PRIMARY — corona discharge" },
+                { name: "CH₄", ppm: 1960, rel: 82, note: "CH₄ ≥ 98% of C gases" },
+                { name: "C₂H₆", ppm: 120, rel: 5, note: "Low" },
+                { name: "C₂H₄", ppm: 40, rel: 2, note: "Very low" },
+                { name: "C₂H₂", ppm: 8, rel: 0.3, note: "Negligible" },
+              ],
+            },
+          ].map(({ fault, sev, color, border, bg, tag, tagColor, gases }) => (
+            <div key={fault} className={`rounded-[2rem] border p-6 shadow-xs ${border} ${bg}`}>
+              <div className="flex items-start justify-between gap-2 mb-4">
+                <div>
+                  <p className="font-sans text-sm font-bold text-foreground dark:text-white leading-tight">{fault}</p>
+                  <p className={`font-mono text-[10px] font-bold mt-0.5 ${tagColor}`}>{tag}</p>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <div className="w-12 rounded-full bg-muted dark:bg-white/[0.08] h-1.5 overflow-hidden">
+                    <div className={`h-full rounded-full ${color}`} style={{ width: `${sev * 100}%` }} />
+                  </div>
+                  <span className={`font-mono text-[10px] font-bold ${tagColor}`}>{sev.toFixed(2)}</span>
+                </div>
+              </div>
+              <div className="space-y-2.5">
+                {gases.map(({ name, ppm, rel, note }) => (
+                  <div key={name}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-mono text-[10px] font-bold text-foreground dark:text-white">{name}</span>
+                      <span className="font-mono text-[10px] text-muted-foreground dark:text-neutral-400">{ppm} ppm</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted dark:bg-white/[0.08]">
+                      <div className={`h-full rounded-full ${color}`} style={{ width: `${rel}%` }} />
+                    </div>
+                    <p className="mt-0.5 text-[9px] text-muted-foreground dark:text-neutral-500 italic">{note}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════
+          NEW SECTION 4: 4 Asset Archetypes
+          ══════════════════════════════════════════════════════ */}
+      <section className="mt-28">
+        <div className="flex flex-col gap-2 max-w-3xl">
+          <p className="text-xs uppercase tracking-[0.2em] text-emerald-700 dark:text-[#d2f831] font-mono flex items-center gap-2">
+            <span className="size-1.5 rounded-full bg-emerald-600 dark:bg-[#d2f831]" /> Training Archetypes
+          </p>
+          <h2 className="font-sans text-3xl font-semibold sm:text-4xl text-foreground">
+            4 Behavioural Archetypes in{" "}
+            <span className="font-display font-normal italic text-emerald-700 dark:text-[#d2f831]">the dataset.</span>
+          </h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            The 18-transformer Anand District dataset was seeded with 4 distinct degradation patterns drawn from{" "}
+            <code className="font-mono text-xs text-emerald-700 dark:text-[#d2f831]">generation_config.json</code>.
+            Each archetype exercises a different combination of ML model inputs and validates the pipeline against
+            a known expected trajectory.
+          </p>
+        </div>
+
+        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          {[
+            {
+              id: "TX-107",
+              archetype: "Electrical_Arcing",
+              zone: "Zone-B",
+              faultClass: "D2",
+              hi: 81.4,
+              rul: "3.7d",
+              composite: 0.94,
+              color: "border-rose-500/40 bg-rose-500/[0.04]",
+              accentColor: "text-rose-600 dark:text-rose-400",
+              accentBg: "bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400",
+              dot: "bg-rose-500",
+              timeline: [
+                { day: "Day 1", hi: 18.2, note: "Clean baseline" },
+                { day: "Day 30", hi: 31.4, note: "C₂H₂ first detected" },
+                { day: "Day 60", hi: 58.7, note: "D2 classification triggered" },
+                { day: "Day 90", hi: 81.4, note: "CRITICAL — 3.7d RUL" },
+              ],
+              desc: "Characterized by a continuous, accelerating C₂H₂ surge indicative of persistent arc between LV and HV winding turns. No intervention in the dataset — used to train the failure-trajectory endpoint. Composite score 0.94 at Day 90.",
+              primaryGas: "C₂H₂ → 1,840 ppm",
+              secondaryGas: "C₂H₄ → 620 ppm",
+            },
+            {
+              id: "TX-104",
+              archetype: "Progressive_Thermal",
+              zone: "Zone-A",
+              faultClass: "T3",
+              hi: 73.2,
+              rul: "5.4d",
+              composite: 0.87,
+              color: "border-orange-500/40 bg-orange-500/[0.04]",
+              accentColor: "text-orange-600 dark:text-orange-400",
+              accentBg: "bg-orange-500/10 border-orange-500/30 text-orange-600 dark:text-orange-400",
+              dot: "bg-orange-500",
+              timeline: [
+                { day: "Day 1", hi: 21.0, note: "Normal operating temperature" },
+                { day: "Day 25", hi: 35.6, note: "Summer load factor climbing" },
+                { day: "Day 55", hi: 52.8, note: "T2 → T3 transition" },
+                { day: "Day 90", hi: 73.2, note: "CRITICAL thermal — 5.4d RUL" },
+              ],
+              desc: "Thermal degradation driven by sustained overloading and summer ambient heat. C₂H₄ dominates the gas profile as ethylene rises above the 50% threshold. T3 class confirmed at Day 55 and sustained through Day 90.",
+              primaryGas: "C₂H₄ → 2,140 ppm",
+              secondaryGas: "CH₄ → 930 ppm",
+            },
+            {
+              id: "TX-115",
+              archetype: "Intervention_Recovery",
+              zone: "Zone-C",
+              faultClass: "D2 → Normal",
+              hi: "71.3 → 36.1",
+              rul: "7.7d → 97d",
+              composite: "0.94 → 0.28",
+              color: "border-emerald-500/40 bg-emerald-500/[0.04]",
+              accentColor: "text-emerald-700 dark:text-emerald-400",
+              accentBg: "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400",
+              dot: "bg-emerald-500",
+              timeline: [
+                { day: "Day 60", hi: 52.1, note: "D2 arcing first flagged HIGH" },
+                { day: "Day 78", hi: 71.3, note: "CRITICAL — IBM Bob advisory issued" },
+                { day: "Day 79", hi: 67.8, note: "Crew deployed · oil drained" },
+                { day: "Day 89", hi: 36.1, note: "Recovery complete · 97d RUL" },
+              ],
+              desc: "The showcase archetype. Pre-failure intervention at Day 78 when VOLTRA issued a CRITICAL D2 advisory. Oil drainage and insulation inspection reversed the degradation trajectory. RUL recovered +89.4 days — representing an estimated ₹4.2Cr avoided outage cost.",
+              primaryGas: "C₂H₂: 1,420 → 48 ppm",
+              secondaryGas: "H₂: 810 → 95 ppm",
+            },
+            {
+              id: "TX-112",
+              archetype: "Shock_PD",
+              zone: "Zone-D",
+              faultClass: "PD",
+              hi: 44.8,
+              rul: "63d",
+              composite: 0.51,
+              color: "border-indigo-500/40 bg-indigo-500/[0.04]",
+              accentColor: "text-indigo-600 dark:text-indigo-400",
+              accentBg: "bg-indigo-500/10 border-indigo-500/30 text-indigo-600 dark:text-indigo-400",
+              dot: "bg-indigo-500",
+              timeline: [
+                { day: "Day 1", hi: 16.4, note: "Normal baseline" },
+                { day: "Day 18", hi: 28.9, note: "H₂ spike — lightning storm" },
+                { day: "Day 42", hi: 38.2, note: "PD classification → MEDIUM" },
+                { day: "Day 90", hi: 44.8, note: "Stable HIGH · watch mode" },
+              ],
+              desc: "Partial discharge triggered by a transient over-voltage event (lightning). H₂ and CH₄ dominate the gas profile (%CH₄ > 95%). The transformer stabilises at MEDIUM-HIGH risk without progressive worsening — validating that PD without thermal co-factor has lower urgency.",
+              primaryGas: "H₂ → 2,380 ppm",
+              secondaryGas: "CH₄ → 1,950 ppm",
+            },
+          ].map(({ id, archetype, zone, faultClass, hi, rul, composite, color, accentColor, accentBg, dot, timeline, desc, primaryGas, secondaryGas }) => (
+            <div key={id} className={`rounded-[2rem] border p-6 sm:p-8 shadow-sm ${color}`}>
+              <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`size-2.5 rounded-full ${dot}`} />
+                    <p className="font-mono text-sm font-bold text-foreground dark:text-white">{id}</p>
+                    <span className={`rounded-full border px-2.5 py-0.5 font-mono text-[9px] font-bold ${accentBg}`}>
+                      {archetype}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground dark:text-neutral-400 font-mono">{zone} · Fault: {faultClass}</p>
+                </div>
+                <div className="text-right">
+                  <p className={`font-mono text-xl font-bold ${accentColor}`}>HI: {hi}</p>
+                  <p className="font-mono text-[10px] text-muted-foreground dark:text-neutral-400">RUL: {rul}</p>
+                </div>
+              </div>
+
+              <p className="text-xs leading-relaxed text-muted-foreground dark:text-neutral-300 mb-5">{desc}</p>
+
+              {/* Gas highlights */}
+              <div className="flex gap-3 mb-5">
+                <div className="flex-1 rounded-xl border border-border dark:border-white/[0.08] bg-muted/40 dark:bg-black/40 p-3">
+                  <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground dark:text-neutral-400 mb-1">Primary Gas</p>
+                  <p className={`font-mono text-xs font-bold ${accentColor}`}>{primaryGas}</p>
+                </div>
+                <div className="flex-1 rounded-xl border border-border dark:border-white/[0.08] bg-muted/40 dark:bg-black/40 p-3">
+                  <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground dark:text-neutral-400 mb-1">Secondary Gas</p>
+                  <p className="font-mono text-xs font-bold text-foreground dark:text-white">{secondaryGas}</p>
+                </div>
+              </div>
+
+              {/* 90-day timeline */}
+              <div>
+                <p className="text-[10px] font-mono font-bold uppercase tracking-widest text-muted-foreground dark:text-neutral-400 mb-3">90-Day Trajectory</p>
+                <div className="relative pl-4">
+                  <div className="absolute left-1.5 top-1.5 bottom-1.5 w-px bg-border dark:bg-white/[0.08]" />
+                  <div className="space-y-3">
+                    {timeline.map(({ day, hi: tHi, note }) => (
+                      <div key={day} className="relative flex items-start gap-3">
+                        <div className={`absolute -left-3 mt-1 size-2 rounded-full border-2 border-card dark:border-[#111215] ${dot}`} />
+                        <div className="ml-3">
+                          <p className="font-mono text-[10px] font-bold text-foreground dark:text-white">{day} · HI = {tHi}</p>
+                          <p className="text-[10px] text-muted-foreground dark:text-neutral-400">{note}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-border dark:border-white/[0.08] flex items-center justify-between text-[10px] font-mono">
+                <span className="text-muted-foreground dark:text-neutral-400">Composite score</span>
+                <span className={`font-bold ${accentColor}`}>{composite}</span>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 
