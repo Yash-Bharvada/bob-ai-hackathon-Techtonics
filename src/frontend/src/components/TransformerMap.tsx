@@ -11,6 +11,7 @@ import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import {
   MAP_STYLE_URL,
+  MAP_STYLE_DARK_URL,
   TRANSFORMER_LOCATIONS_FULL,
   type TransformerLocation,
 } from "@/lib/transformerLocations";
@@ -94,6 +95,7 @@ export function TransformerMap({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
   const popupRef = useRef<maplibregl.Popup | null>(null);
+  const hasFittedBoundsRef = useRef<boolean>(false);
   const [mapReady, setMapReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [tileStatus, setTileStatus] = useState<ConnectionStatus>("loading");
@@ -118,9 +120,17 @@ export function TransformerMap({
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
+    const isDark =
+      typeof document !== "undefined" &&
+      (document.documentElement.classList.contains("dark") ||
+        document.body.classList.contains("dark") ||
+        localStorage.getItem("cinematic-theme") === "dark");
+
+    const activeStyle = isDark ? MAP_STYLE_DARK_URL : MAP_STYLE_URL;
+
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: MAP_STYLE_URL,
+      style: activeStyle,
       center: [72.935, 22.495] as [number, number],
       zoom: 11,
       attributionControl: { compact: false },
@@ -128,31 +138,72 @@ export function TransformerMap({
 
     mapRef.current = map;
 
-    map.on("load", () => {
+    const onMapLoaded = () => {
       setMapReady(true);
       setTileStatus("connected");
-    });
+      try {
+        map.resize();
+      } catch {}
+    };
+
+    map.on("load", onMapLoaded);
+    if (map.loaded()) {
+      onMapLoaded();
+    }
 
     map.on("error", (e: maplibregl.ErrorEvent) => {
       const msg: string =
-        (e as unknown as { error?: { message?: string } })?.error?.message ?? "Map tile error";
-      const isTileError =
-        msg.toLowerCase().includes("fetch") || msg.toLowerCase().includes("network");
-      if (isTileError) {
+        (e as unknown as { error?: { message?: string } })?.error?.message ?? "";
+      const lower = msg.toLowerCase();
+      
+      // Unrecoverable WebGL / environment crashes
+      const isFatal =
+        lower.includes("webgl") ||
+        lower.includes("context lost") ||
+        lower.includes("not supported");
+
+      if (isFatal) {
+        setLoadError(msg || "WebGL graphic initialization failed.");
+      } else if (lower.includes("fetch") || lower.includes("network") || lower.includes("failed to fetch")) {
         setTileStatus("disconnected");
       } else {
-        setLoadError(msg);
+        // Benign missing glyph or layer sprite warning in openmaptiles vector style
+        // Must NOT interrupt the map display!
+        setTileStatus("connected");
       }
     });
 
     map.addControl(new maplibregl.NavigationControl(), "top-right");
     map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
 
+    // Dynamic resize observer so map canvas always fills parent container
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined" && containerRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        try {
+          map.resize();
+        } catch {}
+      });
+      resizeObserver.observe(containerRef.current);
+    }
+
+    const onWindowResize = () => {
+      try {
+        map.resize();
+      } catch {}
+    };
+    window.addEventListener("resize", onWindowResize);
+
     return () => {
+      window.removeEventListener("resize", onWindowResize);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
       map.remove();
       mapRef.current = null;
     };
   }, []); // runs once on mount
+
 
   // ── Place / update markers whenever map is ready or liveUpdates/selectedId changes ─
   useEffect(() => {
@@ -220,11 +271,12 @@ export function TransformerMap({
       markersRef.current.set(loc.id, marker);
     });
 
-    // Fit bounds to all valid pins on first load
-    if (markersRef.current.size > 0 && !selectedId) {
+    // Fit bounds to all valid pins ONLY on first load (prevent camera snapping on telemetry ticks)
+    if (markersRef.current.size > 0 && !hasFittedBoundsRef.current && !selectedId) {
       const bounds = new maplibregl.LngLatBounds();
       validLocations.forEach((loc) => bounds.extend([loc.lng, loc.lat]));
       map.fitBounds(bounds, { padding: 60, duration: 800, maxZoom: 14 });
+      hasFittedBoundsRef.current = true;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapReady, liveUpdates, selectedId]);

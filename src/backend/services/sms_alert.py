@@ -374,3 +374,48 @@ async def send_fault_alert(score_result: Dict[str, Any]) -> None:
     # Record dedup only if at least one send succeeded
     if any_success:
         _record_sent(asset_id, fault_type)
+
+
+def send_custom_sms(number: str, message: str) -> bool:
+    """
+    Synchronous helper to send a custom SMS via the configured SMS Gateway for Android.
+    Can be called by broadcast and single consumer SMS dispatch endpoints.
+    """
+    user = os.environ.get("SMSGATE_USER", "").strip()
+    pwd  = os.environ.get("SMSGATE_PASS", "").strip()
+    if not user or not pwd:
+        print("[SMS] Gateway user/pass not configured. Custom SMS skipped.")
+        return False
+
+    url = os.environ.get("SMSGATE_URL", _DEFAULT_URL).strip()
+    try:
+        sim = int(os.environ.get("SMSGATE_SIM", "").strip())
+    except (ValueError, TypeError):
+        sim = None
+
+    try:
+        clean_num = normalize_indian_number(number)
+    except Exception:
+        clean_num = number.strip()
+
+    if not _try_consume_quota():
+        print(f"[SMS] Daily limit reached ({_daily_limit()}). Cannot send to {_mask(clean_num)}")
+        return False
+
+    payload: Dict[str, Any] = {
+        "textMessage": {"text": message[:_MAX_MSG_LEN]},
+        "phoneNumbers": [clean_num],
+    }
+    if sim is not None:
+        payload["simNumber"] = sim
+
+    try:
+        with httpx.Client(timeout=_TIMEOUT_S) as client:
+            resp = client.post(url, auth=(user, pwd), json=payload)
+            resp.raise_for_status()
+            print(f"[SMS] Custom SMS successfully sent to {_mask(clean_num)}")
+            return True
+    except Exception as e:
+        _refund_quota()
+        print(f"[SMS] Error sending custom SMS to {_mask(clean_num)}: {e}")
+        return False
