@@ -61,6 +61,7 @@ import { toast } from "sonner";
 import {
   getActiveDataset,
   uploadDatasetCsv,
+  activateDataset,
   type ActiveDatasetInfo,
 } from "@/lib/ragApi";
 
