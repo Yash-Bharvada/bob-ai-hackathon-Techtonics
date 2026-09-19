@@ -222,19 +222,116 @@ export interface MaintenanceAction {
   action_code: string;
   short_action: string;
   detail: string;
-  urgency_window: string;
-  crew_assignment: string;
-  crew_conflict: boolean;
+  urgency_window?: string;
+  crew_assignment?: string;
+  crew_type?: string;
+  crew_conflict?: boolean;
+  deadline?: string;
+  composite_score?: number;
+  health_index?: number;
+  RUL_days?: number;
+  mva_rating?: number;
+  fault_label?: string;
   sequencing_note?: string;
   advisory_summary?: string;
+  advisory_text?: string;
+}
+
+export interface CombinedTaskItem {
+  id: string;
+  asset_id: string;
+  substation: string;
+  grid_zone: string;
+  fault_type: string;
+  risk_tier: string;
+  health_index?: number;
+  rul_days?: number;
+  task_title: string;
+  task_detail: string;
+  priority: "CRITICAL" | "HIGH" | "MEDIUM" | "ROUTINE";
+  crew: string;
+  permit: string;
+  estimated_hours: number;
+  tools?: string[];
+  completed?: boolean;
+}
+
+export interface CombinedDayPlan {
+  day: number;
+  date: string;
+  title: string;
+  theme: string;
+  primary_crew: string;
+  primary_permit: string;
+  scheduled_assets: string[];
+  active_substations: string[];
+  total_estimated_hours: number;
+  tasks: CombinedTaskItem[];
+}
+
+export interface GridPlanStats {
+  total_tasks: number;
+  critical_tasks: number;
+  active_crews: number;
+  total_assets_scheduled: number;
+  estimated_total_hours: number;
+}
+
+export interface Asset7DayPlanTask {
+  id: string;
+  text: string;
+  priority: "CRITICAL" | "HIGH" | "MEDIUM" | "ROUTINE";
+  completed?: boolean;
+}
+
+export interface Asset7DayPlanDay {
+  day: number;
+  date: string;
+  title: string;
+  phase: string;
+  crew_required: string;
+  isolation_needed: boolean;
+  permit_type: string;
+  duration_hours: number;
+  tasks: Asset7DayPlanTask[];
+  tools?: string[];
+  safety_protocol?: string;
+}
+
+export interface Asset7DayPlanResponse {
+  status: string;
+  provider: string;
+  asset_id: string;
+  substation: string;
+  grid_zone?: string;
+  risk_tier: string;
+  urgency_tier: string;
+  primary_mechanism: string;
+  executive_summary: string;
+  standards_compliance?: string[];
+  day_by_day_plan: Asset7DayPlanDay[];
+  projected_post_maintenance?: {
+    health_index_projected: number;
+    rul_extension_days: number;
+    risk_mitigation_summary: string;
+  };
 }
 
 export interface MaintenancePlanResponse {
+  plan_date?: string;
   generated_date?: string;
-  total_actions?: number;
-  top_10_actions: MaintenanceAction[];
-  crew_schedule: Record<string, unknown>;
-  tx115_narrative: {
+  total_assets_scored?: number;
+  critical_count?: number;
+  high_count?: number;
+  asset_actions?: MaintenanceAction[];
+  top_10_actions?: MaintenanceAction[];
+  combined_7day_plan?: CombinedDayPlan[];
+  grid_stats?: GridPlanStats;
+  crew_pre_positioning?: Array<Record<string, unknown>>;
+  crew_schedule?: Record<string, unknown>;
+  crew_summary_text?: string;
+  intervention_narrative?: string;
+  tx115_narrative?: {
     asset_id: string;
     story: string;
     degradation_peak: string;
@@ -439,6 +536,39 @@ export const techtonicsApi = {
       body: JSON.stringify(payload),
     }, 15000);
     if (!res.ok) throw new Error(`HTTP ${res.status} from /api/groq-report`);
+    return res.json();
+  },
+
+  /**
+   * POST /api/maintenance/generate-7day-plan
+   * Generates live IEEE C57.104 & IEC 60599 7-day engineering plan via Groq LPU.
+   */
+  async generate7DayPlan(payload: {
+    asset_id: string;
+    health_index?: number;
+    rul_days?: number;
+    fault_type?: string;
+    substation?: string;
+    grid_zone?: string;
+    duval_zone?: string;
+    load_mw?: number;
+    rated_mva?: number;
+    ambient_temp_c?: number;
+    c2h2_ppm?: number;
+    ch4_ppm?: number;
+    c2h4_ppm?: number;
+    h2_ppm?: number;
+  }): Promise<Asset7DayPlanResponse> {
+    const res = await requestWithTimeout(
+      `${API_BASE}/api/maintenance/generate-7day-plan`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+      30000
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status} from /api/maintenance/generate-7day-plan`);
     return res.json();
   },
 
