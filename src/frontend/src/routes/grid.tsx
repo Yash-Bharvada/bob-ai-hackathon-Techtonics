@@ -18,7 +18,9 @@ import {
   type AssetDetailResponse,
   type TimeseriesPoint,
   type MaintenanceAction,
+  type DuvalTrajectoryPoint,
 } from "@/lib/techtonicsApi";
+import { DuvalTriangle } from "@/components/DuvalTriangle";
 import { GridDiagram, anandDistrictGridNodes } from "@/components/GridDiagram";
 import { TX115InterventionBanner } from "@/components/TX115InterventionBanner";
 import { IncidentReportModal } from "@/components/IncidentReportModal";
@@ -1474,10 +1476,11 @@ function AssetInspectorModal({
 }) {
   const [detail, setDetail] = useState<AssetDetailResponse | null>(null);
   const [timeseries, setTimeseries] = useState<TimeseriesPoint[]>([]);
+  const [duvalTrajectory, setDuvalTrajectory] = useState<DuvalTrajectoryPoint[]>([]);
   const [loadingDetail, setLoadingDetail] = useState(true);
   const [loadingTimeseries, setLoadingTimeseries] = useState(true);
   const [apiError, setApiError] = useState(false);
-  const [chartTab, setChartTab] = useState<"trajectory" | "temperature" | "gases">("trajectory");
+  const [chartTab, setChartTab] = useState<"trajectory" | "temperature" | "gases" | "duval">("trajectory");
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [groqReport, setGroqReport] = useState<any | null>(null);
   const [loadingGroqReport, setLoadingGroqReport] = useState(false);
@@ -1493,6 +1496,7 @@ function AssetInspectorModal({
     setLoadingTimeseries(true);
     setDetail(null);
     setTimeseries([]);
+    setDuvalTrajectory([]);
     setApiError(false);
 
     techtonicsApi
@@ -1512,6 +1516,15 @@ function AssetInspectorModal({
       .finally(() => {
         if (active) setLoadingTimeseries(false);
       });
+
+    techtonicsApi
+      .getDuvalTrajectory(asset.id)
+      .then((res) => {
+        if (active && Array.isArray(res?.trajectory)) {
+          setDuvalTrajectory(res.trajectory);
+        }
+      })
+      .catch(() => {});
 
     return () => { active = false; };
   }, [asset.id]);
@@ -1836,13 +1849,19 @@ function AssetInspectorModal({
                 <span className="text-[11px] font-mono text-muted-foreground">Fetching 90-day time-series telemetry from backend...</span>
               </div>
             </div>
-          ) : chartData.length > 0 ? (
+          ) : (chartData.length > 0 || chartTab === "duval") ? (
             <div className="border-b border-border/40 px-5 py-4">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <div className="flex items-center gap-2">
                   <Activity className="size-3.5 text-primary" />
                   <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
-                    {chartTab === "trajectory" ? "RUL Decay & Load Stress (90-Day)" : chartTab === "temperature" ? "Core & Oil Temperature History" : "Dissolved Fault Gas Evolution (C₂H₂ · CH₄ · H₂)"}
+                    {chartTab === "trajectory"
+                      ? "RUL Decay & Load Stress (90-Day)"
+                      : chartTab === "temperature"
+                      ? "Core & Oil Temperature History"
+                      : chartTab === "gases"
+                      ? "Dissolved Fault Gas Evolution (C₂H₂ · CH₄ · H₂)"
+                      : "Duval Triangle 1 Diagnostic Geometry (IEC 60599)"}
                   </h4>
                 </div>
 
@@ -1878,6 +1897,16 @@ function AssetInspectorModal({
                   >
                     Fault Gases (ppm)
                   </button>
+                  <button
+                    onClick={() => setChartTab("duval")}
+                    className={`px-2.5 py-1 rounded transition-colors ${
+                      chartTab === "duval"
+                        ? "bg-card text-foreground font-semibold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Duval Triangle
+                  </button>
                 </div>
               </div>
 
@@ -1902,126 +1931,150 @@ function AssetInspectorModal({
                     <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-yellow-500" />Hydrogen H₂ (ppm)</span>
                   </>
                 )}
+                {chartTab === "duval" && (
+                  <>
+                    <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-emerald-500" />% CH₄ (Methane)</span>
+                    <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-red-500" />% C₂H₄ (Ethylene)</span>
+                    <span className="flex items-center gap-1.5"><span className="size-2 rounded-full bg-sky-500" />% C₂H₂ (Acetylene)</span>
+                    <span className="text-muted-foreground/70">· 90-Day Migration Trail (Day 0 → Day 89)</span>
+                  </>
+                )}
               </div>
 
-              <div className="h-56 w-full min-h-[220px]">
-                <ResponsiveContainer width="100%" height={220}>
-                  <AreaChart key={`${chartTab}-${asset.id}-${chartData.length}`} data={chartData} margin={{ top: 12, right: 15, left: -5, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="rulGradModal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#ef4444" stopOpacity={0.5} />
-                        <stop offset="100%" stopColor="#ef4444" stopOpacity={0.08} />
-                      </linearGradient>
-                      <linearGradient id="loadGradModal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.45} />
-                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.05} />
-                      </linearGradient>
-                      <linearGradient id="tempGradModal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#f97316" stopOpacity={0.5} />
-                        <stop offset="100%" stopColor="#f97316" stopOpacity={0.08} />
-                      </linearGradient>
-                      <linearGradient id="c2h2GradModal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#a855f7" stopOpacity={0.5} />
-                        <stop offset="100%" stopColor="#a855f7" stopOpacity={0.08} />
-                      </linearGradient>
-                      <linearGradient id="ch4GradModal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.5} />
-                        <stop offset="100%" stopColor="#06b6d4" stopOpacity={0.08} />
-                      </linearGradient>
-                      <linearGradient id="h2GradModal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#eab308" stopOpacity={0.5} />
-                        <stop offset="100%" stopColor="#eab308" stopOpacity={0.08} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid stroke="#64748b" strokeOpacity={0.25} vertical={false} strokeDasharray="3 3" />
-                    <XAxis
-                      dataKey="time"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 9, fill: "#94a3b8" }}
-                      interval={Math.max(1, Math.floor(chartData.length / 9))}
-                    />
-                    <YAxis
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 9, fill: "#94a3b8" }}
-                      width={42}
-                      domain={chartTab === "temperature" ? ['dataMin - 5', 'dataMax + 5'] : chartTab === "trajectory" ? [0, 200] : [0, 'auto']}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#0f172a",
-                        borderColor: "#334155",
-                        color: "#f8fafc",
-                        borderRadius: "0.5rem",
-                        fontSize: "0.75rem",
-                        boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
-                      }}
-                    />
+              {chartTab === "duval" ? (
+                <div className="flex flex-col items-center justify-center p-1 w-full">
+                  <DuvalTriangle
+                    ch4Ppm={detail?.sensor_readings?.Methane ?? 30}
+                    c2h4Ppm={detail?.sensor_readings?.Ethylene ?? 5}
+                    c2h2Ppm={detail?.sensor_readings?.Acethylene ?? 0.5}
+                    modelPredictedFault={detail?.fault_type || asset.faultType}
+                    duvalAnalysis={detail?.duval_analysis}
+                    trajectory={duvalTrajectory}
+                    assetId={asset.id}
+                    size={460}
+                    showTitle={false}
+                  />
+                </div>
+              ) : (
+                <div className="h-56 w-full min-h-[220px]">
+                  <ResponsiveContainer width="100%" height={220}>
+                    <AreaChart key={`${chartTab}-${asset.id}-${chartData.length}`} data={chartData} margin={{ top: 12, right: 15, left: -5, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="rulGradModal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#ef4444" stopOpacity={0.5} />
+                          <stop offset="100%" stopColor="#ef4444" stopOpacity={0.08} />
+                        </linearGradient>
+                        <linearGradient id="loadGradModal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.45} />
+                          <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.05} />
+                        </linearGradient>
+                        <linearGradient id="tempGradModal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#f97316" stopOpacity={0.5} />
+                          <stop offset="100%" stopColor="#f97316" stopOpacity={0.08} />
+                        </linearGradient>
+                        <linearGradient id="c2h2GradModal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#a855f7" stopOpacity={0.5} />
+                          <stop offset="100%" stopColor="#a855f7" stopOpacity={0.08} />
+                        </linearGradient>
+                        <linearGradient id="ch4GradModal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.5} />
+                          <stop offset="100%" stopColor="#06b6d4" stopOpacity={0.08} />
+                        </linearGradient>
+                        <linearGradient id="h2GradModal" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#eab308" stopOpacity={0.5} />
+                          <stop offset="100%" stopColor="#eab308" stopOpacity={0.08} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid stroke="#64748b" strokeOpacity={0.25} vertical={false} strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="time"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 9, fill: "#94a3b8" }}
+                        interval={Math.max(1, Math.floor(chartData.length / 9))}
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fontSize: 9, fill: "#94a3b8" }}
+                        width={42}
+                        domain={chartTab === "temperature" ? ['dataMin - 5', 'dataMax + 5'] : chartTab === "trajectory" ? [0, 200] : [0, 'auto']}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "#0f172a",
+                          borderColor: "#334155",
+                          color: "#f8fafc",
+                          borderRadius: "0.5rem",
+                          fontSize: "0.75rem",
+                          boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
+                        }}
+                      />
 
-                    <Area
-                      hide={chartTab !== "trajectory"}
-                      type="monotone"
-                      dataKey="rulDays"
-                      name="RUL Days"
-                      stroke="#ef4444"
-                      strokeWidth={2.5}
-                      fill="url(#rulGradModal)"
-                      connectNulls
-                    />
-                    <Area
-                      hide={chartTab !== "trajectory"}
-                      type="monotone"
-                      dataKey="loadPct"
-                      name="Load %"
-                      stroke="#3b82f6"
-                      strokeWidth={2}
-                      fill="url(#loadGradModal)"
-                      connectNulls
-                    />
-                    <Area
-                      hide={chartTab !== "temperature"}
-                      type="monotone"
-                      dataKey="tempC"
-                      name="Core Temp (°C)"
-                      stroke="#f97316"
-                      strokeWidth={2.5}
-                      fill="url(#tempGradModal)"
-                      connectNulls
-                    />
-                    <Area
-                      hide={chartTab !== "gases"}
-                      type="monotone"
-                      dataKey="c2h2"
-                      name="Acetylene C₂H₂ (ppm)"
-                      stroke="#a855f7"
-                      strokeWidth={2}
-                      fill="url(#c2h2GradModal)"
-                      connectNulls
-                    />
-                    <Area
-                      hide={chartTab !== "gases"}
-                      type="monotone"
-                      dataKey="ch4"
-                      name="Methane CH₄ (ppm)"
-                      stroke="#06b6d4"
-                      strokeWidth={2}
-                      fill="url(#ch4GradModal)"
-                      connectNulls
-                    />
-                    <Area
-                      hide={chartTab !== "gases"}
-                      type="monotone"
-                      dataKey="h2"
-                      name="Hydrogen H₂ (ppm)"
-                      stroke="#eab308"
-                      strokeWidth={2}
-                      fill="url(#h2GradModal)"
-                      connectNulls
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+                      <Area
+                        hide={chartTab !== "trajectory"}
+                        type="monotone"
+                        dataKey="rulDays"
+                        name="RUL Days"
+                        stroke="#ef4444"
+                        strokeWidth={2.5}
+                        fill="url(#rulGradModal)"
+                        connectNulls
+                      />
+                      <Area
+                        hide={chartTab !== "trajectory"}
+                        type="monotone"
+                        dataKey="loadPct"
+                        name="Load %"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        fill="url(#loadGradModal)"
+                        connectNulls
+                      />
+                      <Area
+                        hide={chartTab !== "temperature"}
+                        type="monotone"
+                        dataKey="tempC"
+                        name="Core Temp (°C)"
+                        stroke="#f97316"
+                        strokeWidth={2.5}
+                        fill="url(#tempGradModal)"
+                        connectNulls
+                      />
+                      <Area
+                        hide={chartTab !== "gases"}
+                        type="monotone"
+                        dataKey="c2h2"
+                        name="Acetylene C₂H₂ (ppm)"
+                        stroke="#a855f7"
+                        strokeWidth={2}
+                        fill="url(#c2h2GradModal)"
+                        connectNulls
+                      />
+                      <Area
+                        hide={chartTab !== "gases"}
+                        type="monotone"
+                        dataKey="ch4"
+                        name="Methane CH₄ (ppm)"
+                        stroke="#06b6d4"
+                        strokeWidth={2}
+                        fill="url(#ch4GradModal)"
+                        connectNulls
+                      />
+                      <Area
+                        hide={chartTab !== "gases"}
+                        type="monotone"
+                        dataKey="h2"
+                        name="Hydrogen H₂ (ppm)"
+                        stroke="#eab308"
+                        strokeWidth={2}
+                        fill="url(#h2GradModal)"
+                        connectNulls
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </div>
           ) : null}
 

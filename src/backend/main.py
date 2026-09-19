@@ -60,6 +60,7 @@ from auth_router import router as auth_router
 from pipeline.score_asset_risk import score_asset_risk, score_all_assets
 from pipeline.grid_impact_ranker import rank_assets
 from pipeline.maintenance_plan import generate_maintenance_plan
+from pipeline.duval import calculate_duval_triangle
 
 DATA_DIR = SRC_DIR / "data"
 
@@ -295,7 +296,58 @@ def get_asset_detail(asset_id: str, generate_advisory: bool = True):
         result["composite_score"] = float(ranked_row.iloc[0]["composite_score"])
         result["rank"] = int(ranked_row.iloc[0]["rank"])
 
+    # Calculate real-time Duval Triangle 1 coordinates & zone from actual latest telemetry
+    ch4_latest = float(latest.get("Methane", 0.0) or 0.0)
+    c2h4_latest = float(latest.get("Ethylene", 0.0) or 0.0)
+    c2h2_latest = float(latest.get("Acethylene", 0.0) or 0.0)
+    duval = calculate_duval_triangle(ch4_latest, c2h4_latest, c2h2_latest)
+    pred_fault = str(result.get("fault_type", "NF"))
+    duval["zone_agreement"] = bool(duval["zone"] == pred_fault or (duval["zone"] in ("D1", "D2") and pred_fault in ("D1", "D2")) or (duval["zone"] in ("T1", "T2", "T3") and pred_fault in ("T1", "T2", "T3")))
+    result["duval_analysis"] = duval
+
     return result
+
+
+@app.get("/api/asset/{asset_id}/duval-trajectory")
+def get_asset_duval_trajectory(asset_id: str):
+    """
+    Return the genuine 90-day time-series Duval Triangle coordinates for an asset.
+    Calculates exact %CH4, %C2H4, %C2H2 and Duval zone for every historical day from actual telemetry.
+    """
+    _load_cache()
+    ts = _cache.get("timeseries", pd.DataFrame())
+    if ts.empty:
+        raise HTTPException(404, "Time-series data not loaded.")
+    asset_ts = ts[ts["asset_id"] == asset_id]
+    if asset_ts.empty:
+        raise HTTPException(404, f"Asset '{asset_id}' not found.")
+
+    sorted_ts = asset_ts.sort_values("day")
+    trajectory = []
+    for _, row in sorted_ts.iterrows():
+        ch4 = float(row.get("Methane", 0.0) or 0.0)
+        c2h4 = float(row.get("Ethylene", 0.0) or 0.0)
+        c2h2 = float(row.get("Acethylene", 0.0) or 0.0)
+        duval = calculate_duval_triangle(ch4, c2h4, c2h2)
+        trajectory.append({
+            "day": int(row.get("day", 0)),
+            "date": str(row.get("date", "")),
+            "pct_ch4": duval["pct_ch4"],
+            "pct_c2h4": duval["pct_c2h4"],
+            "pct_c2h2": duval["pct_c2h2"],
+            "zone": duval["zone"],
+            "zone_name": duval["zone_name"],
+            "ch4_ppm": round(ch4, 1),
+            "c2h4_ppm": round(c2h4, 1),
+            "c2h2_ppm": round(c2h2, 1),
+            "health_index": round(float(row.get("health_index", 13.4)), 1),
+            "rul_days": round(float(row.get("RUL_days", 180.0)), 1),
+        })
+    return {
+        "asset_id": asset_id,
+        "total_days": len(trajectory),
+        "trajectory": trajectory
+    }
 
 
 @app.get("/api/plan")
@@ -388,6 +440,15 @@ def score_adhoc(reading: SensorReading):
         result["fault_prob"] = result.pop("fault_confidence", 0.0)
     result["top_3_shap"] = result.pop("top3_shap_features", [])
     result.pop("fault_confidence", None)
+
+    # Real-time Duval Triangle calculation from adhoc sensor values
+    ch4_adhoc = float(sensor_dict.get("Methane", 0.0) or 0.0)
+    c2h4_adhoc = float(sensor_dict.get("Ethylene", 0.0) or 0.0)
+    c2h2_adhoc = float(sensor_dict.get("Acethylene", 0.0) or 0.0)
+    duval_adhoc = calculate_duval_triangle(ch4_adhoc, c2h4_adhoc, c2h2_adhoc)
+    pred_fault_adhoc = str(result.get("fault_type", "NF"))
+    duval_adhoc["zone_agreement"] = bool(duval_adhoc["zone"] == pred_fault_adhoc or (duval_adhoc["zone"] in ("D1", "D2") and pred_fault_adhoc in ("D1", "D2")) or (duval_adhoc["zone"] in ("T1", "T2", "T3") and pred_fault_adhoc in ("T1", "T2", "T3")))
+    result["duval_analysis"] = duval_adhoc
 
     return result
 

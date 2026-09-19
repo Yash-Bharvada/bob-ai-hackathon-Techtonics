@@ -19,7 +19,14 @@ import {
   type WeatherCondition,
 } from "@/lib/prediction";
 import { initialGridAssets } from "@/lib/gridData";
-import { techtonicsApi, type AdhocScoreResponse, type CsvScoreResponse, type CsvScoreRow } from "@/lib/techtonicsApi";
+import {
+  techtonicsApi,
+  type AdhocScoreResponse,
+  type CsvScoreResponse,
+  type CsvScoreRow,
+  type DuvalTrajectoryPoint,
+} from "@/lib/techtonicsApi";
+import { DuvalTriangle } from "@/components/DuvalTriangle";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -94,8 +101,10 @@ function PredictionStudioPage() {
   // DGA gas sliders (ppm) — zero defaults, overwritten by real API data on mount
   const [acethylenePpm, setAcethylenePpm] = useState<number>(0);
   const [methanePpm, setMethanePpm] = useState<number>(0);
+  const [ethylenePpm, setEthylenePpm] = useState<number>(0);
   const [hydrogenPpm, setHydrogenPpm] = useState<number>(0);
   const [dielectricRigidity, setDielectricRigidity] = useState<number>(60);
+  const [duvalTrajectory, setDuvalTrajectory] = useState<DuvalTrajectoryPoint[]>([]);
 
   const [calculating, setCalculating] = useState(false);
   const [calculationTrigger, setCalculationTrigger] = useState(0);
@@ -127,6 +136,7 @@ function PredictionStudioPage() {
       equipmentWearPercent: equipmentWear,
       acethylenePpm,
       methanePpm,
+      ethylenePpm,
       hydrogenPpm,
       dielectricRigidityKv: dielectricRigidity,
     }),
@@ -139,6 +149,7 @@ function PredictionStudioPage() {
       equipmentWear,
       acethylenePpm,
       methanePpm,
+      ethylenePpm,
       hydrogenPpm,
       dielectricRigidity,
     ]
@@ -214,12 +225,20 @@ function PredictionStudioPage() {
       if (readings) {
         if (readings.Acethylene != null) setAcethylenePpm(Math.round(readings.Acethylene));
         if (readings.Methane != null) setMethanePpm(Math.round(readings.Methane));
+        if (readings.Ethylene != null) setEthylenePpm(Math.round(readings.Ethylene));
         if (readings.Hydrogen != null) setHydrogenPpm(Math.round(readings.Hydrogen));
         if (readings["Dielectric rigidity"] != null) setDielectricRigidity(Math.round(readings["Dielectric rigidity"]));
         if (readings.load_pct != null) setLoadFactor(Math.round(readings.load_pct));
         if (readings.top_oil_temp_c != null) setAmbientTemp(Math.max(20, Math.round(readings.top_oil_temp_c - 35)));
       }
     }).catch(() => {}).finally(() => { if (active) setSensorLoading(false); });
+
+    // Fetch genuine 90-day Duval trajectory for historical drift line
+    techtonicsApi.getDuvalTrajectory(selectedAssetId).then((res) => {
+      if (active && Array.isArray(res?.trajectory)) {
+        setDuvalTrajectory(res.trajectory);
+      }
+    }).catch(() => {});
 
     return () => { active = false; };
   }, [mounted, isAuthed, selectedAssetId]);
@@ -235,6 +254,7 @@ function PredictionStudioPage() {
     if (presetId.includes("arcing")) setWaveformType("transient");
     else if (presetId.includes("thermal")) setWaveformType("harmonic");
     else setWaveformType("live");
+    if (found.inputs.ethylenePpm != null) setEthylenePpm(found.inputs.ethylenePpm);
 
     // Changing selectedAssetId will trigger the useEffect that fetches live sensor data
     if (found.inputs.assetId !== selectedAssetId) {
@@ -248,7 +268,7 @@ function PredictionStudioPage() {
         Hydrogen: hydrogenPpm,
         Methane: methanePpm,
         Acethylene: acethylenePpm,
-        Ethylene: found.inputs.ethylenePpm ?? 200,
+        Ethylene: found.inputs.ethylenePpm ?? ethylenePpm,
         Ethane: found.inputs.ethanePpm ?? 80,
         Dielectric_rigidity: dielectricRigidity,
         top_oil_temp_c: ambientTemp + 35,
@@ -268,7 +288,7 @@ function PredictionStudioPage() {
         Hydrogen: hydrogenPpm,
         Methane: methanePpm,
         Acethylene: acethylenePpm,
-        Ethylene: presetScenarios.find((p) => p.id === activeScenarioId)?.inputs.ethylenePpm ?? 200,
+        Ethylene: ethylenePpm,
         Ethane: presetScenarios.find((p) => p.id === activeScenarioId)?.inputs.ethanePpm ?? 80,
         Dielectric_rigidity: dielectricRigidity,
         top_oil_temp_c: ambientTemp + 35,
@@ -613,6 +633,29 @@ function PredictionStudioPage() {
                 />
               </div>
 
+              {/* Ethylene Gas (C2H4) */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-foreground">Dissolved Ethylene (C2H4) — High-Temp Gas</span>
+                  <span className={`font-mono text-sm font-bold ${ethylenePpm > 200 ? "text-red-600 dark:text-red-400" : "text-foreground"}`}>
+                    {ethylenePpm} ppm
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={3000}
+                  value={ethylenePpm}
+                  onChange={(e) => setEthylenePpm(Number(e.target.value))}
+                  className="mt-2 w-full accent-red-600 cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5 font-mono">
+                  <span>0 (Nominal)</span>
+                  <span>100 (Threshold)</span>
+                  <span>3,000 ppm (Arcing/Thermal)</span>
+                </div>
+              </div>
+
               {/* Dielectric Rigidity (kV) */}
               <div>
                 <div className="flex items-center justify-between">
@@ -844,6 +887,19 @@ function PredictionStudioPage() {
               </div>
             </div>
           )}
+
+          {/* Duval Triangle 1 Diagnostics (IEC 60599 Real-Time Geometry) */}
+          <DuvalTriangle
+            ch4Ppm={methanePpm}
+            c2h4Ppm={ethylenePpm}
+            c2h2Ppm={acethylenePpm}
+            modelPredictedFault={liveResult?.fault_type || displayedFault}
+            duvalAnalysis={liveResult?.duval_analysis}
+            trajectory={duvalTrajectory}
+            assetId={selectedAssetId}
+            size={520}
+            showTitle={true}
+          />
 
           {/* Recommended Actions — live Groq actions when available, else local heuristic */}
           <div className="rounded-3xl border border-border/60 bg-card p-6 shadow-sm">

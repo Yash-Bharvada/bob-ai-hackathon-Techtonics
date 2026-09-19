@@ -149,6 +149,39 @@ export interface AssetDetailResponse {
   };
   composite_score?: number;
   rank?: number;
+  duval_analysis?: DuvalAnalysis;
+}
+
+export interface DuvalAnalysis {
+  pct_ch4: number;
+  pct_c2h4: number;
+  pct_c2h2: number;
+  total_hydrocarbon_ppm: number;
+  zone: "PD" | "T1" | "T2" | "T3" | "D1" | "D2" | "DT" | "NF";
+  zone_name: string;
+  description: string;
+  zone_agreement?: boolean;
+}
+
+export interface DuvalTrajectoryPoint {
+  day: number;
+  date: string;
+  pct_ch4: number;
+  pct_c2h4: number;
+  pct_c2h2: number;
+  zone: string;
+  zone_name: string;
+  ch4_ppm: number;
+  c2h4_ppm: number;
+  c2h2_ppm: number;
+  health_index: number;
+  rul_days: number;
+}
+
+export interface DuvalTrajectoryResponse {
+  asset_id: string;
+  total_days: number;
+  trajectory: DuvalTrajectoryPoint[];
 }
 
 export interface TimeseriesPoint {
@@ -245,6 +278,7 @@ export interface AdhocScoreResponse {
   top_3_shap: [string, number][];
   advisory_text?: string;
   advisory_source?: "ibm_bob_llm" | "deterministic_fallback";
+  duval_analysis?: DuvalAnalysis;
 }
 
 async function requestWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 4000) {
@@ -315,6 +349,16 @@ export const techtonicsApi = {
       `${API_BASE}/api/timeseries/${encodeURIComponent(assetId)}`,
     );
     if (!res.ok) throw new Error(`HTTP ${res.status} from /api/timeseries/${assetId}`);
+    return res.json();
+  },
+
+  async getDuvalTrajectory(assetId: string): Promise<DuvalTrajectoryResponse> {
+    const res = await requestWithTimeout(
+      `${API_BASE}/api/asset/${encodeURIComponent(assetId)}/duval-trajectory`,
+      {},
+      6000,
+    );
+    if (!res.ok) throw new Error(`HTTP ${res.status} from /api/asset/${assetId}/duval-trajectory`);
     return res.json();
   },
 

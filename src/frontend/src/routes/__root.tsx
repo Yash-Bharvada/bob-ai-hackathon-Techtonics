@@ -7,6 +7,7 @@ import {
   useRouterState,
   HeadContent,
   Scripts,
+  type ErrorComponentProps,
 } from "@tanstack/react-router";
 import { type ReactNode } from "react";
 
@@ -21,7 +22,8 @@ function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground font-mono">404</h1>
+        <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">404</span>
+        <h1 className="mt-2 text-xl font-semibold text-foreground">Node Not Found</h1>
         <p className="mt-4 text-muted-foreground">This grid segment is offline.</p>
         <div className="mt-6">
           <Link to="/" className="pill inline-flex items-center bg-ink px-5 py-2.5 text-sm text-cream hover:bg-ink/90">
@@ -33,7 +35,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: ErrorComponentProps) {
   console.error("Signal error caught in root boundary:", error);
   const router = useRouter();
 
