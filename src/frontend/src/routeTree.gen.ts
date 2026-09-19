@@ -9,31 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as GridRouteImport } from './routes/grid'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as PredictRouteImport } from './routes/predict'
 import { Route as TechnologyRouteImport } from './routes/technology'
+import { Route as StreamRouteImport } from './routes/stream'
+import { Route as PredictRouteImport } from './routes/predict'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as GridRouteImport } from './routes/grid'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as BlackoutRouteImport } from './routes/blackout'
+import { Route as IndexRouteImport } from './routes/index'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const TechnologyRoute = TechnologyRouteImport.update({
+  id: '/technology',
+  path: '/technology',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const GridRoute = GridRouteImport.update({
-  id: '/grid',
-  path: '/grid',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+const StreamRoute = StreamRouteImport.update({
+  id: '/stream',
+  path: '/stream',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PredictRoute = PredictRouteImport.update({
@@ -41,90 +33,121 @@ const PredictRoute = PredictRouteImport.update({
   path: '/predict',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TechnologyRoute = TechnologyRouteImport.update({
-  id: '/technology',
-  path: '/technology',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GridRoute = GridRouteImport.update({
+  id: '/grid',
+  path: '/grid',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlackoutRoute = BlackoutRouteImport.update({
+  id: '/blackout',
+  path: '/blackout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/blackout': typeof BlackoutRoute
   '/dashboard': typeof DashboardRoute
   '/grid': typeof GridRoute
   '/login': typeof LoginRoute
   '/predict': typeof PredictRoute
+  '/stream': typeof StreamRoute
   '/technology': typeof TechnologyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/blackout': typeof BlackoutRoute
   '/dashboard': typeof DashboardRoute
   '/grid': typeof GridRoute
   '/login': typeof LoginRoute
   '/predict': typeof PredictRoute
+  '/stream': typeof StreamRoute
   '/technology': typeof TechnologyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/blackout': typeof BlackoutRoute
   '/dashboard': typeof DashboardRoute
   '/grid': typeof GridRoute
   '/login': typeof LoginRoute
   '/predict': typeof PredictRoute
+  '/stream': typeof StreamRoute
   '/technology': typeof TechnologyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/dashboard' | '/grid' | '/login' | '/predict' | '/technology'
-  fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/dashboard' | '/grid' | '/login' | '/predict' | '/technology'
-  id:
-    | '__root__'
     | '/'
+    | '/blackout'
     | '/dashboard'
     | '/grid'
     | '/login'
     | '/predict'
+    | '/stream'
+    | '/technology'
+  fileRoutesByTo: FileRoutesByTo
+  to:
+    | '/'
+    | '/blackout'
+    | '/dashboard'
+    | '/grid'
+    | '/login'
+    | '/predict'
+    | '/stream'
+    | '/technology'
+  id:
+    | '__root__'
+    | '/'
+    | '/blackout'
+    | '/dashboard'
+    | '/grid'
+    | '/login'
+    | '/predict'
+    | '/stream'
     | '/technology'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BlackoutRoute: typeof BlackoutRoute
   DashboardRoute: typeof DashboardRoute
   GridRoute: typeof GridRoute
   LoginRoute: typeof LoginRoute
   PredictRoute: typeof PredictRoute
+  StreamRoute: typeof StreamRoute
   TechnologyRoute: typeof TechnologyRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/technology': {
+      id: '/technology'
+      path: '/technology'
+      fullPath: '/technology'
+      preLoaderRoute: typeof TechnologyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/grid': {
-      id: '/grid'
-      path: '/grid'
-      fullPath: '/grid'
-      preLoaderRoute: typeof GridRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
+    '/stream': {
+      id: '/stream'
+      path: '/stream'
+      fullPath: '/stream'
+      preLoaderRoute: typeof StreamRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/predict': {
@@ -134,11 +157,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PredictRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/technology': {
-      id: '/technology'
-      path: '/technology'
-      fullPath: '/technology'
-      preLoaderRoute: typeof TechnologyRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/grid': {
+      id: '/grid'
+      path: '/grid'
+      fullPath: '/grid'
+      preLoaderRoute: typeof GridRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blackout': {
+      id: '/blackout'
+      path: '/blackout'
+      fullPath: '/blackout'
+      preLoaderRoute: typeof BlackoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -146,10 +197,12 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BlackoutRoute: BlackoutRoute,
   DashboardRoute: DashboardRoute,
   GridRoute: GridRoute,
   LoginRoute: LoginRoute,
   PredictRoute: PredictRoute,
+  StreamRoute: StreamRoute,
   TechnologyRoute: TechnologyRoute,
 }
 export const routeTree = rootRouteImport

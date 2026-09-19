@@ -1,0 +1,80 @@
+consumer_id,asset_id,substation,feeder_line,consumer_name,category,mobile_number,address_area,peak_load_kw,sms_alert_status
+CONS-TX-101-001,TX-101,Anand Substation #1,Feeder Line-1,Central Anand Clinic #1,Hospital / Critical,+91 98250 11000,Hospital Road,50.0,QUEUED
+CONS-TX-101-002,TX-101,Anand Substation #1,Feeder Line-1,Residential Cluster #1 (240 Homes),Residential,+91 94260 22000,Anand Sector A,0.7,QUEUED
+CONS-TX-101-003,TX-101,Anand Substation #1,Feeder Line-1,Substation Pump Station #1,Water Supply,+91 98240 33000,Water Works Road,30.0,QUEUED
+CONS-TX-101-004,TX-101,Anand Substation #1,Feeder Line-1,Commercial Complex #1,Commercial,+91 97120 44000,Main Bazaar,22.0,QUEUED
+CONS-TX-102-001,TX-102,Anand Substation #2,Feeder Line-2,Central Anand Clinic #2,Hospital / Critical,+91 98250 11000,Hospital Road,50.0,QUEUED
+CONS-TX-102-002,TX-102,Anand Substation #2,Feeder Line-2,Residential Cluster #2 (240 Homes),Residential,+91 94260 22000,Anand Sector A,0.7,QUEUED
+CONS-TX-102-003,TX-102,Anand Substation #2,Feeder Line-2,Substation Pump Station #2,Water Supply,+91 98240 33000,Water Works Road,30.0,QUEUED
+CONS-TX-102-004,TX-102,Anand Substation #2,Feeder Line-2,Commercial Complex #2,Commercial,+91 97120 44000,Main Bazaar,22.0,QUEUED
+CONS-TX-103-001,TX-103,Anand Substation #3,Feeder Line-3,Central Anand Clinic #3,Hospital / Critical,+91 98250 11000,Hospital Road,50.0,QUEUED
+CONS-TX-103-002,TX-103,Anand Substation #3,Feeder Line-3,Residential Cluster #3 (240 Homes),Residential,+91 94260 22000,Anand Sector A,0.7,QUEUED
+CONS-TX-103-003,TX-103,Anand Substation #3,Feeder Line-3,Substation Pump Station #3,Water Supply,+91 98240 33000,Water Works Road,30.0,QUEUED
+CONS-TX-103-004,TX-103,Anand Substation #3,Feeder Line-3,Commercial Complex #3,Commercial,+91 97120 44000,Main Bazaar,22.0,QUEUED
+CONS-TX-104-001,TX-104,Anand Substation #4,Feeder Line-4,Central Anand Clinic #4,Hospital / Critical,+91 98250 11000,Hospital Road,50.0,QUEUED
+CONS-TX-104-002,TX-104,Anand Substation #4,Feeder Line-4,Residential Cluster #4 (240 Homes),Residential,+91 94260 22000,Anand Sector A,0.7,QUEUED
+CONS-TX-104-003,TX-104,Anand Substation #4,Feeder Line-4,Substation Pump Station #4,Water Supply,+91 98240 33000,Water Works Road,30.0,QUEUED
+CONS-TX-104-004,TX-104,Anand Substation #4,Feeder Line-4,Commercial Complex #4,Commercial,+91 97120 44000,Main Bazaar,22.0,QUEUED
+CONS-TX-105-001,TX-105,Anand Substation #5,Feeder Line-5,Central Anand Clinic #5,Hospital / Critical,+91 98250 11000,Hospital Road,50.0,QUEUED
+CONS-TX-105-002,TX-105,Anand Substation #5,Feeder Line-5,Residential Cluster #5 (240 Homes),Residential,+91 94260 22000,Anand Sector A,0.7,QUEUED
+CONS-TX-105-003,TX-105,Anand Substation #5,Feeder Line-5,Substation Pump Station #5,Water Supply,+91 98240 33000,Water Works Road,30.0,QUEUED
+CONS-TX-105-004,TX-105,Anand Substation #5,Feeder Line-5,Commercial Complex #5,Commercial,+91 97120 44000,Main Bazaar,22.0,QUEUED
+CONS-TX-106-001,TX-106,Anand Substation #6,Feeder Line-6,Central Anand Clinic #6,Hospital / Critical,+91 98250 11000,Hospital Road,50.0,QUEUED
+CONS-TX-106-002,TX-106,Anand Substation #6,Feeder Line-6,Residential Cluster #6 (240 Homes),Residential,+91 94260 22000,Anand Sector A,0.7,QUEUED
+CONS-TX-106-003,TX-106,Anand Substation #6,Feeder Line-6,Substation Pump Station #6,Water Supply,+91 98240 33000,Water Works Road,30.0,QUEUED
+CONS-TX-106-004,TX-106,Anand Substation #6,Feeder Line-6,Commercial Complex #6,Commercial,+91 97120 44000,Main Bazaar,22.0,QUEUED
+CONS-TX-107-001,TX-107,GIDC Industrial Phase-2,Line-B Feeder,GIDC General Hospital & Emergency Unit,Hospital / Critical,+91 98250 14210,Phase-2 Main Gate,120.0,QUEUED
+CONS-TX-107-002,TX-107,GIDC Industrial Phase-2,Line-B Feeder,Patel Precision Tooling Industries,Industrial,+91 98980 33412,"Shed #14, GIDC",85.0,QUEUED
+CONS-TX-107-003,TX-107,GIDC Industrial Phase-2,Line-B Feeder,Sh. Vikrambhai Parmar (Residency),Residential,+91 94260 55109,"Flat 402, GIDC Towers",0.75,QUEUED
+CONS-TX-107-004,TX-107,GIDC Industrial Phase-2,Line-B Feeder,Anand Water Supply Pumping Station #4,Water Supply,+91 98240 88901,Sector 3 Water Works,45.0,QUEUED
+CONS-TX-107-005,TX-107,GIDC Industrial Phase-2,Line-B Feeder,Shreeji Cold Storage & Logistics,Commercial,+91 97120 44211,"Plot 88, GIDC Phase-2",35.0,QUEUED
+CONS-TX-107-006,TX-107,GIDC Industrial Phase-2,Line-B Feeder,Smt. Hansaben Patel,Residential,+91 98981 22340,"House #12, GIDC Colony",0.65,QUEUED
+CONS-TX-107-007,TX-107,GIDC Industrial Phase-2,Line-B Feeder,Anand Dairy Collection Center #3,Commercial,+91 94270 99012,Feeder Junction B,18.0,QUEUED
+CONS-TX-107-008,TX-107,GIDC Industrial Phase-2,Line-B Feeder,GIDC Fire Station & Control Room,Public Safety,+91 98250 11100,Central GIDC Complex,12.0,QUEUED
+CONS-TX-107-009,TX-107,GIDC Industrial Phase-2,Line-B Feeder,Er. Rajesh Shah (Substation Engg),Grid Personnel,+91 98251 00982,Staff Quarters B1,0.8,QUEUED
+CONS-TX-107-010,TX-107,GIDC Industrial Phase-2,Line-B Feeder,Sh. Rameshchandra Joshi,Residential,+91 94263 77123,"House #44, GIDC Colony",0.7,QUEUED
+CONS-TX-108-001,TX-108,Anand Substation #8,Feeder Line-8,Central Anand Clinic #8,Hospital / Critical,+91 98250 11000,Hospital Road,50.0,QUEUED
+CONS-TX-108-002,TX-108,Anand Substation #8,Feeder Line-8,Residential Cluster #8 (240 Homes),Residential,+91 94260 22000,Anand Sector A,0.7,QUEUED
+CONS-TX-108-003,TX-108,Anand Substation #8,Feeder Line-8,Substation Pump Station #8,Water Supply,+91 98240 33000,Water Works Road,30.0,QUEUED
+CONS-TX-108-004,TX-108,Anand Substation #8,Feeder Line-8,Commercial Complex #8,Commercial,+91 97120 44000,Main Bazaar,22.0,QUEUED
+CONS-TX-109-001,TX-109,Anand Substation #9,Feeder Line-9,Central Anand Clinic #9,Hospital / Critical,+91 98250 11000,Hospital Road,50.0,QUEUED
+CONS-TX-109-002,TX-109,Anand Substation #9,Feeder Line-9,Residential Cluster #9 (240 Homes),Residential,+91 94260 22000,Anand Sector A,0.7,QUEUED
+CONS-TX-109-003,TX-109,Anand Substation #9,Feeder Line-9,Substation Pump Station #9,Water Supply,+91 98240 33000,Water Works Road,30.0,QUEUED
+CONS-TX-109-004,TX-109,Anand Substation #9,Feeder Line-9,Commercial Complex #9,Commercial,+91 97120 44000,Main Bazaar,22.0,QUEUED
+CONS-TX-110-001,TX-110,Anand Substation #10,Feeder Line-10,Central Anand Clinic #10,Hospital / Critical,+91 98250 11000,Hospital Road,50.0,QUEUED
+CONS-TX-110-002,TX-110,Anand Substation #10,Feeder Line-10,Residential Cluster #10 (240 Homes),Residential,+91 94260 22000,Anand Sector A,0.7,QUEUED
+CONS-TX-110-003,TX-110,Anand Substation #10,Feeder Line-10,Substation Pump Station #10,Water Supply,+91 98240 33000,Water Works Road,30.0,QUEUED
+CONS-TX-110-004,TX-110,Anand Substation #10,Feeder Line-10,Commercial Complex #10,Commercial,+91 97120 44000,Main Bazaar,22.0,QUEUED
+CONS-TX-111-001,TX-111,Anand Substation #11,Feeder Line-11,Central Anand Clinic #11,Hospital / Critical,+91 98250 11000,Hospital Road,50.0,QUEUED
+CONS-TX-111-002,TX-111,Anand Substation #11,Feeder Line-11,Residential Cluster #11 (240 Homes),Residential,+91 94260 22000,Anand Sector A,0.7,QUEUED
+CONS-TX-111-003,TX-111,Anand Substation #11,Feeder Line-11,Substation Pump Station #11,Water Supply,+91 98240 33000,Water Works Road,30.0,QUEUED
+CONS-TX-111-004,TX-111,Anand Substation #11,Feeder Line-11,Commercial Complex #11,Commercial,+91 97120 44000,Main Bazaar,22.0,QUEUED
+CONS-TX-112-001,TX-112,Anand Substation #12,Feeder Line-12,Central Anand Clinic #12,Hospital / Critical,+91 98250 11000,Hospital Road,50.0,QUEUED
+CONS-TX-112-002,TX-112,Anand Substation #12,Feeder Line-12,Residential Cluster #12 (240 Homes),Residential,+91 94260 22000,Anand Sector A,0.7,QUEUED
+CONS-TX-112-003,TX-112,Anand Substation #12,Feeder Line-12,Substation Pump Station #12,Water Supply,+91 98240 33000,Water Works Road,30.0,QUEUED
+CONS-TX-112-004,TX-112,Anand Substation #12,Feeder Line-12,Commercial Complex #12,Commercial,+91 97120 44000,Main Bazaar,22.0,QUEUED
+CONS-TX-113-001,TX-113,Anand Substation #13,Feeder Line-13,Central Anand Clinic #13,Hospital / Critical,+91 98250 11000,Hospital Road,50.0,QUEUED
+CONS-TX-113-002,TX-113,Anand Substation #13,Feeder Line-13,Residential Cluster #13 (240 Homes),Residential,+91 94260 22000,Anand Sector A,0.7,QUEUED
+CONS-TX-113-003,TX-113,Anand Substation #13,Feeder Line-13,Substation Pump Station #13,Water Supply,+91 98240 33000,Water Works Road,30.0,QUEUED
+CONS-TX-113-004,TX-113,Anand Substation #13,Feeder Line-13,Commercial Complex #13,Commercial,+91 97120 44000,Main Bazaar,22.0,QUEUED
+CONS-TX-114-001,TX-114,Anand Substation #14,Feeder Line-14,Central Anand Clinic #14,Hospital / Critical,+91 98250 11000,Hospital Road,50.0,QUEUED
+CONS-TX-114-002,TX-114,Anand Substation #14,Feeder Line-14,Residential Cluster #14 (240 Homes),Residential,+91 94260 22000,Anand Sector A,0.7,QUEUED
+CONS-TX-114-003,TX-114,Anand Substation #14,Feeder Line-14,Substation Pump Station #14,Water Supply,+91 98240 33000,Water Works Road,30.0,QUEUED
+CONS-TX-114-004,TX-114,Anand Substation #14,Feeder Line-14,Commercial Complex #14,Commercial,+91 97120 44000,Main Bazaar,22.0,QUEUED
+CONS-TX-115-001,TX-115,Anand South Bulk Substation,Feeder-1,Anand South Trauma Center,Hospital / Critical,+91 98250 99100,Station Road South,95.0,QUEUED
+CONS-TX-115-002,TX-115,Anand South Bulk Substation,Feeder-1,Amul Milk Processing Unit #2,Industrial,+91 98980 12345,Milk Chilling Complex,140.0,QUEUED
+CONS-TX-115-003,TX-115,Anand South Bulk Substation,Feeder-1,Smt. Sunitaben Amin,Residential,+91 94261 44556,Vidhya Nagar Road,0.75,QUEUED
+CONS-TX-115-004,TX-115,Anand South Bulk Substation,Feeder-1,Borsad Road Commercial Center,Commercial,+91 98241 66778,Shop #101-112,28.0,QUEUED
+CONS-TX-115-005,TX-115,Anand South Bulk Substation,Feeder-1,South Anand Municipal Pump,Water Supply,+91 97122 33445,Borsad Gate Pump House,40.0,QUEUED
+CONS-TX-116-001,TX-116,Anand Substation #16,Feeder Line-16,Central Anand Clinic #16,Hospital / Critical,+91 98250 11000,Hospital Road,50.0,QUEUED
+CONS-TX-116-002,TX-116,Anand Substation #16,Feeder Line-16,Residential Cluster #16 (240 Homes),Residential,+91 94260 22000,Anand Sector A,0.7,QUEUED
+CONS-TX-116-003,TX-116,Anand Substation #16,Feeder Line-16,Substation Pump Station #16,Water Supply,+91 98240 33000,Water Works Road,30.0,QUEUED
+CONS-TX-116-004,TX-116,Anand Substation #16,Feeder Line-16,Commercial Complex #16,Commercial,+91 97120 44000,Main Bazaar,22.0,QUEUED
+CONS-TX-117-001,TX-117,Anand Substation #17,Feeder Line-17,Central Anand Clinic #17,Hospital / Critical,+91 98250 11000,Hospital Road,50.0,QUEUED
+CONS-TX-117-002,TX-117,Anand Substation #17,Feeder Line-17,Residential Cluster #17 (240 Homes),Residential,+91 94260 22000,Anand Sector A,0.7,QUEUED
+CONS-TX-117-003,TX-117,Anand Substation #17,Feeder Line-17,Substation Pump Station #17,Water Supply,+91 98240 33000,Water Works Road,30.0,QUEUED
+CONS-TX-117-004,TX-117,Anand Substation #17,Feeder Line-17,Commercial Complex #17,Commercial,+91 97120 44000,Main Bazaar,22.0,QUEUED
+CONS-TX-118-001,TX-118,Anand Substation #18,Feeder Line-18,Central Anand Clinic #18,Hospital / Critical,+91 98250 11000,Hospital Road,50.0,QUEUED
+CONS-TX-118-002,TX-118,Anand Substation #18,Feeder Line-18,Residential Cluster #18 (240 Homes),Residential,+91 94260 22000,Anand Sector A,0.7,QUEUED
+CONS-TX-118-003,TX-118,Anand Substation #18,Feeder Line-18,Substation Pump Station #18,Water Supply,+91 98240 33000,Water Works Road,30.0,QUEUED
+CONS-TX-118-004,TX-118,Anand Substation #18,Feeder Line-18,Commercial Complex #18,Commercial,+91 97120 44000,Main Bazaar,22.0,QUEUED

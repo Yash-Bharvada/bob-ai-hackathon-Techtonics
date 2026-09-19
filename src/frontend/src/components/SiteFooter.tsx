@@ -25,6 +25,11 @@ export function SiteFooter() {
               </Link>
             </li>
             <li>
+              <Link to="/stream" className="hover:underline text-red-400 font-semibold">
+                Live Sensor Stream (Replay)
+              </Link>
+            </li>
+            <li>
               <Link to="/grid" className="hover:underline text-[#d2f831]">
                 Live Grid & Blackout Shield
               </Link>

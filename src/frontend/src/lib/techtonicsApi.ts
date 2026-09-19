@@ -577,6 +577,32 @@ export const techtonicsApi = {
     return res.json();
   },
 
+  /** POST /api/blackout/send-single-sms */
+  async sendSingleConsumerSms(params: {
+    consumer_id: string;
+    consumer_name: string;
+    mobile_number: string;
+    category: string;
+    asset_id: string;
+    address_area?: string;
+  }): Promise<{ status: string; dispatch: SmsDispatchRecord; message: string }> {
+    const authHeaders = _getAuthHeaders();
+    const res = await fetch(`${API_BASE}/api/blackout/send-single-sms`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...authHeaders,
+      },
+      body: JSON.stringify(params),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as any)?.detail || `HTTP ${res.status} dispatching SMS`);
+    }
+    return res.json();
+  },
+
   /** GET /api/blackout/sms-logs */
   async getSmsLogs(): Promise<SmsLogsResponse> {
     const authHeaders = _getAuthHeaders();
@@ -587,6 +613,83 @@ export const techtonicsApi = {
     if (!res.ok) {
       throw new Error(`HTTP ${res.status} fetching SMS logs`);
     }
+    return res.json();
+  },
+
+  /** GET /api/blackout/consumers/{asset_id} */
+  async getFeederConsumers(assetId: string): Promise<FeederConsumersResponse> {
+    const authHeaders = _getAuthHeaders();
+    const res = await fetch(`${API_BASE}/api/blackout/consumers/${encodeURIComponent(assetId)}`, {
+      headers: { ...authHeaders },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status} fetching feeder consumers for ${assetId}`);
+    }
+    return res.json();
+  },
+
+  /** GET /api/blackout/consumers/{asset_id}/csv — returns direct download URL */
+  getFeederConsumerCsvUrl(assetId: string): string {
+    return `${API_BASE}/api/blackout/consumers/${encodeURIComponent(assetId)}/csv`;
+  },
+
+  /** GET /api/blackout/consumers/sample-template — returns direct sample template CSV URL */
+  getSampleConsumerCsvUrl(): string {
+    return `${API_BASE}/api/blackout/consumers/sample-template`;
+  },
+
+  /** POST /api/blackout/consumers/upload */
+  async uploadFeederConsumersCsv(file: File, defaultAssetId: string = "TX-107"): Promise<{ status: string; message: string; uploaded_count: number; consumers: FeederConsumerRecord[] }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const authHeaders = _getAuthHeaders();
+    
+    // Remove Content-Type header if present so browser sets boundary for multipart
+    const headers = { ...authHeaders };
+    delete headers["Content-Type"];
+
+    const res = await fetch(`${API_BASE}/api/blackout/consumers/upload?default_asset_id=${encodeURIComponent(defaultAssetId)}`, {
+      method: "POST",
+      headers,
+      body: formData,
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      throw new Error(`HTTP ${res.status} uploading consumer CSV: ${errText}`);
+    }
+    return res.json();
+  },
+
+  /** GET /api/stream/assets */
+  async getStreamAssets(): Promise<{ assets: StreamAssetMetadata[] }> {
+    const res = await fetch(`${API_BASE}/api/stream/assets`, {
+      headers: _getAuthHeaders(),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status} fetching streaming assets`);
+    return res.json();
+  },
+
+  /** GET /api/stream/tick/{asset_id}/{day} */
+  async getStreamTick(assetId: string, day: number): Promise<StreamTickResponse> {
+    const res = await fetch(`${API_BASE}/api/stream/tick/${encodeURIComponent(assetId)}/${day}`, {
+      headers: _getAuthHeaders(),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status} fetching stream tick for ${assetId} day ${day}`);
+    return res.json();
+  },
+
+  /** GET /api/stream/history/{asset_id}?up_to_day={upToDay} */
+  async getStreamHistory(assetId: string, upToDay: number = 89): Promise<StreamHistoryResponse> {
+    const res = await fetch(`${API_BASE}/api/stream/history/${encodeURIComponent(assetId)}?up_to_day=${upToDay}`, {
+      headers: _getAuthHeaders(),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status} fetching stream history for ${assetId}`);
     return res.json();
   },
 
@@ -682,5 +785,99 @@ export interface SmsLogsResponse {
   logs: SmsDispatchRecord[];
   total: number;
 }
+
+export interface FeederConsumerRecord {
+  consumer_id: string;
+  asset_id: string;
+  substation: string;
+  feeder_line: string;
+  consumer_name: string;
+  category: string;
+  mobile_number: string;
+  address_area: string;
+  peak_load_kw: number;
+  sms_alert_status: string;
+}
+
+export interface FeederConsumersResponse {
+  asset_id: string;
+  substation: string;
+  total_feeder_households: number;
+  sample_consumers_count: number;
+  consumers: FeederConsumerRecord[];
+  csv_download_url: string;
+}
+
+// ─── Real-Time Telemetry Streaming & On-the-Fly ML Inference Types ─────────
+export interface StreamAssetMetadata {
+  asset_id: string;
+  substation: string;
+  voltage_kv: string;
+  mva_rating: number;
+  feeder_line: string;
+  phenomenon: string;
+  color: string;
+}
+
+export interface StreamSensorTelemetry {
+  hydrogen: number;
+  oxygen: number;
+  nitrogen: number;
+  methane: number;
+  co: number;
+  co2: number;
+  ethylene: number;
+  ethane: number;
+  acetylene: number;
+  top_oil_temp_c: number;
+  load_pct: number;
+  vibration_g: number;
+  dielectric_rigidity: number;
+  water_content: number;
+}
+
+export interface StreamLiveMlOutput {
+  health_index: number;
+  risk_tier: string;
+  rul_days: number;
+  fault_type: string;
+  fault_confidence_pct: number;
+  all_fault_probs: Record<string, number>;
+  blackout_probability_pct: number;
+  etr_mins: number;
+  ttf_hours: number;
+  current_load_mw: number;
+  affected_households: number;
+}
+
+export interface StreamTickResponse {
+  asset_id: string;
+  day: number;
+  date: string;
+  total_days: number;
+  metadata: StreamAssetMetadata;
+  sensor_telemetry: StreamSensorTelemetry;
+  live_ml_output: StreamLiveMlOutput;
+}
+
+export interface StreamHistoryPoint {
+  day: number;
+  date: string;
+  hydrogen: number;
+  acetylene: number;
+  methane: number;
+  ethylene: number;
+  co: number;
+  top_oil_temp_c: number;
+  load_pct: number;
+  health_index: number;
+}
+
+export interface StreamHistoryResponse {
+  asset_id: string;
+  history: StreamHistoryPoint[];
+  count: number;
+}
+
 
 
