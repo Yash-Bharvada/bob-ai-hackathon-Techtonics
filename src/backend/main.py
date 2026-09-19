@@ -520,6 +520,21 @@ def get_transformer_locations():
     return {"total": len(df), "locations": df.to_dict(orient="records")}
 
 
+@app.get("/api/docs/model-formulas/docx")
+def download_model_formulas_docx():
+    """Download the complete Word document (.docx) containing all mathematical models, formulas, and value analysis."""
+    docx_path = SRC_DIR.parent / "docs" / "VOLTRA_MODEL_FORMULAS_AND_SPECS.docx"
+    if not docx_path.exists():
+        docx_path = SRC_DIR.parent / "VOLTRA_MODEL_FORMULAS_AND_SPECS.docx"
+    if not docx_path.exists():
+        raise HTTPException(404, "VOLTRA_MODEL_FORMULAS_AND_SPECS.docx not found")
+    return FileResponse(
+        docx_path,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        filename="VOLTRA_MODEL_FORMULAS_AND_SPECS.docx"
+    )
+
+
 # ---------------------------------------------------------------------------
 # CSV batch scoring endpoint
 # ---------------------------------------------------------------------------
