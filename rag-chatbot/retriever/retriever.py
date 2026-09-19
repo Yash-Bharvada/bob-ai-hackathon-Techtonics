@@ -1,7 +1,8 @@
 import sys
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from qdrant_client import QdrantClient
+from qdrant_client import QdrantClient, models
+from qdrant_client.models import Filter, FieldCondition, MatchValue
 from sentence_transformers import SentenceTransformer
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -13,7 +14,9 @@ from config import settings
 
 class GridRetriever:
     """
-    Retriever for performing semantic similarity search over operational documents stored in Qdrant.
+    Retriever for performing semantic similarity search over documents stored in Qdrant.
+    Supports both unfiltered retrieval (retrieve) and dual-domain hybrid retrieval
+    (retrieve_hybrid) that balances project knowledge and operational telemetry.
     """
 
     def __init__(
@@ -52,7 +55,7 @@ class GridRetriever:
 
         return client
 
-    def retrieve(self, query: str, top_k: Optional[int] = None) -> List[Dict[str, Any]]:
+    def retrieve(self, query: str, top_k: Optional[int] = None, query_filter: Optional[Filter] = None) -> List[Dict[str, Any]]:
         """
         Perform similarity search for query against the Qdrant collection.
 
@@ -73,12 +76,11 @@ class GridRetriever:
         if not self.client.collection_exists(self.collection_name):
             raise RuntimeError(
                 f"Qdrant collection '{self.collection_name}' does not exist. "
-                "Please run 'python -m ingestion.embed_and_store' to build the index before querying."
+                "Please run 'python ingest_project.py' to build the index before querying."
             )
 
         # Generate normalized query embedding
         query_vector = self.embed_model.encode(query.strip(), normalize_embeddings=True).tolist()
-
 
         # Query points using Qdrant search
         try:
@@ -88,6 +90,7 @@ class GridRetriever:
                 query=query_vector,
                 limit=k,
                 with_payload=True,
+                query_filter=query_filter,
             )
             points = response.points
         except Exception:
@@ -97,6 +100,7 @@ class GridRetriever:
                 query_vector=query_vector,
                 limit=k,
                 with_payload=True,
+                query_filter=query_filter,
             )
 
         formatted_results: List[Dict[str, Any]] = []
@@ -117,6 +121,55 @@ class GridRetriever:
 
         return formatted_results
 
+    def retrieve_hybrid(self, query: str, top_k: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        Dual-domain retrieval: splits the top-K budget equally between
+        'project' knowledge and 'operational' telemetry, then merges by score.
+
+        This gives the LLM both project context (what VOLTRA is, API endpoints,
+        architecture) and live telemetry context in a single combined result list.
+
+        Args:
+            query: The user query string.
+            top_k: Total results to return (split ~50/50 between domains).
+
+        Returns:
+            Combined list of results sorted by score descending.
+        """
+        if not query or not query.strip():
+            return []
+
+        k = top_k if top_k is not None else self.top_k
+        # Each domain gets at least half the budget (ceiling so odd k is rounded up)
+        per_domain_k = max(1, (k + 1) // 2)
+
+        project_filter = Filter(
+            must=[FieldCondition(key="knowledge_type", match=MatchValue(value="project"))]
+        )
+        operational_filter = Filter(
+            must=[FieldCondition(key="knowledge_type", match=MatchValue(value="operational"))]
+        )
+
+        project_results: List[Dict[str, Any]] = []
+        operational_results: List[Dict[str, Any]] = []
+
+        try:
+            project_results = self.retrieve(query, top_k=per_domain_k, query_filter=project_filter)
+        except Exception:
+            # No project documents yet — degrade gracefully
+            project_results = []
+
+        try:
+            operational_results = self.retrieve(query, top_k=per_domain_k, query_filter=operational_filter)
+        except Exception:
+            # No operational documents yet — degrade gracefully
+            operational_results = []
+
+        # Merge and sort by score descending, cap at top_k
+        combined = project_results + operational_results
+        combined.sort(key=lambda x: x["score"], reverse=True)
+        return combined[:k]
+
 
 
 if __name__ == "__main__":
@@ -132,3 +185,4 @@ if __name__ == "__main__":
             print(f"  Metadata: {r['metadata']}")
     except Exception as e:
         print(f"Retriever error: {e}")
+

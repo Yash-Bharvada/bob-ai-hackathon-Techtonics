@@ -20,6 +20,7 @@ Endpoints:
 """
 
 import ast
+import asyncio
 import io
 import json
 import logging
@@ -61,6 +62,8 @@ from pipeline.score_asset_risk import score_asset_risk, score_all_assets
 from pipeline.grid_impact_ranker import rank_assets
 from pipeline.maintenance_plan import generate_maintenance_plan
 from pipeline.duval import calculate_duval_triangle
+
+from services.sms_alert import send_fault_alert, validate_config as _sms_validate_config
 
 DATA_DIR = SRC_DIR / "data"
 
@@ -152,6 +155,7 @@ def _load_cache() -> None:
 @app.on_event("startup")
 async def startup_event():
     _load_cache()
+    _sms_validate_config()
 
 
 # ---------------------------------------------------------------------------
@@ -229,7 +233,7 @@ def get_ranked():
 
 
 @app.get("/api/asset/{asset_id}")
-def get_asset_detail(asset_id: str, generate_advisory: bool = True):
+async def get_asset_detail(asset_id: str, generate_advisory: bool = True):
     """
     Single-asset detail view: model scores, SHAP top-3, advisory text.
     Advisory generation calls IBM Bob with graceful fallback.
@@ -304,6 +308,12 @@ def get_asset_detail(asset_id: str, generate_advisory: bool = True):
     pred_fault = str(result.get("fault_type", "NF"))
     duval["zone_agreement"] = bool(duval["zone"] == pred_fault or (duval["zone"] in ("D1", "D2") and pred_fault in ("D1", "D2")) or (duval["zone"] in ("T1", "T2", "T3") and pred_fault in ("T1", "T2", "T3")))
     result["duval_analysis"] = duval
+
+    # Fire-and-forget SMS fault alert — never blocks or breaks the response
+    try:
+        asyncio.create_task(send_fault_alert(result))
+    except Exception:
+        pass
 
     return result
 
@@ -596,7 +606,7 @@ class SensorReading(BaseModel):
 
 
 @app.post("/api/score")
-def score_adhoc(reading: SensorReading):
+async def score_adhoc(reading: SensorReading):
     """
     Score an ad-hoc sensor reading (JSON body).
     Field names with underscores are mapped back to spaced versions for Model 1.
@@ -654,6 +664,12 @@ def score_adhoc(reading: SensorReading):
             f"{tier} RISK: {reading.asset_id} evaluated with Health Index {hi:.1f} and approximately {rul:.0f} days RUL. "
             f"Model 2 predicts {f_type} fault ({f_conf}% confidence). Duval Triangle 1 confirms Zone {z_code} ({z_name})."
         )
+
+    # Fire-and-forget SMS fault alert — never blocks or breaks the response
+    try:
+        asyncio.create_task(send_fault_alert(result))
+    except Exception:
+        pass
 
     return result
 
