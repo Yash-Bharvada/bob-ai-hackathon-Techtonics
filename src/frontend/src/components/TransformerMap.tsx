@@ -4,14 +4,21 @@
  * Browser-only at runtime — maplibre-gl is declared as an SSR external in
  * vite.config.ts so Node never evaluates it. The component itself only mounts
  * inside a useEffect (browser only), so all window/WebGL usage is safe.
+ *
+ * Uses CARTO Dark Matter & Positron raster basemaps by default:
+ * - Instant in-memory style load (0ms network parse delay)
+ * - Zero font glyph or sprite dependencies (eliminates 404 hangs)
+ * - Automatic failover to OpenStreetMap raster tiles if network fails
+ * - Safety timers ensure substation pins render immediately regardless of slow tile networks
  */
 
 import { useEffect, useRef, useState, useCallback, type CSSProperties } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import {
-  MAP_STYLE_URL,
-  MAP_STYLE_DARK_URL,
+  CARTO_DARK_STYLE,
+  CARTO_LIGHT_STYLE,
+  OSM_RASTER_STYLE,
   TRANSFORMER_LOCATIONS_FULL,
   type TransformerLocation,
 } from "@/lib/transformerLocations";
@@ -67,7 +74,7 @@ function buildPinSvg(loc: TransformerLocation, selected: boolean): string {
 <svg xmlns="http://www.w3.org/2000/svg" width="44" height="56" viewBox="0 0 44 56" role="img" aria-label="${label}">
   <defs>
     <filter id="shadow-${loc.id}" x="-30%" y="-10%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.35"/>
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.45"/>
     </filter>
   </defs>
   <path
@@ -77,9 +84,9 @@ function buildPinSvg(loc: TransformerLocation, selected: boolean): string {
     stroke-width="${strokeW}"
     filter="url(#shadow-${loc.id})"
   />
-  <circle cx="22" cy="20" r="7" fill="white" opacity="0.9"/>
+  <circle cx="22" cy="20" r="7" fill="white" opacity="0.92"/>
   <path d="M24 13 L19 21 L22.5 21 L20 27 L25 19 L21.5 19 Z" fill="${color}"/>
-  <rect x="2" y="42" width="40" height="12" rx="6" fill="${color}" opacity="0.92"/>
+  <rect x="2" y="42" width="40" height="12" rx="6" fill="${color}" opacity="0.95"/>
   <text x="22" y="52" text-anchor="middle" font-size="8" font-family="IBM Plex Mono,monospace" font-weight="600" fill="white">${label}</text>
 </svg>`.trim();
 }
@@ -96,9 +103,12 @@ export function TransformerMap({
   const markersRef = useRef<Map<string, maplibregl.Marker>>(new Map());
   const popupRef = useRef<maplibregl.Popup | null>(null);
   const hasFittedBoundsRef = useRef<boolean>(false);
+  const fallbackTriedRef = useRef<boolean>(false);
+
   const [mapReady, setMapReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [tileStatus, setTileStatus] = useState<ConnectionStatus>("loading");
+  const [activeStyleKey, setActiveStyleKey] = useState<"dark" | "light" | "osm">("dark");
 
   // Merge live updates into the static locations
   const mergedLocations = useCallback((): TransformerLocation[] => {
@@ -126,14 +136,15 @@ export function TransformerMap({
         document.body.classList.contains("dark") ||
         localStorage.getItem("cinematic-theme") === "dark");
 
-    const activeStyle = isDark ? MAP_STYLE_DARK_URL : MAP_STYLE_URL;
+    const initialStyle = isDark ? CARTO_DARK_STYLE : CARTO_LIGHT_STYLE;
+    setActiveStyleKey(isDark ? "dark" : "light");
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: activeStyle,
+      style: initialStyle,
       center: [72.935, 22.495] as [number, number],
-      zoom: 11,
-      attributionControl: { compact: false },
+      zoom: 11.2,
+      attributionControl: { compact: true },
     });
 
     mapRef.current = map;
@@ -146,17 +157,36 @@ export function TransformerMap({
       } catch {}
     };
 
+    // Listen across multiple readiness milestones
     map.on("load", onMapLoaded);
-    if (map.loaded()) {
+    map.on("style.load", onMapLoaded);
+    map.on("idle", () => {
+      setTileStatus("connected");
+      if (!mapReady) onMapLoaded();
+    });
+
+    if (map.loaded() || map.isStyleLoaded()) {
       onMapLoaded();
     }
+
+    // Safety timeout: ensure pins are NEVER blocked by slow tile fetches
+    const safetyTimer = window.setTimeout(() => {
+      onMapLoaded();
+    }, 600);
+
+    // Track source data / tile loading
+    map.on("sourcedata", (e) => {
+      if (e.isSourceLoaded) {
+        setTileStatus("connected");
+      }
+    });
 
     map.on("error", (e: maplibregl.ErrorEvent) => {
       const msg: string =
         (e as unknown as { error?: { message?: string } })?.error?.message ?? "";
       const lower = msg.toLowerCase();
-      
-      // Unrecoverable WebGL / environment crashes
+
+      // Fatal WebGL crash
       const isFatal =
         lower.includes("webgl") ||
         lower.includes("context lost") ||
@@ -164,16 +194,21 @@ export function TransformerMap({
 
       if (isFatal) {
         setLoadError(msg || "WebGL graphic initialization failed.");
-      } else if (lower.includes("fetch") || lower.includes("network") || lower.includes("failed to fetch")) {
-        setTileStatus("disconnected");
-      } else {
-        // Benign missing glyph or layer sprite warning in openmaptiles vector style
-        // Must NOT interrupt the map display!
-        setTileStatus("connected");
+      } else if (lower.includes("tile") || lower.includes("fetch") || lower.includes("network")) {
+        // Automatic fallback to OSM raster tiles if CARTO has connectivity issues
+        if (!fallbackTriedRef.current) {
+          fallbackTriedRef.current = true;
+          try {
+            map.setStyle(OSM_RASTER_STYLE);
+            setActiveStyleKey("osm");
+          } catch {}
+        } else {
+          setTileStatus("disconnected");
+        }
       }
     });
 
-    map.addControl(new maplibregl.NavigationControl(), "top-right");
+    map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "top-right");
     map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
 
     // Dynamic resize observer so map canvas always fills parent container
@@ -194,7 +229,22 @@ export function TransformerMap({
     };
     window.addEventListener("resize", onWindowResize);
 
+    // Additional resize triggers for layout stability
+    const t1 = setTimeout(() => {
+      try {
+        map.resize();
+      } catch {}
+    }, 300);
+    const t2 = setTimeout(() => {
+      try {
+        map.resize();
+      } catch {}
+    }, 1000);
+
     return () => {
+      clearTimeout(safetyTimer);
+      clearTimeout(t1);
+      clearTimeout(t2);
       window.removeEventListener("resize", onWindowResize);
       if (resizeObserver) {
         resizeObserver.disconnect();
@@ -203,7 +253,6 @@ export function TransformerMap({
       mapRef.current = null;
     };
   }, []); // runs once on mount
-
 
   // ── Place / update markers whenever map is ready or liveUpdates/selectedId changes ─
   useEffect(() => {
@@ -275,7 +324,7 @@ export function TransformerMap({
     if (markersRef.current.size > 0 && !hasFittedBoundsRef.current && !selectedId) {
       const bounds = new maplibregl.LngLatBounds();
       validLocations.forEach((loc) => bounds.extend([loc.lng, loc.lat]));
-      map.fitBounds(bounds, { padding: 60, duration: 800, maxZoom: 14 });
+      map.fitBounds(bounds, { padding: 50, duration: 800, maxZoom: 13.5 });
       hasFittedBoundsRef.current = true;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -295,48 +344,92 @@ export function TransformerMap({
   function showPopup(map: maplibregl.Map, loc: TransformerLocation) {
     popupRef.current?.remove();
 
-    // Build popup DOM using textContent — never innerHTML for dynamic data
+    const isDark =
+      typeof document !== "undefined" &&
+      (document.documentElement.classList.contains("dark") ||
+        document.body.classList.contains("dark") ||
+        localStorage.getItem("cinematic-theme") === "dark");
+
     const container = document.createElement("div");
-    container.style.cssText = "font-family:system-ui,sans-serif;min-width:180px;padding:4px 0;";
+    container.style.cssText = `font-family:var(--font-mono, monospace);min-width:210px;padding:6px 2px;color:${isDark ? "#f4f4f5" : "#18181b"};`;
 
     const title = document.createElement("p");
-    title.style.cssText =
-      "font-weight:700;font-size:13px;margin:0 0 6px;line-height:1.3;color:#111;";
+    title.style.cssText = `font-weight:700;font-size:12px;margin:0 0 6px;line-height:1.35;color:${isDark ? "#ffffff" : "#09090b"};letter-spacing:-0.01em;`;
     title.textContent = loc.name;
     container.appendChild(title);
 
+    const badgeRow = document.createElement("div");
+    badgeRow.style.cssText = "display:flex;gap:6px;margin-bottom:8px;";
+    const critBadge = document.createElement("span");
+    const critBg = CRIT_COLOR[loc.criticality] ?? "#71717a";
+    critBadge.style.cssText = `font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;background:${critBg};color:#ffffff;text-transform:uppercase;`;
+    critBadge.textContent = loc.criticality;
+    badgeRow.appendChild(critBadge);
+
+    const zoneBadge = document.createElement("span");
+    zoneBadge.style.cssText = `font-size:10px;padding:2px 6px;border-radius:4px;background:${isDark ? "#27272a" : "#e4e4e7"};color:${isDark ? "#d4d4d8" : "#3f3f46"};`;
+    zoneBadge.textContent = loc.gridZone;
+    badgeRow.appendChild(zoneBadge);
+    container.appendChild(badgeRow);
+
     const rows: [string, string][] = [
-      ["Lat", loc.lat.toFixed(6)],
-      ["Lng", loc.lng.toFixed(6)],
-      ["Zone", loc.gridZone],
+      ["Lat, Lng", `${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}`],
       ["Voltage", loc.voltageKv],
-      ["MVA", String(loc.mvRating)],
-      ["Criticality", loc.criticality],
-      ["Status", loc.status ?? "—"],
+      ["Rating", `${loc.mvRating} MVA`],
+      ["Feeder", loc.feederLine ?? "—"],
+      ["Status", (loc.status ?? loc.archetype ?? "Stable").toUpperCase()],
     ];
 
     rows.forEach(([label, value]) => {
       const row = document.createElement("div");
       row.style.cssText =
-        "display:flex;justify-content:space-between;gap:12px;font-size:11px;padding:1px 0;";
+        "display:flex;justify-content:space-between;gap:12px;font-size:11px;padding:2px 0;";
       const lEl = document.createElement("span");
-      lEl.style.color = "#6b7280";
+      lEl.style.color = isDark ? "#a1a1aa" : "#71717a";
       lEl.textContent = label;
       const vEl = document.createElement("span");
-      vEl.style.cssText = "font-weight:600;color:#111;font-family:monospace;";
+      const isRisk = label === "Status" && (value.includes("RISK") || value.includes("CRITICAL"));
+      vEl.style.cssText = `font-weight:600;font-family:monospace;color:${isRisk ? "#ef4444" : isDark ? "#fafafa" : "#18181b"};`;
       vEl.textContent = value;
       row.appendChild(lEl);
       row.appendChild(vEl);
       container.appendChild(row);
     });
 
-    const popup = new maplibregl.Popup({ offset: 10, closeButton: true, maxWidth: "260px" })
+    const popup = new maplibregl.Popup({
+      offset: 12,
+      closeButton: true,
+      maxWidth: "280px",
+      className: "transformer-custom-popup",
+    })
       .setLngLat([loc.lng, loc.lat])
       .setDOMContent(container)
       .addTo(map);
 
     popupRef.current = popup;
   }
+
+  // ── Controls ────────────────────────────────────────────────────────────────
+  const handleResetView = () => {
+    const map = mapRef.current;
+    if (!map) return;
+    const bounds = new maplibregl.LngLatBounds();
+    TRANSFORMER_LOCATIONS_FULL.forEach((loc) => bounds.extend([loc.lng, loc.lat]));
+    map.fitBounds(bounds, { padding: 50, duration: 700, maxZoom: 13.5 });
+  };
+
+  const handleStyleChange = (styleKey: "dark" | "light" | "osm") => {
+    setActiveStyleKey(styleKey);
+    const map = mapRef.current;
+    if (!map) return;
+    try {
+      if (styleKey === "dark") map.setStyle(CARTO_DARK_STYLE);
+      else if (styleKey === "light") map.setStyle(CARTO_LIGHT_STYLE);
+      else if (styleKey === "osm") map.setStyle(OSM_RASTER_STYLE);
+    } catch (err) {
+      console.warn("Failed to switch style:", err);
+    }
+  };
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
@@ -351,23 +444,15 @@ export function TransformerMap({
         role="application"
       />
 
-      {/* Loading overlay */}
+      {/* Loading overlay - dark glassmorphism */}
       {!mapReady && !loadError && (
         <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "rgba(255,255,255,0.7)",
-            borderRadius: "inherit",
-            zIndex: 10,
-          }}
+          className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/80 backdrop-blur-md transition-opacity duration-300 rounded-inherit"
           aria-live="polite"
         >
-          <span style={{ fontSize: 13, color: "#6b7280", fontFamily: "monospace" }}>
-            Loading map tiles…
+          <div className="size-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin mb-3" />
+          <span className="text-xs font-mono text-muted-foreground tracking-wide">
+            Loading Anand Grid Base Layer…
           </span>
         </div>
       )}
@@ -375,71 +460,89 @@ export function TransformerMap({
       {/* Hard error overlay */}
       {loadError && (
         <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "rgba(255,255,255,0.9)",
-            borderRadius: "inherit",
-            zIndex: 10,
-            gap: 8,
-          }}
+          className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/95 backdrop-blur-md rounded-inherit p-6 gap-3 text-center"
           role="alert"
           aria-live="assertive"
         >
-          <span style={{ fontSize: 14, color: "#ef4444", fontWeight: 700 }}>Map error</span>
-          <span style={{ fontSize: 12, color: "#6b7280", textAlign: "center", maxWidth: 240 }}>
-            {loadError}
-          </span>
+          <div className="size-10 rounded-full bg-destructive/20 text-destructive flex items-center justify-center font-bold text-lg">
+            !
+          </div>
+          <span className="text-sm font-bold text-foreground">Map Graphic Notice</span>
+          <span className="text-xs text-muted-foreground max-w-xs">{loadError}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setLoadError(null);
+              setMapReady(true);
+            }}
+            className="mt-2 text-xs font-mono px-3 py-1.5 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+          >
+            Show Pins on Grid
+          </button>
         </div>
       )}
 
       {/* Tile connection status indicator */}
       <div
-        style={{
-          position: "absolute",
-          top: 10,
-          left: 10,
-          zIndex: 20,
-          display: "flex",
-          alignItems: "center",
-          gap: 5,
-          background: "rgba(255,255,255,0.9)",
-          border: "1px solid #e5e7eb",
-          borderRadius: 9999,
-          padding: "3px 10px",
-          fontSize: 11,
-          fontFamily: "monospace",
-          boxShadow: "0 1px 4px rgba(0,0,0,0.12)",
-          pointerEvents: "none",
-        }}
+        className="absolute top-3 left-3 z-20 flex items-center gap-2 rounded-full border border-border/80 bg-background/90 backdrop-blur-md px-3 py-1 text-[11px] font-mono shadow-md pointer-events-none"
         aria-live="polite"
         aria-label={`Map tile status: ${tileStatus}`}
       >
         <span
-          style={{
-            width: 7,
-            height: 7,
-            borderRadius: "50%",
-            background:
-              tileStatus === "connected"
-                ? "#22c55e"
-                : tileStatus === "disconnected"
-                  ? "#ef4444"
-                  : "#f59e0b",
-            display: "inline-block",
-          }}
+          className={`size-2 rounded-full inline-block ${
+            tileStatus === "connected"
+              ? "bg-emerald-500 animate-pulse"
+              : tileStatus === "disconnected"
+                ? "bg-amber-500"
+                : "bg-amber-400 animate-ping"
+          }`}
         />
-        <span style={{ color: "#374151" }}>
+        <span className="text-foreground font-medium">
           {tileStatus === "connected"
-            ? "Tiles live"
+            ? "Tiles Live"
             : tileStatus === "disconnected"
-              ? "Tiles offline"
+              ? "Pins Live (Offline Tiles)"
               : "Connecting…"}
         </span>
+        <span className="text-muted-foreground border-l border-border/60 pl-2">
+          {TRANSFORMER_LOCATIONS_FULL.length} Pins
+        </span>
+      </div>
+
+      {/* Quick Actions (Recenter & Style Switcher) */}
+      <div className="absolute top-3 right-14 z-20 flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={handleResetView}
+          title="Recenter view on Anand District"
+          className="px-2.5 py-1 text-[11px] font-mono bg-background/90 backdrop-blur-md text-foreground/90 border border-border/80 hover:bg-secondary hover:text-foreground rounded-md shadow-sm transition-colors cursor-pointer"
+        >
+          Fit Bounds
+        </button>
+        <div className="flex bg-background/90 backdrop-blur-md border border-border/80 rounded-md p-0.5 shadow-sm text-[10px] font-mono">
+          <button
+            type="button"
+            onClick={() => handleStyleChange("dark")}
+            className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
+              activeStyleKey === "dark"
+                ? "bg-primary text-primary-foreground font-semibold"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Dark
+          </button>
+          <button
+            type="button"
+            onClick={() => handleStyleChange("osm")}
+            className={`px-2 py-0.5 rounded cursor-pointer transition-colors ${
+              activeStyleKey === "osm"
+                ? "bg-primary text-primary-foreground font-semibold"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            OSM
+          </button>
+        </div>
       </div>
     </div>
   );
