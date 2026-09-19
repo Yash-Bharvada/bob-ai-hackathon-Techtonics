@@ -167,6 +167,41 @@ docker run -p 8000:8000 --env-file src/backend/.env voltra
 
 ---
 
+## SMS Fault Alerts
+
+VOLTRA can send an SMS alert to a fixed list of recipients whenever a transformer fault is detected by the ML pipeline.
+
+**What triggers an alert:** any DGA fault classification other than "No Fault" (`NF`), or any asset reaching `HIGH` or `CRITICAL` risk tier.
+**Fault types that send SMS:** `D1` (low-energy discharge), `D2` (high-energy discharge / arcing), `T1/T2/T3` (thermal faults), `PD` (partial discharge).
+
+**Setup:**
+1. Install [SMS Gateway for Android](https://github.com/capcom6/android-sms-gateway) on your phone and turn on the Cloud Server.
+2. Add these variables to `src/backend/.env` (see `src/.env.example` for the full list):
+
+```env
+SMSGATE_USER=your_username_from_app
+SMSGATE_PASS=your_password_from_app
+ALERT_PHONE_NUMBERS=+919876543210,+916543210987
+```
+
+3. Restart the backend — it will print `[SMS] Configured. N recipient(s). Daily limit: 50.` on startup.
+
+**Send a test alert manually:**
+```bash
+python src/backend/services/sms_alert_test_send.py +91XXXXXXXXXX
+```
+This sends a clearly-labelled TEST message to the number you specify without triggering deduplication.
+
+**How it works:**
+- One alert per fault event per transformer — same asset+fault_type suppressed for 1 hour (configurable via `_DEDUP_TTL_H` in `sms_alert.py`)
+- Each recipient receives a separate SMS so one failed number never blocks others
+- Daily cap (`DAILY_LIMIT`, default 50); counter counts on success, refunds on failure
+- SMS errors are logged and swallowed — the website and fault detection keep working even if the gateway is offline
+
+**Known limitation:** the daily counter and dedup cache are in-memory and reset on process restart. No data is lost; the next fault event will re-alert normally.
+
+---
+
 ## Known Limitations
 
 - **Health Index model R² = 0.717**: real DGA datasets lack furan/DP measurements for paper insulation aging (IEEE C57.104 / CIGRE TB 296) — a dataset gap, not a modelling flaw
@@ -175,6 +210,7 @@ docker run -p 8000:8000 --env-file src/backend/.env voltra
 - **TX-107 extreme sensor values** (C2H2 at 2,790 ppm) fall outside the RF model's training distribution — extrapolation territory
 - **Auth requires MongoDB Atlas**: operator login/register won't work without `MONGODB_URI`; the rest of the app (all ML endpoints) works without it
 - **IBM Bob advisory generation requires `ANTHROPIC_API_KEY`**: optional; deterministic fallback is always available
+- **SMS daily counter resets on restart**: in-memory only; if process restarts, the next fault event will re-alert normally
 
 ---
 

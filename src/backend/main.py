@@ -20,6 +20,7 @@ Endpoints:
 """
 
 import ast
+import asyncio
 import io
 import json
 import os
@@ -57,6 +58,8 @@ from auth_router import router as auth_router
 from pipeline.score_asset_risk import score_asset_risk, score_all_assets
 from pipeline.grid_impact_ranker import rank_assets
 from pipeline.maintenance_plan import generate_maintenance_plan
+
+from services.sms_alert import send_fault_alert, validate_config as _sms_validate_config
 
 DATA_DIR = SRC_DIR / "data"
 
@@ -148,6 +151,7 @@ def _load_cache() -> None:
 @app.on_event("startup")
 async def startup_event():
     _load_cache()
+    _sms_validate_config()
 
 
 # ---------------------------------------------------------------------------
@@ -225,7 +229,7 @@ def get_ranked():
 
 
 @app.get("/api/asset/{asset_id}")
-def get_asset_detail(asset_id: str, generate_advisory: bool = True):
+async def get_asset_detail(asset_id: str, generate_advisory: bool = True):
     """
     Single-asset detail view: model scores, SHAP top-3, advisory text.
     Advisory generation calls IBM Bob with graceful fallback.
@@ -292,6 +296,12 @@ def get_asset_detail(asset_id: str, generate_advisory: bool = True):
         result["composite_score"] = float(ranked_row.iloc[0]["composite_score"])
         result["rank"] = int(ranked_row.iloc[0]["rank"])
 
+    # Fire-and-forget SMS fault alert — never blocks or breaks the response
+    try:
+        asyncio.create_task(send_fault_alert(result))
+    except Exception:
+        pass
+
     return result
 
 
@@ -349,7 +359,7 @@ class SensorReading(BaseModel):
 
 
 @app.post("/api/score")
-def score_adhoc(reading: SensorReading):
+async def score_adhoc(reading: SensorReading):
     """
     Score an ad-hoc sensor reading (JSON body).
     Field names with underscores are mapped back to spaced versions for Model 1.
@@ -385,6 +395,12 @@ def score_adhoc(reading: SensorReading):
         result["fault_prob"] = result.pop("fault_confidence", 0.0)
     result["top_3_shap"] = result.pop("top3_shap_features", [])
     result.pop("fault_confidence", None)
+
+    # Fire-and-forget SMS fault alert — never blocks or breaks the response
+    try:
+        asyncio.create_task(send_fault_alert(result))
+    except Exception:
+        pass
 
     return result
 
